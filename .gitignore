@@ -1,0 +1,67 @@
+### Documentos de planificación internos (no se publican) ###
+/propuesta_nexora.md
+/CONTRATOS_EQUIPO.md
+/MVP_BACKEND.md
+
+### Secretos y variables de entorno ###
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore
+
+### Java / Maven (backend) ###
+target/
+.mvn/wrapper/maven-wrapper.jar
+*.class
+hs_err_pid*
+replay_pid*
+
+### Node (frontend, ai-agent, signer) ###
+node_modules/
+dist/
+build/
+.vite/
+coverage/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+### Rust (contracts) ###
+contracts/**/target/
+*.wasm
+!contracts/**/fixtures/*.wasm
+
+### Modelos y binarios locales de IA ###
+*.cact
+*.gguf
+models/
+
+### Logs ###
+logs/
+*.log
+
+### IDEs ###
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.classpath
+.project
+.settings/
+.factorypath
+.apt_generated
+.springBeans
+.sts4-cache
+/nbproject/private/
+
+### Sistema operativo ###
+.DS_Store
+Thumbs.db
+desktop.ini
