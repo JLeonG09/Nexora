@@ -4,9 +4,12 @@ import com.nexora.riendas.clients.SignerClient;
 import com.nexora.riendas.config.AppProperties;
 import com.nexora.riendas.dtos.signer.SignResponse;
 import com.nexora.riendas.dtos.signer.SignerErrorDto;
+import com.nexora.riendas.entities.Approval;
 import com.nexora.riendas.entities.PaymentProposal;
+import com.nexora.riendas.entities.enums.ApprovalStatus;
 import com.nexora.riendas.entities.enums.ProposalStatus;
 import com.nexora.riendas.exceptions.SignerUnavailableException;
+import com.nexora.riendas.repositories.ApprovalRepository;
 import com.nexora.riendas.repositories.PaymentProposalRepository;
 import java.time.Duration;
 import java.time.Instant;
@@ -31,13 +34,15 @@ public class ScheduledJobs {
     static final String NOT_RECEIVED_MESSAGE = "El firmante no tiene registro de este pago: no se envió a la red.";
 
     private final PaymentProposalRepository proposalRepository;
+    private final ApprovalRepository approvalRepository;
     private final PaymentProposalService proposalService;
     private final SignerClient signerClient;
     private final Duration signerReadTimeout;
 
-    public ScheduledJobs(PaymentProposalRepository proposalRepository, PaymentProposalService proposalService,
-                         SignerClient signerClient, AppProperties properties) {
+    public ScheduledJobs(PaymentProposalRepository proposalRepository, ApprovalRepository approvalRepository,
+                         PaymentProposalService proposalService, SignerClient signerClient, AppProperties properties) {
         this.proposalRepository = proposalRepository;
+        this.approvalRepository = approvalRepository;
         this.proposalService = proposalService;
         this.signerClient = signerClient;
         this.signerReadTimeout = Duration.ofMillis(properties.signer().readTimeoutMs());
@@ -54,6 +59,20 @@ public class ScheduledJobs {
                 pollOne(proposal, now);
             } catch (RuntimeException e) {
                 log.warn("No se pudo consultar la propuesta {}: {}", proposal.getId(), e.getMessage());
+            }
+        }
+    }
+
+    /** Aprobaciones PENDIENTE vencidas → EXPIRADA y propuesta RECHAZADO (APROBACION_EXPIRADA). */
+    @Scheduled(fixedDelayString = "${app.jobs.approval-expiry-interval-ms:60000}",
+            initialDelayString = "${app.jobs.approval-expiry-interval-ms:60000}")
+    public void expireApprovals() {
+        for (Approval approval : approvalRepository.findByStatusAndExpiresAtBefore(ApprovalStatus.PENDIENTE,
+                Instant.now())) {
+            try {
+                proposalService.expireApproval(approval.getId());
+            } catch (RuntimeException e) {
+                log.warn("No se pudo vencer la aprobación {}: {}", approval.getId(), e.getMessage());
             }
         }
     }

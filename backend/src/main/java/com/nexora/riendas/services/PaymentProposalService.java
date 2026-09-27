@@ -16,6 +16,7 @@ import com.nexora.riendas.entities.Approval;
 import com.nexora.riendas.entities.Contact;
 import com.nexora.riendas.entities.Mandate;
 import com.nexora.riendas.entities.PaymentProposal;
+import com.nexora.riendas.entities.enums.ApprovalStatus;
 import com.nexora.riendas.entities.enums.ApprovedBy;
 import com.nexora.riendas.entities.enums.AuditActor;
 import com.nexora.riendas.entities.enums.AuditEventType;
@@ -36,7 +37,9 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -180,6 +183,15 @@ public class PaymentProposalService {
      */
     public PaymentProposal submit(SignRequest request) {
         try {
+            return submitOrThrow(request);
+        } catch (SignerUnavailableException e) {
+            return proposalRepository.findById(request.proposalId()).orElseThrow();
+        }
+    }
+
+    /** Igual que {@link #submit}, pero si el firmante no responde relanza el error (503) tras dejar la propuesta en ENVIADO. */
+    public PaymentProposal submitOrThrow(SignRequest request) {
+        try {
             SignResponse response = signerClient.signAndSubmit(request);
             return applySignerResponse(request.proposalId(), response);
         } catch (SignerRejectedException e) {
@@ -187,8 +199,164 @@ public class PaymentProposalService {
                     null, null, null, null, new SignerErrorDto(e.code(), null, null, e.getMessage(), null)));
         } catch (SignerUnavailableException e) {
             log.warn("Firmante no disponible para la propuesta {}: {}", request.proposalId(), e.getMessage());
-            return proposalRepository.findById(request.proposalId()).orElseThrow();
+            throw e;
         }
+    }
+
+    /** Resultado de decidir una aprobación. {@code signRequest} viene solo si se aprobó y falta llamar al firmante. */
+    public record Decision(Approval approval, PaymentProposal proposal, SignRequest signRequest) {
+    }
+
+    /**
+     * Aprueba desde la bandeja: revalida las reglas 5, 6 y 7 con la cuenta bloqueada. Si ya no pasan,
+     * la aprobación queda RECHAZADA y la propuesta RECHAZADO con ese motivo.
+     */
+    public Decision approve(UUID userId, UUID approvalId) {
+        return tx.execute(status -> {
+            requireApprovalOf(userId, approvalId);
+            Account account = lockAccount(userId);
+            Approval approval = pendingApproval(userId, approvalId);
+            PaymentProposal proposal = proposalRepository.findById(approval.getProposalId()).orElseThrow();
+            Instant now = Instant.now();
+            Mandate mandate = proposal.getMandateId() == null ? null
+                    : mandateRepository.findById(proposal.getMandateId()).orElse(null);
+            List<String> checks = new ArrayList<>();
+            PaymentValidator.Rejection rejection = paymentValidator.checkMandateAndLimits(proposal.getAmount(),
+                    mandate, mandate, mandateService.spentLast24h(account.getId()), now, checks);
+
+            approval.setDecidedAt(now);
+            SignRequest signRequest = null;
+            if (rejection != null) {
+                approval.setStatus(ApprovalStatus.RECHAZADA);
+                reject(proposal, rejection.code().name(), rejection.message());
+                if (rejection.code() == RejectionCode.MANDATO_EXPIRADO && mandate != null
+                        && mandate.getStatus() == MandateStatus.ACTIVO) {
+                    mandate.setStatus(MandateStatus.EXPIRADO);
+                }
+                auditService.record(AuditEventType.VALIDACION_RECHAZADA, AuditActor.BACKEND, userId, proposal.getId(),
+                        proposal.getMandateId(), "Al aprobar, la propuesta ya no pasa la revalidación ("
+                                + rejection.code() + "): " + proposal.getRejectionMessage(),
+                        Map.of("rejectionCode", rejection.code().name(), "checksPassed", checks, "revalidation", true));
+            } else {
+                approval.setStatus(ApprovalStatus.APROBADA);
+                auditService.record(AuditEventType.APROBACION_APROBADA, AuditActor.USUARIO, userId, proposal.getId(),
+                        mandate.getId(), "Aprobaste el pago de " + Money.display(proposal.getAmount()) + " USDC.",
+                        Map.of("approvalId", approval.getId().toString(), "checks", checks));
+                stateMachine.transition(proposal, ProposalStatus.APROBADO);
+                proposal.setApprovedBy(ApprovedBy.USUARIO);
+                signRequest = markSent(proposal, account, mandate);
+            }
+            return new Decision(approvalRepository.saveAndFlush(approval), proposalRepository.saveAndFlush(proposal),
+                    signRequest);
+        });
+    }
+
+    /** Rechazo desde la bandeja: aprobación RECHAZADA y propuesta RECHAZADO (RECHAZADO_POR_USUARIO). */
+    public Decision rejectByUser(UUID userId, UUID approvalId, String note) {
+        return tx.execute(status -> {
+            requireApprovalOf(userId, approvalId);
+            lockAccount(userId);
+            Approval approval = pendingApproval(userId, approvalId);
+            PaymentProposal proposal = proposalRepository.findById(approval.getProposalId()).orElseThrow();
+            approval.setStatus(ApprovalStatus.RECHAZADA);
+            approval.setDecidedAt(Instant.now());
+            approval.setDecisionNote(note == null || note.isBlank() ? null : note.trim());
+            reject(proposal, RejectionCode.RECHAZADO_POR_USUARIO.name(),
+                    RejectionCode.RECHAZADO_POR_USUARIO.defaultMessage());
+            Map<String, Object> data = new HashMap<>();
+            data.put("approvalId", approval.getId().toString());
+            data.put("reason", approval.getDecisionNote());
+            auditService.record(AuditEventType.APROBACION_RECHAZADA, AuditActor.USUARIO, userId, proposal.getId(),
+                    proposal.getMandateId(), "Rechazaste el pago de " + Money.display(proposal.getAmount()) + " USDC.",
+                    data);
+            return new Decision(approvalRepository.saveAndFlush(approval), proposalRepository.saveAndFlush(proposal),
+                    null);
+        });
+    }
+
+    /** Vence una aprobación PENDIENTE cuyo plazo pasó. No hace nada si ya se decidió. */
+    public void expireApproval(UUID approvalId) {
+        tx.executeWithoutResult(status -> {
+            Approval approval = approvalRepository.findById(approvalId).orElse(null);
+            if (approval == null) {
+                return;
+            }
+            // El estado de la propuesta, leído con su fila bloqueada, es el que manda si hay una decisión en paralelo.
+            lockAccount(approval.getUserId());
+            PaymentProposal proposal = proposalRepository.findByIdForUpdate(approval.getProposalId()).orElseThrow();
+            if (approval.getStatus() != ApprovalStatus.PENDIENTE || !approval.getExpiresAt().isBefore(Instant.now())
+                    || proposal.getStatus() != ProposalStatus.PENDIENTE_APROBACION) {
+                return;
+            }
+            approval.setStatus(ApprovalStatus.EXPIRADA);
+            approval.setDecidedAt(Instant.now());
+            reject(proposal, RejectionCode.APROBACION_EXPIRADA.name(), RejectionCode.APROBACION_EXPIRADA.defaultMessage());
+            auditService.record(AuditEventType.APROBACION_EXPIRADA, AuditActor.BACKEND, approval.getUserId(),
+                    proposal.getId(), proposal.getMandateId(), "La solicitud de aprobación de "
+                            + Money.display(proposal.getAmount()) + " USDC venció sin respuesta.",
+                    Map.of("approvalId", approval.getId().toString()));
+            approvalRepository.saveAndFlush(approval);
+            proposalRepository.saveAndFlush(proposal);
+        });
+    }
+
+    /**
+     * Modo atacante (CONTRATOS_EQUIPO.md §3.9): se salta a propósito todas las validaciones y firma con la
+     * cuenta y la regla del mandato activo, para mostrar que la red frena el pago. Devuelve el SignRequest.
+     */
+    public SignRequest prepareAttack(UUID userId, String destinationAddress, BigDecimal amount) {
+        return tx.execute(status -> {
+            Account account = lockAccount(userId);
+            Mandate mandate = mandateRepository.findByAccountIdAndStatus(account.getId(), MandateStatus.ACTIVO)
+                    .filter(active -> active.getExpiresAt().isAfter(Instant.now()))
+                    .orElseThrow(() -> new ApiException(ErrorCode.SIN_MANDATO_ACTIVO));
+            PaymentProposal proposal = new PaymentProposal();
+            proposal.setUserId(userId);
+            proposal.setAccountId(account.getId());
+            proposal.setMandateId(mandate.getId());
+            proposal.setOrigin(ProposalOrigin.ATAQUE_DEMO);
+            proposal.setOriginalText("Modo atacante: " + Money.display(amount) + " USDC a " + destinationAddress);
+            proposal.setDestinationAddress(destinationAddress);
+            proposal.setAmount(amount);
+            proposal.setAssetCode(mandate.getAssetCode());
+            proposal.setStatus(ProposalStatus.PROPUESTO);
+            proposal = proposalRepository.saveAndFlush(proposal);
+            Map<String, Object> data = new HashMap<>();
+            data.put("destinationAddress", destinationAddress);
+            data.put("amount", Money.format(amount));
+            auditService.record(AuditEventType.ATAQUE_DEMO, AuditActor.USUARIO, userId, proposal.getId(),
+                    mandate.getId(), "Modo atacante: el backend se saltó sus validaciones y pidió firmar "
+                            + Money.display(amount) + " USDC a un destino desconocido.", data);
+            stateMachine.transition(proposal, ProposalStatus.APROBADO);
+            SignRequest request = markSent(proposal, account, mandate);
+            proposalRepository.saveAndFlush(proposal);
+            return request;
+        });
+    }
+
+    private Account lockAccount(UUID userId) {
+        UUID accountId = accountRepository.findByUserId(userId)
+                .orElseThrow(() -> new ApiException(ErrorCode.SIN_CUENTA)).getId();
+        return accountRepository.findByIdForUpdate(accountId).orElseThrow(() -> new ApiException(ErrorCode.SIN_CUENTA));
+    }
+
+    /** 404 antes de bloquear nada; no carga la entidad para que la lectura tras el bloqueo sea fresca. */
+    private void requireApprovalOf(UUID userId, UUID approvalId) {
+        if (!approvalRepository.existsByIdAndUserId(approvalId, userId)) {
+            throw new ApiException(ErrorCode.RECURSO_NO_ENCONTRADO, "No encontramos esa solicitud de aprobación.");
+        }
+    }
+
+    private Approval pendingApproval(UUID userId, UUID approvalId) {
+        Approval approval = approvalRepository.findByIdAndUserId(approvalId, userId)
+                .orElseThrow(() -> new ApiException(ErrorCode.RECURSO_NO_ENCONTRADO,
+                        "No encontramos esa solicitud de aprobación."));
+        PaymentProposal proposal = proposalRepository.findByIdForUpdate(approval.getProposalId()).orElseThrow();
+        if (approval.getStatus() != ApprovalStatus.PENDIENTE || !approval.getExpiresAt().isAfter(Instant.now())
+                || proposal.getStatus() != ProposalStatus.PENDIENTE_APROBACION) {
+            throw new ApiException(ErrorCode.ESTADO_INVALIDO, "Esta solicitud ya fue decidida o expiró.");
+        }
+        return approval;
     }
 
     /** Aplica CONFIRMADO / FALLIDO. ENVIADO o una propuesta que ya no está en ENVIADO no cambian nada. */

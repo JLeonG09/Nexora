@@ -60,6 +60,7 @@ app:
   jobs:
     enabled: ${JOBS_ENABLED:true}
     sent-poll-interval-ms: ${SENT_POLL_INTERVAL_MS:10000}
+    approval-expiry-interval-ms: ${APPROVAL_EXPIRY_INTERVAL_MS:60000}
   reconciliation:
     enabled: ${RECONCILIATION_ENABLED:true}
     interval-ms: ${RECONCILIATION_INTERVAL_MS:60000}

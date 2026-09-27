@@ -120,38 +120,13 @@ public class PaymentValidator {
         }
         checks.add("MONTO_EN_TEXTO");
 
-        // Regla 5 · Mandato vigente
+        // Reglas 5, 6 y 7
+        Rejection limits = checkMandateAndLimits(amount, context.mandate(), context.lastMandate(),
+                context.spentLast24h(), context.now(), checks);
+        if (limits != null) {
+            return Result.rejected(limits.code(), limits.message(), arguments, contact, checks);
+        }
         Mandate mandate = context.mandate();
-        if (mandate == null || mandate.getStatus() != MandateStatus.ACTIVO) {
-            Mandate last = context.lastMandate();
-            if (last != null && last.getStatus() == MandateStatus.EXPIRADO) {
-                return expired(last, arguments, contact, checks);
-            }
-            return Result.rejected(RejectionCode.SIN_MANDATO_ACTIVO, RejectionCode.SIN_MANDATO_ACTIVO.defaultMessage(),
-                    arguments, contact, checks);
-        }
-        if (!mandate.getExpiresAt().isAfter(context.now())) {
-            return expired(mandate, arguments, contact, checks);
-        }
-        checks.add("MANDATO");
-
-        // Regla 6 · Tope por transacción
-        if (amount.compareTo(mandate.getPerTxLimit()) > 0) {
-            return Result.rejected(RejectionCode.SUPERA_TOPE_TRANSACCION,
-                    RejectionCode.SUPERA_TOPE_TRANSACCION.defaultMessage()
-                            .replace("{perTxLimit}", Money.display(mandate.getPerTxLimit())),
-                    arguments, contact, checks);
-        }
-        checks.add("TOPE_TRANSACCION");
-
-        // Regla 7 · Tope diario (ventana móvil de 24 h, calculada con la cuenta bloqueada)
-        if (context.spentLast24h().add(amount).compareTo(mandate.getDailyLimit()) > 0) {
-            BigDecimal available = mandate.getDailyLimit().subtract(context.spentLast24h()).max(BigDecimal.ZERO);
-            return Result.rejected(RejectionCode.SUPERA_TOPE_DIARIO,
-                    RejectionCode.SUPERA_TOPE_DIARIO.defaultMessage().replace("{disponible}", Money.display(available)),
-                    arguments, contact, checks);
-        }
-        checks.add("TOPE_DIARIO");
 
         // Regla 8 · Frecuencia
         if (context.proposalsLast10Min() > properties.rateLimit().proposalsPer10Min()) {
@@ -166,10 +141,47 @@ public class PaymentValidator {
         return new Result(true, null, null, arguments, contact, List.copyOf(checks), decision);
     }
 
-    private static Result expired(Mandate mandate, ProposePaymentArguments arguments, Contact contact,
-                                  List<String> checks) {
-        return Result.rejected(RejectionCode.MANDATO_EXPIRADO, RejectionCode.MANDATO_EXPIRADO.defaultMessage()
-                .replace("{fecha}", MandateResponse.displayDate(mandate.getExpiresAt())), arguments, contact, checks);
+    public record Rejection(RejectionCode code, String message) {
+    }
+
+    /**
+     * Reglas 5 (mandato vigente), 6 (tope por transacción) y 7 (tope diario). Se usan al crear la propuesta
+     * y otra vez al aprobarla, con los valores de ese momento. Agrega a {@code checks} las que pasan.
+     *
+     * @return null si pasan las tres
+     */
+    public Rejection checkMandateAndLimits(BigDecimal amount, Mandate mandate, Mandate lastMandate,
+                                           BigDecimal spentLast24h, Instant now, List<String> checks) {
+        if (mandate == null || mandate.getStatus() != MandateStatus.ACTIVO) {
+            if (lastMandate != null && lastMandate.getStatus() == MandateStatus.EXPIRADO) {
+                return expired(lastMandate);
+            }
+            return new Rejection(RejectionCode.SIN_MANDATO_ACTIVO, RejectionCode.SIN_MANDATO_ACTIVO.defaultMessage());
+        }
+        if (!mandate.getExpiresAt().isAfter(now)) {
+            return expired(mandate);
+        }
+        checks.add("MANDATO");
+
+        if (amount.compareTo(mandate.getPerTxLimit()) > 0) {
+            return new Rejection(RejectionCode.SUPERA_TOPE_TRANSACCION, RejectionCode.SUPERA_TOPE_TRANSACCION
+                    .defaultMessage().replace("{perTxLimit}", Money.display(mandate.getPerTxLimit())));
+        }
+        checks.add("TOPE_TRANSACCION");
+
+        // Ventana móvil de 24 h, calculada con la cuenta bloqueada.
+        if (spentLast24h.add(amount).compareTo(mandate.getDailyLimit()) > 0) {
+            BigDecimal available = mandate.getDailyLimit().subtract(spentLast24h).max(BigDecimal.ZERO);
+            return new Rejection(RejectionCode.SUPERA_TOPE_DIARIO,
+                    RejectionCode.SUPERA_TOPE_DIARIO.defaultMessage().replace("{disponible}", Money.display(available)));
+        }
+        checks.add("TOPE_DIARIO");
+        return null;
+    }
+
+    private static Rejection expired(Mandate mandate) {
+        return new Rejection(RejectionCode.MANDATO_EXPIRADO, RejectionCode.MANDATO_EXPIRADO.defaultMessage()
+                .replace("{fecha}", MandateResponse.displayDate(mandate.getExpiresAt())));
     }
 
     private record ContactCheck(Contact contact, RejectionCode error, String message) {
