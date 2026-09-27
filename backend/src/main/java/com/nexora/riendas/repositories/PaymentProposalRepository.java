@@ -40,5 +40,9 @@ public interface PaymentProposalRepository extends JpaRepository<PaymentProposal
 
     List<PaymentProposal> findByStatusAndSentAtAfter(ProposalStatus status, Instant since);
 
+    Page<PaymentProposal> findByUserIdAndStatusIn(UUID userId, Collection<ProposalStatus> statuses, Pageable pageable);
+
+    boolean existsByAccountIdAndOriginAndTxHash(UUID accountId, ProposalOrigin origin, String txHash);
+
     long countByUserIdAndOriginAndCreatedAtAfter(UUID userId, ProposalOrigin origin, Instant since);
 }

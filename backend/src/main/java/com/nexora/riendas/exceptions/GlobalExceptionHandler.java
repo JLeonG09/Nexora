@@ -42,6 +42,13 @@ public class GlobalExceptionHandler {
         return build(ErrorCode.FIRMANTE_NO_DISPONIBLE, ErrorCode.FIRMANTE_NO_DISPONIBLE.defaultMessage(), List.of(), request);
     }
 
+    @ExceptionHandler(org.springframework.orm.ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handleConcurrentUpdate(Exception ex, HttpServletRequest request) {
+        log.info("Actualización concurrente en {}: {}", request.getRequestURI(), ex.getMessage());
+        return build(ErrorCode.ESTADO_INVALIDO, "Esto cambió mientras lo procesábamos. Actualiza e intenta de nuevo.",
+                List.of(), request);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleBodyValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
         List<ErrorResponse.FieldErrorDetail> details = ex.getBindingResult().getFieldErrors().stream()

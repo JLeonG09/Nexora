@@ -1,6 +1,10 @@
 package com.nexora.riendas.services;
 
+import com.nexora.riendas.clients.StellarEventsClient;
 import com.nexora.riendas.dtos.requests.RegisterAccountRequest;
+import com.nexora.riendas.exceptions.StellarEventsUnavailableException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.nexora.riendas.entities.Account;
 import com.nexora.riendas.entities.enums.AuditActor;
 import com.nexora.riendas.entities.enums.AuditEventType;
@@ -17,12 +21,17 @@ public class AccountService {
 
     private static final String DEFAULT_NETWORK = "TESTNET";
 
+    private static final Logger log = LoggerFactory.getLogger(AccountService.class);
+
     private final AccountRepository accountRepository;
     private final AuditService auditService;
+    private final StellarEventsClient eventsClient;
 
-    public AccountService(AccountRepository accountRepository, AuditService auditService) {
+    public AccountService(AccountRepository accountRepository, AuditService auditService,
+                          StellarEventsClient eventsClient) {
         this.accountRepository = accountRepository;
         this.auditService = auditService;
+        this.eventsClient = eventsClient;
     }
 
     @Transactional
@@ -37,11 +46,22 @@ public class AccountService {
         account.setCredentialId(request.credentialId());
         account.setNetwork(request.network() == null ? DEFAULT_NETWORK : request.network());
         account.setAgentKeyVersion(1);
+        account.setLastScannedLedger(latestLedgerOrNull());
         Account saved = accountRepository.saveAndFlush(account);
         auditService.record(AuditEventType.CUENTA_REGISTRADA, AuditActor.USUARIO, userId, null, null,
                 "Smart account registrado: " + address + ".",
                 Map.of("accountId", saved.getId().toString(), "smartAccountAddress", address));
         return saved;
+    }
+
+    /** La conciliación no revisa el pasado; si el RPC no responde, la primera vuelta inicializa el cursor. */
+    private Long latestLedgerOrNull() {
+        try {
+            return eventsClient.latestLedger();
+        } catch (StellarEventsUnavailableException e) {
+            log.warn("No se pudo leer el último ledger al registrar la cuenta: {}", e.getMessage());
+            return null;
+        }
     }
 
     @Transactional(readOnly = true)

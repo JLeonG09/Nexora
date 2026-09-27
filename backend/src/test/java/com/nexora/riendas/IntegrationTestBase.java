@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import com.nexora.riendas.clients.MockLedger;
 import com.nexora.riendas.clients.MockSignerClient;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -39,6 +40,9 @@ public abstract class IntegrationTestBase {
     @Autowired
     protected MockSignerClient mockSignerClient;
 
+    @Autowired
+    protected MockLedger mockLedger;
+
     @BeforeEach
     void cleanDatabase() {
         // TRUNCATE no dispara el trigger de solo inserción de audit_events.
@@ -46,6 +50,7 @@ public abstract class IntegrationTestBase {
                 + "contacts, mandates, accounts, users CASCADE");
         // El firmante simulado es un singleton: sin esto el gasto on-chain se acumula entre tests.
         mockSignerClient.clear();
+        mockLedger.clear();
     }
 
     protected String createUser(String name, String email) throws Exception {

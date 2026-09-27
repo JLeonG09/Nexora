@@ -9,6 +9,7 @@ import com.nexora.riendas.exceptions.SignerRejectedException;
 import com.nexora.riendas.exceptions.SignerUnavailableException;
 import com.nexora.riendas.services.Money;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -21,7 +22,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -38,18 +38,18 @@ public class MockSignerClient implements SignerClient {
     static final String MOCK_AGENT_ADDRESS = "GMOCK...NO-USAR-ON-CHAIN";
     static final String ED25519_VERIFIER = "CAAVTMCBXEIBPR64EAASKFXERVPYFZA2JYP5A3BG6PESWEFUJX5IHKN4";
     private static final Duration SPENDING_WINDOW = Duration.ofHours(24);
-    private static final long FIRST_LEDGER = 1_234_600L;
-
     private record Spend(Instant at, BigDecimal amount) {
     }
 
     private final BigDecimal onchainDailyLimit;
+    private final MockLedger mockLedger;
     private final Map<UUID, SignResponse> results = new ConcurrentHashMap<>();
+    private final Map<UUID, SignRequest> pendingTransfers = new ConcurrentHashMap<>();
     private final Map<String, List<Spend>> spentByAccount = new ConcurrentHashMap<>();
-    private final AtomicLong ledger = new AtomicLong(FIRST_LEDGER);
 
-    public MockSignerClient(AppProperties properties) {
+    public MockSignerClient(AppProperties properties, MockLedger mockLedger) {
         this.onchainDailyLimit = properties.signer().mock().onchainDailyLimit();
+        this.mockLedger = mockLedger;
     }
 
     @Override
@@ -89,9 +89,13 @@ public class MockSignerClient implements SignerClient {
         }
 
         spentByAccount.computeIfAbsent(request.smartAccountAddress(), key -> new ArrayList<>()).add(new Spend(now, amount));
-        SignResponse response = memo.contains("#firmante-lento")
-                ? new SignResponse(request.proposalId(), SignResponse.ENVIADO, null, null, now, null, null)
-                : confirmed(request.proposalId(), now);
+        SignResponse response;
+        if (memo.contains("#firmante-lento")) {
+            response = new SignResponse(request.proposalId(), SignResponse.ENVIADO, null, null, now, null, null);
+            pendingTransfers.put(request.proposalId(), request);
+        } else {
+            response = confirmed(request, now);
+        }
         results.put(request.proposalId(), response);
         return response;
     }
@@ -104,8 +108,10 @@ public class MockSignerClient implements SignerClient {
             return Optional.empty();
         }
         if (SignResponse.ENVIADO.equals(stored.status())) {
-            SignResponse confirmed = confirmed(proposalId, stored.submittedAt());
-            results.put(proposalId, confirmed);
+            SignRequest request = pendingTransfers.remove(proposalId);
+            if (request != null) {
+                results.put(proposalId, confirmed(request, stored.submittedAt()));
+            }
             return Optional.of(stored);
         }
         return Optional.of(stored);
@@ -114,6 +120,7 @@ public class MockSignerClient implements SignerClient {
     /** Solo para tests: olvida pagos y gasto simulado. */
     public synchronized void clear() {
         results.clear();
+        pendingTransfers.clear();
         spentByAccount.clear();
     }
 
@@ -121,9 +128,13 @@ public class MockSignerClient implements SignerClient {
         return sha256Hex(smartAccountAddress + ":" + keyVersion);
     }
 
-    private SignResponse confirmed(UUID proposalId, Instant submittedAt) {
-        return new SignResponse(proposalId, SignResponse.CONFIRMADO, sha256Hex(proposalId.toString()),
-                ledger.incrementAndGet(), submittedAt, Instant.now(), null);
+    /** Confirma el pago y lo registra en {@link MockLedger} para que la conciliación lo vea. */
+    private SignResponse confirmed(SignRequest request, Instant submittedAt) {
+        String txHash = sha256Hex(request.proposalId().toString());
+        long confirmedLedger = mockLedger.record(txHash, request.smartAccountAddress(), request.destinationAddress(),
+                new BigInteger(request.amountUnits()));
+        return new SignResponse(request.proposalId(), SignResponse.CONFIRMADO, txHash, confirmedLedger, submittedAt,
+                Instant.now(), null);
     }
 
     private BigDecimal spentLast24h(String address, Instant now) {
