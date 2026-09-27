@@ -1,7 +1,5 @@
 package com.nexora.riendas.services;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nexora.riendas.clients.AiClient;
 import com.nexora.riendas.config.AppProperties;
 import com.nexora.riendas.dtos.ai.AiContactDto;
@@ -9,7 +7,6 @@ import com.nexora.riendas.dtos.ai.AiHistoryItemDto;
 import com.nexora.riendas.dtos.ai.AiInterpretRequest;
 import com.nexora.riendas.dtos.ai.AiInterpretResponse;
 import com.nexora.riendas.dtos.ai.AiMandateDto;
-import com.nexora.riendas.dtos.ai.ProposePaymentArguments;
 import com.nexora.riendas.dtos.requests.ChatRequest;
 import com.nexora.riendas.dtos.responses.ChatMessageResponse;
 import com.nexora.riendas.dtos.responses.ChatReplyDto;
@@ -25,23 +22,19 @@ import com.nexora.riendas.entities.enums.AuditActor;
 import com.nexora.riendas.entities.enums.AuditEventType;
 import com.nexora.riendas.entities.enums.ChatMessageType;
 import com.nexora.riendas.entities.enums.ChatRole;
-import com.nexora.riendas.entities.enums.ProposalOrigin;
-import com.nexora.riendas.entities.enums.ProposalStatus;
 import com.nexora.riendas.exceptions.AiUnavailableException;
 import com.nexora.riendas.exceptions.ApiException;
 import com.nexora.riendas.exceptions.ErrorCode;
 import com.nexora.riendas.repositories.AccountRepository;
 import com.nexora.riendas.repositories.ChatMessageRepository;
-import com.nexora.riendas.repositories.PaymentProposalRepository;
+import com.nexora.riendas.repositories.MandateRepository;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -51,8 +44,9 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Orquesta chat → IA → propuesta. Nunca hay una transacción abierta mientras se llama a la IA:
- * (1) guardar mensaje y auditoría, (2) llamar a la IA, (3) crear y validar la propuesta.
+ * Orquesta chat → IA → propuesta → firmante. Nunca hay una transacción abierta mientras se llama
+ * a la IA o al firmante: (1) guardar mensaje y auditoría, (2) IA, (3) crear y validar la propuesta
+ * con la cuenta bloqueada, (4) firmante, (5) guardar el resultado y responder.
  */
 @Service
 public class ChatService {
@@ -60,38 +54,33 @@ public class ChatService {
     static final String DEFAULT_REPLY = "Puedo pagar a tus contactos. Ejemplo: \"Págale 15 USDC a Ana por el logo\".";
     private static final int HISTORY_SIZE = 6;
     private static final int MAX_MESSAGE_TEXT = 1000;
-    private static final int MAX_REJECTION_MESSAGE = 300;
-    private static final int MAX_ASSET_CODE = 12;
-    private static final int MAX_MODEL = 60;
     private static final Sort NEWEST_FIRST = Sort.by("createdAt").descending();
 
     private final AccountRepository accountRepository;
     private final ChatMessageRepository chatMessageRepository;
-    private final PaymentProposalRepository proposalRepository;
+    private final MandateRepository mandateRepository;
     private final ContactService contactService;
     private final MandateService mandateService;
-    private final PaymentValidator paymentValidator;
+    private final PaymentProposalService proposalService;
     private final AiClient aiClient;
     private final AuditService auditService;
     private final AppProperties properties;
-    private final ObjectMapper objectMapper;
     private final TransactionTemplate tx;
 
     public ChatService(AccountRepository accountRepository, ChatMessageRepository chatMessageRepository,
-                       PaymentProposalRepository proposalRepository, ContactService contactService,
-                       MandateService mandateService, PaymentValidator paymentValidator, AiClient aiClient,
-                       AuditService auditService, AppProperties properties, ObjectMapper objectMapper,
+                       MandateRepository mandateRepository, ContactService contactService,
+                       MandateService mandateService, PaymentProposalService proposalService, AiClient aiClient,
+                       AuditService auditService, AppProperties properties,
                        PlatformTransactionManager transactionManager) {
         this.accountRepository = accountRepository;
         this.chatMessageRepository = chatMessageRepository;
-        this.proposalRepository = proposalRepository;
+        this.mandateRepository = mandateRepository;
         this.contactService = contactService;
         this.mandateService = mandateService;
-        this.paymentValidator = paymentValidator;
+        this.proposalService = proposalService;
         this.aiClient = aiClient;
         this.auditService = auditService;
         this.properties = properties;
-        this.objectMapper = objectMapper;
         this.tx = new TransactionTemplate(transactionManager);
     }
 
@@ -99,8 +88,9 @@ public class ChatService {
         Account account = accountRepository.findByUserId(userId).orElseThrow(() -> new ApiException(ErrorCode.SIN_CUENTA));
         UUID conversationId = request.conversationId() != null ? request.conversationId() : UUID.randomUUID();
         String text = request.message().trim();
-        Optional<Mandate> mandate = mandateService.findActive(account.getId());
-        AiMandateDto aiMandate = mandate.map(m -> toAiMandate(mandateService.limitsOf(m))).orElse(null);
+        AiMandateDto aiMandate = mandateService.findVigentWithoutExpiring(account.getId())
+                .map(mandate -> toAiMandate(mandateService.limitsOf(mandate)))
+                .orElse(null);
 
         // (1) Mensaje del usuario + auditoría
         AiInterpretRequest aiRequest = tx.execute(status -> {
@@ -117,20 +107,35 @@ public class ChatService {
 
         // (2) IA, fuera de transacción
         AiInterpretResponse response = callAi(userId, aiRequest);
+        tx.executeWithoutResult(status -> auditService.record(AuditEventType.IA_RESPUESTA, AuditActor.IA, userId, null,
+                null, "La IA respondió con tipo \"" + response.type() + "\".", aiAuditData(response)));
 
-        // (3) Respuesta o propuesta
-        return tx.execute(status -> {
-            auditService.record(AuditEventType.IA_RESPUESTA, AuditActor.IA, userId, null, null,
-                    "La IA respondió con tipo \"" + response.type() + "\".", aiAuditData(response));
-            if (AiInterpretResponse.TYPE_MESSAGE.equals(response.type())) {
-                String replyText = response.message() == null || response.message().isBlank()
-                        ? DEFAULT_REPLY : response.message();
-                ChatMessage reply = saveMessage(userId, conversationId, ChatRole.AGENTE, ChatMessageType.MESSAGE,
-                        replyText, null);
-                return new ChatResponse(conversationId, ChatReplyDto.from(reply), null);
-            }
-            return handleAction(userId, account, conversationId, text, mandate.orElse(null), response);
-        });
+        if (AiInterpretResponse.TYPE_MESSAGE.equals(response.type())) {
+            String replyText = response.message() == null || response.message().isBlank()
+                    ? DEFAULT_REPLY : response.message();
+            ChatMessage reply = tx.execute(status -> saveMessage(userId, conversationId, ChatRole.AGENTE,
+                    ChatMessageType.MESSAGE, replyText, null));
+            return new ChatResponse(conversationId, ChatReplyDto.from(reply), null);
+        }
+
+        // (3) Propuesta validada con la cuenta bloqueada
+        PaymentProposalService.Outcome outcome = proposalService.createFromAi(userId, account.getId(), conversationId,
+                text, response);
+        PaymentProposal proposal = outcome.proposal();
+
+        // (4) Firmante, fuera de transacción
+        if (outcome.signRequest() != null) {
+            proposal = proposalService.submit(outcome.signRequest());
+        }
+
+        // (5) Respuesta del agente
+        String replyText = replyFor(proposal, outcome.contactName());
+        UUID proposalId = proposal.getId();
+        ChatMessage reply = tx.execute(status -> saveMessage(userId, conversationId, ChatRole.AGENTE,
+                ChatMessageType.PROPOSAL, replyText, proposalId));
+        return new ChatResponse(conversationId, ChatReplyDto.from(reply),
+                ProposalSummaryDto.from(proposal, outcome.contactName(), outcome.approvalId(),
+                        properties.explorerBaseUrl()));
     }
 
     public PageResponse<ChatMessageResponse> messages(UUID userId, UUID conversationId, int limit) {
@@ -143,60 +148,29 @@ public class ChatService {
         return new PageResponse<>(items, 0, limit, page.getTotalElements());
     }
 
-    private ChatResponse handleAction(UUID userId, Account account, UUID conversationId, String text, Mandate mandate,
-                                      AiInterpretResponse response) {
-        PaymentProposal proposal = new PaymentProposal();
-        proposal.setUserId(userId);
-        proposal.setAccountId(account.getId());
-        proposal.setMandateId(mandate == null ? null : mandate.getId());
-        proposal.setConversationId(conversationId);
-        proposal.setOrigin(ProposalOrigin.CHAT);
-        proposal.setOriginalText(text);
-        proposal.setAiConfidence(confidence(response.confidence()));
-        proposal.setAiModel(truncate(response.model(), MAX_MODEL));
-        proposal.setAiRaw(objectMapper.convertValue(response, new TypeReference<Map<String, Object>>() { }));
-        proposal.setStatus(ProposalStatus.PROPUESTO);
-        proposal = proposalRepository.saveAndFlush(proposal);
-        auditService.record(AuditEventType.PROPUESTA_CREADA, AuditActor.BACKEND, userId, proposal.getId(),
-                proposal.getMandateId(), "Propuesta creada a partir de la respuesta de la IA.",
-                Map.of("originalText", text));
+    private String replyFor(PaymentProposal proposal, String contactName) {
+        String amount = proposal.getAmount() == null ? null : Money.display(proposal.getAmount());
+        return switch (proposal.getStatus()) {
+            case CONFIRMADO -> "Listo: le pagué " + amount + " USDC a " + contactName
+                    + (proposal.getMemo() == null ? "" : " por \"" + proposal.getMemo() + "\"") + "."
+                    + remainingText(proposal);
+            case PENDIENTE_APROBACION -> "Ese pago de " + amount + " USDC necesita tu aprobación. Revísalo en la bandeja.";
+            case ENVIADO -> "Envié el pago de " + amount + " USDC a " + contactName
+                    + ". Estoy esperando la confirmación de la red.";
+            case RECHAZADO, FALLIDO -> proposal.getRejectionMessage();
+            default -> "Recibí tu pedido de pago.";
+        };
+    }
 
-        PaymentValidator.Result result = paymentValidator.validate(userId, response);
-        ProposePaymentArguments arguments = result.arguments();
-        if (arguments != null) {
-            proposal.setAmount(arguments.amount());
-            proposal.setAssetCode(arguments.asset() != null && arguments.asset().length() <= MAX_ASSET_CODE
-                    ? arguments.asset() : null);
-            proposal.setMemo(arguments.memo());
+    private String remainingText(PaymentProposal proposal) {
+        if (proposal.getMandateId() == null) {
+            return "";
         }
-        if (result.contact() != null) {
-            proposal.setContactId(result.contact().getId());
-            proposal.setDestinationAddress(result.contact().getStellarAddress());
-        }
-
-        String replyText;
-        if (!result.valid()) {
-            String message = truncate(result.message(), MAX_REJECTION_MESSAGE);
-            proposal.setStatus(ProposalStatus.RECHAZADO);
-            proposal.setRejectionCode(result.code().name());
-            proposal.setRejectionMessage(message);
-            auditService.record(AuditEventType.VALIDACION_RECHAZADA, AuditActor.BACKEND, userId, proposal.getId(),
-                    proposal.getMandateId(), "Propuesta rechazada: " + result.code() + ".",
-                    Map.of("rejectionCode", result.code().name(), "checksPassed", result.checks()));
-            replyText = message;
-        } else {
-            // TODO(fase 3): reglas 4–8 y decisión (PENDIENTE_APROBACION / APROBADO → firmante).
-            replyText = "Entendí un pago de " + Money.display(arguments.amount()) + " USDC a "
-                    + result.contact().getName() + (arguments.memo() == null ? "" : " por \"" + arguments.memo() + "\"")
-                    + ". Todavía no lo envié: falta completar la validación.";
-        }
-        proposal = proposalRepository.saveAndFlush(proposal);
-
-        ChatMessage reply = saveMessage(userId, conversationId, ChatRole.AGENTE, ChatMessageType.PROPOSAL,
-                truncate(replyText, MAX_MESSAGE_TEXT), proposal.getId());
-        String contactName = result.contact() == null ? null : result.contact().getName();
-        return new ChatResponse(conversationId, ChatReplyDto.from(reply),
-                ProposalSummaryDto.from(proposal, contactName, null, properties.explorerBaseUrl()));
+        return tx.execute(status -> mandateRepository.findById(proposal.getMandateId())
+                .map(Mandate::getDailyLimit)
+                .map(daily -> daily.subtract(mandateService.spentLast24h(proposal.getAccountId())).max(BigDecimal.ZERO))
+                .map(available -> " Te quedan " + Money.display(available) + " USDC en las últimas 24 horas.")
+                .orElse(""));
     }
 
     private AiInterpretResponse callAi(UUID userId, AiInterpretRequest request) {
@@ -232,7 +206,7 @@ public class ChatService {
         message.setConversationId(conversationId);
         message.setRole(role);
         message.setType(type);
-        message.setText(truncate(text, MAX_MESSAGE_TEXT));
+        message.setText(text.length() <= MAX_MESSAGE_TEXT ? text : text.substring(0, MAX_MESSAGE_TEXT));
         message.setProposalId(proposalId);
         return chatMessageRepository.saveAndFlush(message);
     }
@@ -253,16 +227,5 @@ public class ChatService {
             data.put("arguments", response.action().arguments());
         }
         return data;
-    }
-
-    private static BigDecimal confidence(Double value) {
-        if (value == null || value < 0 || value > 1) {
-            return null;
-        }
-        return BigDecimal.valueOf(value).setScale(3, RoundingMode.HALF_UP);
-    }
-
-    private static String truncate(String value, int max) {
-        return value == null || value.length() <= max ? value : value.substring(0, max);
     }
 }

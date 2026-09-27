@@ -32,7 +32,8 @@ public class MockAiClient implements AiClient {
 
     private static final Pattern PAYMENT_VERB = Pattern.compile("\\b(pag|mand|envi|transf)\\w*");
     private static final Pattern BALANCE_WORD = Pattern.compile("\\b(cuanto|saldo|limite|queda)\\w*");
-    private static final Pattern MARKER = Pattern.compile("#[\\w-]+");
+    /** Los marcadores #firmante-* se quedan en el memo para que los lea el firmante simulado. */
+    private static final Pattern MARKER = Pattern.compile("#ia-[\\w-]+");
     private static final int MAX_MEMO = 100;
 
     @Override

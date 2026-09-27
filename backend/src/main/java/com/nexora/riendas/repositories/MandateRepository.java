@@ -15,4 +15,6 @@ public interface MandateRepository extends JpaRepository<Mandate, UUID> {
     Optional<Mandate> findByIdAndAccountId(UUID id, UUID accountId);
 
     Page<Mandate> findByAccountId(UUID accountId, Pageable pageable);
+
+    Optional<Mandate> findFirstByAccountIdOrderByCreatedAtDesc(UUID accountId);
 }

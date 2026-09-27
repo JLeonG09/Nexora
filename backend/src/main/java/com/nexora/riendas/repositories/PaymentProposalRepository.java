@@ -1,12 +1,16 @@
 package com.nexora.riendas.repositories;
 
 import com.nexora.riendas.entities.PaymentProposal;
+import com.nexora.riendas.entities.enums.ProposalOrigin;
 import com.nexora.riendas.entities.enums.ProposalStatus;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -21,4 +25,12 @@ public interface PaymentProposalRepository extends JpaRepository<PaymentProposal
                              @Param("since") Instant since);
 
     List<PaymentProposal> findByMandateIdAndStatus(UUID mandateId, ProposalStatus status);
+
+    Optional<PaymentProposal> findByIdAndUserId(UUID id, UUID userId);
+
+    Page<PaymentProposal> findByUserId(UUID userId, Pageable pageable);
+
+    Page<PaymentProposal> findByUserIdAndStatus(UUID userId, ProposalStatus status, Pageable pageable);
+
+    long countByUserIdAndOriginAndCreatedAtAfter(UUID userId, ProposalOrigin origin, Instant since);
 }

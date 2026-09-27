@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import com.nexora.riendas.clients.MockSignerClient;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,11 +36,16 @@ public abstract class IntegrationTestBase {
     @Autowired
     protected JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    protected MockSignerClient mockSignerClient;
+
     @BeforeEach
     void cleanDatabase() {
         // TRUNCATE no dispara el trigger de solo inserción de audit_events.
         jdbcTemplate.execute("TRUNCATE TABLE audit_events, alerts, approvals, chat_messages, payment_proposals, "
                 + "contacts, mandates, accounts, users CASCADE");
+        // El firmante simulado es un singleton: sin esto el gasto on-chain se acumula entre tests.
+        mockSignerClient.clear();
     }
 
     protected String createUser(String name, String email) throws Exception {
@@ -97,5 +103,19 @@ public abstract class IntegrationTestBase {
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         return JsonPath.read(body, "$.id");
+    }
+
+    protected ResultActions chat(String userId, String message, String conversationId) throws Exception {
+        String conversation = conversationId == null ? "" : ",\"conversationId\":\"" + conversationId + "\"";
+        return mockMvc.perform(post("/api/chat").header("X-User-Id", userId).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"message\":\"" + message + "\"" + conversation + "}"));
+    }
+
+    /** Envía un pedido de pago por el chat y devuelve el id de la propuesta creada. */
+    protected String chatProposalId(String userId, String message) throws Exception {
+        String body = chat(userId, message, null)
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return JsonPath.read(body, "$.proposal.id");
     }
 }

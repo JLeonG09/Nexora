@@ -236,6 +236,12 @@ public class MandateService {
         return readOnlyTx.execute(status -> mandateRepository.findByAccountIdAndStatus(accountId, MandateStatus.ACTIVO));
     }
 
+    /** Mandato ACTIVO y todavía vigente, sin marcar EXPIRADO: la regla 5 necesita ver el vencimiento. */
+    public Optional<Mandate> findVigentWithoutExpiring(UUID accountId) {
+        return readOnlyTx.execute(status -> mandateRepository.findByAccountIdAndStatus(accountId, MandateStatus.ACTIVO)
+                .filter(mandate -> mandate.getExpiresAt().isAfter(Instant.now())));
+    }
+
     public BigDecimal spentLast24h(UUID accountId) {
         BigDecimal spent = proposalRepository.sumSpentSince(accountId, SPENT_STATUSES,
                 Instant.now().minus(SPENDING_WINDOW));
