@@ -11,7 +11,9 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -31,6 +33,12 @@ public interface PaymentProposalRepository extends JpaRepository<PaymentProposal
     Page<PaymentProposal> findByUserId(UUID userId, Pageable pageable);
 
     Page<PaymentProposal> findByUserIdAndStatus(UUID userId, ProposalStatus status, Pageable pageable);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from PaymentProposal p where p.id = :id")
+    Optional<PaymentProposal> findByIdForUpdate(@Param("id") UUID id);
+
+    List<PaymentProposal> findByStatusAndSentAtAfter(ProposalStatus status, Instant since);
 
     long countByUserIdAndOriginAndCreatedAtAfter(UUID userId, ProposalOrigin origin, Instant since);
 }

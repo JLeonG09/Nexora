@@ -11,5 +11,8 @@ app:
     mode: mock
   stellar-events:
     mode: mock
+  agent-tools-key: clave-tools-test
+  jobs:
+    enabled: false
   reconciliation:
     enabled: false

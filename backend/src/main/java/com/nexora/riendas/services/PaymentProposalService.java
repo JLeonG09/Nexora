@@ -194,7 +194,7 @@ public class PaymentProposalService {
     /** Aplica CONFIRMADO / FALLIDO. ENVIADO o una propuesta que ya no está en ENVIADO no cambian nada. */
     public PaymentProposal applySignerResponse(UUID proposalId, SignResponse response) {
         return tx.execute(status -> {
-            PaymentProposal proposal = proposalRepository.findById(proposalId).orElseThrow();
+            PaymentProposal proposal = proposalRepository.findByIdForUpdate(proposalId).orElseThrow();
             if (proposal.getStatus() != ProposalStatus.ENVIADO || response == null) {
                 return proposal;
             }

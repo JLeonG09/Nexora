@@ -57,6 +57,9 @@ app:
   stellar-events:
     mode: ${STELLAR_EVENTS_MODE:mock}
     rpc-url: ${STELLAR_RPC_URL:https://soroban-testnet.stellar.org}
+  jobs:
+    enabled: ${JOBS_ENABLED:true}
+    sent-poll-interval-ms: ${SENT_POLL_INTERVAL_MS:10000}
   reconciliation:
     enabled: ${RECONCILIATION_ENABLED:true}
     interval-ms: ${RECONCILIATION_INTERVAL_MS:60000}
