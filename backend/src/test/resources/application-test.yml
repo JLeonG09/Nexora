@@ -1,0 +1,15 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/riendas_test
+    username: riendas
+    password: riendas_dev
+
+app:
+  ai:
+    mode: mock
+  signer:
+    mode: mock
+  stellar-events:
+    mode: mock
+  reconciliation:
+    enabled: false
