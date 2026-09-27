@@ -78,6 +78,15 @@ auditoría. También vigila la red: si sale de la smart account un pago que no h
 
 Nunca subas `.env`: está en `.gitignore`. Las claves reales se comparten por fuera del repo.
 
+El backend **no arranca** si detecta valores de ejemplo (`cambia-esto`, `<…>`, vacío o `riendas_dev`) donde
+pueden quedar expuestos:
+
+- `AI_SERVICE_KEY` y `AGENT_TOOLS_KEY` con `AI_MODE=http`.
+- `SIGNER_SERVICE_KEY` con `SIGNER_MODE=http`.
+- `AGENT_TOOLS_KEY` y `DB_PASSWORD` cuando la base no está en `localhost`.
+
+En desarrollo local con los mocks arranca sin `.env`. El error nombra la variable, nunca su valor.
+
 ## Endpoints
 
 | Recurso | Rutas |
