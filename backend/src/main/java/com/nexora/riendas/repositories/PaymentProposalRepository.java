@@ -1,8 +1,24 @@
 package com.nexora.riendas.repositories;
 
 import com.nexora.riendas.entities.PaymentProposal;
+import com.nexora.riendas.entities.enums.ProposalStatus;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface PaymentProposalRepository extends JpaRepository<PaymentProposal, UUID> {
+
+    /** Lo gastado off-chain por la cuenta desde {@code since} en los estados indicados. */
+    @Query("select coalesce(sum(p.amount), 0) from PaymentProposal p "
+            + "where p.accountId = :accountId and p.status in :statuses and p.createdAt > :since")
+    BigDecimal sumSpentSince(@Param("accountId") UUID accountId,
+                             @Param("statuses") Collection<ProposalStatus> statuses,
+                             @Param("since") Instant since);
+
+    List<PaymentProposal> findByMandateIdAndStatus(UUID mandateId, ProposalStatus status);
 }

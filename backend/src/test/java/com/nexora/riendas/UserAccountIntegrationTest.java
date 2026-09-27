@@ -6,7 +6,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 
@@ -93,20 +92,5 @@ class UserAccountIntegrationTest extends IntegrationTestBase {
                         .content("{\"smartAccountAddress\":\"GABC\",\"network\":\"MAINNET\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDACION_FALLIDA"));
-    }
-
-    private String createUser(String name, String email) throws Exception {
-        String emailJson = email == null ? "" : ",\"email\":\"" + email + "\"";
-        String body = mockMvc.perform(post("/api/users").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"displayName\":\"" + name + "\"" + emailJson + "}"))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
-        return JsonPath.read(body, "$.id");
-    }
-
-    private void registerAccount(String userId, String address) throws Exception {
-        mockMvc.perform(post("/api/accounts").header("X-User-Id", userId).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"smartAccountAddress\":\"" + address + "\"}"))
-                .andExpect(status().isCreated());
     }
 }

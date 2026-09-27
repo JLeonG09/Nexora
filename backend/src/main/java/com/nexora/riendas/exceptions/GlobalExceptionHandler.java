@@ -30,6 +30,18 @@ public class GlobalExceptionHandler {
         return build(ex.code(), ex.getMessage(), ex.details(), request);
     }
 
+    @ExceptionHandler(AiUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleAiUnavailable(AiUnavailableException ex, HttpServletRequest request) {
+        log.warn("IA no disponible en {}: {}", request.getRequestURI(), ex.getMessage());
+        return build(ErrorCode.IA_NO_DISPONIBLE, ErrorCode.IA_NO_DISPONIBLE.defaultMessage(), List.of(), request);
+    }
+
+    @ExceptionHandler(SignerUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleSignerUnavailable(SignerUnavailableException ex, HttpServletRequest request) {
+        log.warn("Firmante no disponible en {}: {}", request.getRequestURI(), ex.getMessage());
+        return build(ErrorCode.FIRMANTE_NO_DISPONIBLE, ErrorCode.FIRMANTE_NO_DISPONIBLE.defaultMessage(), List.of(), request);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleBodyValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
         List<ErrorResponse.FieldErrorDetail> details = ex.getBindingResult().getFieldErrors().stream()
