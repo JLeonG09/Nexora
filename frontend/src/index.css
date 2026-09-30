@@ -1,0 +1,1200 @@
+/* =====================================================================
+   RIENDAS — sistema de diseño "valla de paso"
+   Tailwind CSS v4. En v4 la configuracion vive AQUI, no en un
+   tailwind.config.js. Cada token genera utilidades automaticamente.
+
+   Idea central: un panel de pagos se lee como un panel de control, no
+   como un tablero de avisos. Los datos son "cajas" (modulos) unidas
+   por filetes de 1 px dentro de un marco, no tarjetas flotando. El color
+   nunca decora: el verde es un LED encendido (estado vivo), el azul es
+   accion, el dorado es dinero. Nada mas usa color.
+
+   Ver DESIGN.md para la justificacion de cada decision.
+   ===================================================================== */
+
+@import 'tailwindcss';
+
+/* ---------------------------------------------------------------------
+   Tipografia. Stack del sistema: cero peticiones de red, cero
+   parpadeo de fuente y funciona sin internet (util en una oficina con
+   mala senal). El monoespaciado se reserva para hashes Stellar,
+   claves publicas G... y cifras que deben alinearse en columna.
+   --------------------------------------------------------------------- */
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', Menlo, Consolas, monospace;
+
+  /* Escala cerrada. Un panel denso no necesita 9 tamanos. */
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1.4;
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.45;
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.5;
+  --text-base: 0.875rem;
+  --text-base--line-height: 1.55;
+  --text-lg: 1rem;
+  --text-lg--line-height: 1.45;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.3;
+  --text-2xl: 1.75rem;
+  --text-2xl--line-height: 1.15;
+  --text-3xl: 2.25rem;
+  --text-3xl--line-height: 1.1;
+
+  /* Forma: una sola regla. Contenedores 10px, controles 6px. */
+  --radius-control: 6px;
+  --radius-card: 10px;
+
+  /* Una unica sombra, solo para lo que de verdad flota. */
+  --shadow-pop: 0 1px 2px rgb(0 0 0 / 0.3), 0 12px 32px rgb(0 0 0 / 0.45);
+
+  --ease-salida: cubic-bezier(0.16, 1, 0.3, 1);
+  --duracion: 160ms;
+
+  --container-panel: 1440px;
+}
+
+/* ---------------------------------------------------------------------
+   Tokens semanticos (roles, no colores crudos). Los componentes NUNCA
+   usan --color-blue-500: usan --color-acento. Asi el tema oscuro solo
+   tiene que remapear esta lista corta.
+   --------------------------------------------------------------------- */
+@theme {
+  --color-*: initial;
+
+  /* Superficies y tinta */
+  --color-fondo: #ffffff;
+  --color-fondo-alt: #f3f5f8;
+  --color-superficie: #ffffff;
+  --color-superficie-2: #f8fafc;
+  --color-tinta: #16191d;
+  --color-tinta-media: #555c66;
+  --color-filete: #dde2e9;
+  --color-filete-fuerte: #8b95a3;
+
+  /* Accion (botones, enlaces, foco). */
+  --color-acento: #2f5fa8;
+  --color-acento-fuerte: #1f4480;
+  --color-acento-50: #e6eef8;
+  --color-acento-sobre-oscuro: #9db8e3;
+
+  /* LED encendido: estado vivo (online, confirmado, sincronizado). */
+  --color-led: #6abf3c;
+  --color-led-borde: #4a8c26;
+  --color-led-50: #e8f5e0;
+
+  /* Dinero y ganador. Unico acento calido del sistema. */
+  --color-oro: #9a6b1f;
+  --color-oro-claro: #e0a63a;
+  --color-oro-50: #fbf1de;
+
+  /* Estados de operacion (siempre con icono + texto, nunca solo color) */
+  --color-ok: #10693f;
+  --color-ok-50: #e6f4ec;
+  --color-aviso: #8a5a00;
+  --color-aviso-50: #fdf1d6;
+  --color-error: #a8231a;
+  --color-error-50: #fdeceb;
+  --color-info: #1f5f8a;
+  --color-info-50: #e5f0f7;
+  --color-neutro: #4d545e;
+  --color-neutro-50: #eef0f3;
+
+  /* Cierre (pie, login): azul casi negro. */
+  --color-fondo-cierre: #0f1e36;
+  --color-texto-cierre: #c3d0e4;
+
+  /* `--color-*: initial` de arriba borra TODA la paleta de Tailwind v4,
+     incluidos `white` y `current`. Sobre el fondo de cierre el texto tiene que
+     ser blanco explicito, asi que se declara como token propio. */
+  --color-blanco: #ffffff;
+  --color-blanco-80: rgb(255 255 255 / 0.8);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-filete);
+  }
+
+  html {
+    color-scheme: light;
+    -webkit-text-size-adjust: 100%;
+    scrollbar-color: var(--color-filete-fuerte) transparent;
+    accent-color: var(--color-acento);
+  }
+
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: 1.55;
+    color: var(--color-tinta);
+    background-color: var(--color-fondo-alt);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  a {
+    color: var(--color-acento-fuerte);
+    text-underline-offset: 0.2em;
+  }
+
+  button,
+  [role='button'] {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  /* Cifras de dinero, distancias y tiempos deben alinearse en columna. */
+  .cifras {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .mono {
+    font-family: var(--font-mono);
+    font-size: 0.92em;
+    letter-spacing: -0.01em;
+  }
+
+  /* Foco visible y consistente. Nunca se quita el outline. */
+  :focus-visible {
+    outline: 2px solid var(--color-acento);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  ::selection {
+    background: var(--color-acento-50);
+    color: var(--color-tinta);
+  }
+
+  /* Barra de scroll fina para que no robe ancho a las tablas. */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-filete-fuerte);
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-tinta-media);
+    background-clip: content-box;
+  }
+}
+
+@layer components {
+  /* -------------------------------------------------------------------
+     Estructura de pagina
+     ------------------------------------------------------------------- */
+  .panel-app {
+    min-height: 100dvh;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  @media (min-width: 64rem) {
+    .panel-app {
+      grid-template-columns: 16.5rem minmax(0, 1fr);
+    }
+  }
+
+  .contenedor {
+    width: 100%;
+    max-width: var(--container-panel);
+    margin-inline: auto;
+    padding-inline: 1rem;
+  }
+  @media (min-width: 48rem) {
+    .contenedor {
+      padding-inline: 1.5rem;
+    }
+  }
+  @media (min-width: 80rem) {
+    .contenedor {
+      padding-inline: 2rem;
+    }
+  }
+
+  .seccion {
+    padding-block: 1.5rem 2rem;
+  }
+  @media (min-width: 48rem) {
+    .seccion {
+      padding-block: 2rem 2.5rem;
+    }
+  }
+
+  /* Titulo de pagina: la accion va a la derecha, se apila en movil. */
+  .pagina-cabecera {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+  }
+  @media (min-width: 48rem) {
+    .pagina-cabecera {
+      flex-direction: row;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 1.5rem;
+    }
+  }
+
+  .antetitulo {
+    font-size: var(--text-2xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: var(--color-tinta-media);
+  }
+
+  /* -------------------------------------------------------------------
+     LED: la firma del sistema. Apagado = gris, encendido = verde.
+     Solo significa "vivo": conectado, confirmado, en linea, actual.
+     Nunca es decoracion. El estado SIEMPRE se acompana de texto.
+     ------------------------------------------------------------------- */
+  .led {
+    display: inline-block;
+    flex-shrink: 0;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 999px;
+    background-color: transparent;
+    border: 1.5px solid var(--color-filete-fuerte);
+  }
+  .led.encendido {
+    background-color: var(--color-led);
+    border-color: var(--color-led-borde);
+  }
+  .led.pulsando {
+    animation: latido 1.8s ease-in-out infinite;
+  }
+  @keyframes latido {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.35;
+    }
+  }
+
+  /* -------------------------------------------------------------------
+     Modulo: la unidad de informacion. Un borde, un fondo, sin sombra.
+     ------------------------------------------------------------------- */
+  .modulo {
+    background-color: var(--color-superficie);
+    border: 1px solid var(--color-filete);
+    border-radius: var(--radius-card);
+  }
+
+  /* Panel "valla": celdas pegadas separadas por filetes de 1px.
+     Se usa en las rejillas de KPIs y fichas, donde el conjunto debe
+     leerse como una sola unidad y no como N tarjetas. */
+  .valla {
+    display: grid;
+    gap: 1px;
+    background-color: var(--color-filete);
+    border: 1px solid var(--color-filete);
+    border-radius: var(--radius-card);
+    overflow: hidden;
+  }
+  .valla > * {
+    background-color: var(--color-superficie);
+  }
+
+  .modulo-cabecera {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--color-filete);
+    background-color: var(--color-superficie-2);
+  }
+  .modulo-cabecera__titulo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+  .modulo-cuerpo {
+    padding: 1rem;
+  }
+  @media (min-width: 48rem) {
+    .modulo-cuerpo {
+      padding: 1.25rem;
+    }
+  }
+
+  /* -------------------------------------------------------------------
+     KPI
+     ------------------------------------------------------------------- */
+  .kpi {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.875rem 1rem;
+  }
+  .kpi__etiqueta {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: var(--text-2xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--color-tinta-media);
+  }
+  .kpi__valor {
+    font-size: var(--text-2xl);
+    font-weight: 600;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+  }
+  .kpi__nota {
+    font-size: var(--text-xs);
+    color: var(--color-tinta-media);
+  }
+
+  /* -------------------------------------------------------------------
+     Botones
+     ------------------------------------------------------------------- */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4375rem;
+    min-height: 2.375rem;
+    padding: 0.5rem 0.875rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-control);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    line-height: 1.2;
+    white-space: nowrap;
+    text-decoration: none;
+    transition:
+      background-color var(--duracion) ease,
+      border-color var(--duracion) ease,
+      color var(--duracion) ease;
+  }
+  .btn:disabled {
+    opacity: 0.5;
+  }
+  .btn svg {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+  }
+
+  .btn-primario {
+    background-color: var(--color-acento);
+    color: #fff;
+  }
+  .btn-primario:hover:not(:disabled) {
+    background-color: var(--color-acento-fuerte);
+  }
+
+  .btn-secundario {
+    background-color: var(--color-superficie);
+    border-color: var(--color-filete-fuerte);
+    color: var(--color-tinta);
+  }
+  .btn-secundario:hover:not(:disabled) {
+    background-color: var(--color-superficie-2);
+    border-color: var(--color-tinta-media);
+  }
+
+  .btn-fantasma {
+    background-color: transparent;
+    color: var(--color-tinta-media);
+  }
+  .btn-fantasma:hover:not(:disabled) {
+    background-color: var(--color-superficie-2);
+    color: var(--color-tinta);
+  }
+
+  .btn-peligro {
+    background-color: var(--color-error-50);
+    color: var(--color-error);
+  }
+  .btn-peligro:hover:not(:disabled) {
+    background-color: var(--color-error);
+    color: #fff;
+  }
+
+  .btn-sm {
+    min-height: 2rem;
+    padding: 0.3125rem 0.625rem;
+    font-size: var(--text-xs);
+  }
+  .btn-icono {
+    min-height: 2.25rem;
+    width: 2.25rem;
+    padding: 0;
+  }
+  .btn-bloque {
+    width: 100%;
+  }
+
+  /* -------------------------------------------------------------------
+     Campos de formulario
+     ------------------------------------------------------------------- */
+  .campo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+  .campo__etiqueta {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--color-tinta);
+  }
+  .campo__ayuda {
+    font-size: var(--text-xs);
+    color: var(--color-tinta-media);
+  }
+  .campo__error {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.25rem;
+    font-size: var(--text-xs);
+    color: var(--color-error);
+  }
+  .campo__error svg {
+    width: 0.875rem;
+    height: 0.875rem;
+    flex-shrink: 0;
+    margin-top: 0.125rem;
+  }
+
+  .entrada {
+    width: 100%;
+    min-height: 2.375rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--color-filete-fuerte);
+    border-radius: var(--radius-control);
+    background-color: var(--color-superficie);
+    color: var(--color-tinta);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    line-height: 1.2;
+    transition:
+      border-color var(--duracion) ease,
+      box-shadow var(--duracion) ease;
+  }
+  .entrada::placeholder {
+    color: var(--color-tinta-media);
+  }
+  .entrada:hover:not(:disabled) {
+    border-color: var(--color-tinta-media);
+  }
+  .entrada:focus {
+    outline: none;
+    border-color: var(--color-acento);
+    box-shadow: 0 0 0 3px var(--color-acento-50);
+  }
+  .entrada:disabled {
+    background-color: var(--color-superficie-2);
+    color: var(--color-tinta-media);
+  }
+  .entrada[aria-invalid='true'] {
+    border-color: var(--color-error);
+  }
+  .entrada[aria-invalid='true']:focus {
+    box-shadow: 0 0 0 3px var(--color-error-50);
+  }
+  select.entrada {
+    appearance: none;
+    padding-right: 2rem;
+    background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+      linear-gradient(135deg, currentColor 50%, transparent 50%);
+    background-position:
+      calc(100% - 0.9375rem) calc(50% + 1px),
+      calc(100% - 0.6875rem) calc(50% + 1px);
+    background-size:
+      5px 5px,
+      5px 5px;
+    background-repeat: no-repeat;
+  }
+
+  /* Interruptor: se usa para activar/desactivar conmutaciones. */
+  .interruptor {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    cursor: pointer;
+  }
+  .interruptor input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  .interruptor__pista {
+    position: relative;
+    width: 2.25rem;
+    height: 1.25rem;
+    border-radius: 999px;
+    background-color: var(--color-filete-fuerte);
+    transition: background-color var(--duracion) ease;
+  }
+  .interruptor__pista::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 0.875rem;
+    height: 0.875rem;
+    border-radius: 999px;
+    background-color: #fff;
+    transition: transform var(--duracion) var(--ease-salida);
+  }
+  .interruptor input:checked + .interruptor__pista {
+    background-color: var(--color-led);
+  }
+  .interruptor input:checked + .interruptor__pista::after {
+    transform: translateX(1rem);
+  }
+  .interruptor input:focus-visible + .interruptor__pista {
+    outline: 2px solid var(--color-acento);
+    outline-offset: 2px;
+  }
+
+  /* -------------------------------------------------------------------
+     Insignias de estado. Color + texto SIEMPRE (nunca solo color).
+     ------------------------------------------------------------------- */
+  .insignia {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3125rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: var(--radius-control);
+    font-size: var(--text-xs);
+    font-weight: 500;
+    line-height: 1.5;
+    white-space: nowrap;
+  }
+  .insignia-ok {
+    background-color: var(--color-ok-50);
+    color: var(--color-ok);
+  }
+  .insignia-aviso {
+    background-color: var(--color-aviso-50);
+    color: var(--color-aviso);
+  }
+  .insignia-error {
+    background-color: var(--color-error-50);
+    color: var(--color-error);
+  }
+  .insignia-info {
+    background-color: var(--color-info-50);
+    color: var(--color-info);
+  }
+  .insignia-neutro {
+    background-color: var(--color-neutro-50);
+    color: var(--color-neutro);
+  }
+  .insignia-acento {
+    background-color: var(--color-acento-50);
+    color: var(--color-acento-fuerte);
+  }
+  .insignia-oro {
+    background-color: var(--color-oro-50);
+    color: var(--color-oro);
+  }
+
+  /* -------------------------------------------------------------------
+     Tablas
+     ------------------------------------------------------------------- */
+  .tabla-envoltura {
+    width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+  .tabla {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: var(--text-sm);
+  }
+  .tabla thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 0.5rem 0.875rem;
+    border-bottom: 1px solid var(--color-filete);
+    background-color: var(--color-superficie-2);
+    font-size: var(--text-2xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--color-tinta-media);
+    text-align: left;
+    white-space: nowrap;
+  }
+  .tabla tbody td {
+    padding: 0.625rem 0.875rem;
+    border-bottom: 1px solid var(--color-filete);
+    vertical-align: middle;
+  }
+  .tabla tbody tr:last-child td {
+    border-bottom: 0;
+  }
+  .tabla tbody tr {
+    transition: background-color var(--duracion) ease;
+  }
+  .tabla tbody tr:hover {
+    background-color: var(--color-superficie-2);
+  }
+  .tabla .col-fin {
+    text-align: right;
+  }
+  /* Fila pulsable completa (enlaces que cubren la celda, para teclado). */
+  .tabla tbody tr.pulsable {
+    cursor: pointer;
+  }
+
+  /* -------------------------------------------------------------------
+     Navegacion lateral
+     ------------------------------------------------------------------- */
+  .nav-lateral {
+    display: none;
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    flex-direction: column;
+    background-color: var(--color-fondo-cierre);
+    color: var(--color-texto-cierre);
+    border-right: 1px solid rgb(255 255 255 / 0.08);
+  }
+  @media (min-width: 64rem) {
+    .nav-lateral {
+      display: flex;
+    }
+  }
+  .nav-lateral__marca {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 1.125rem 1.125rem 1rem;
+  }
+  .nav-lateral__logo {
+    width: 2rem;
+    height: 2rem;
+    flex-shrink: 0;
+  }
+  .nav-lateral__nombre {
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: #fff;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+  }
+  .nav-lateral__version {
+    font-size: var(--text-2xs);
+    color: var(--color-texto-cierre);
+    opacity: 0.7;
+  }
+  .nav-lateral__grupo {
+    padding: 0.75rem 1.125rem 0.375rem;
+    font-size: var(--text-2xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--color-texto-cierre);
+    opacity: 0.55;
+  }
+  .nav-lateral__lista {
+    list-style: none;
+    margin: 0;
+    padding: 0 0.625rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .nav-lateral__enlace {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    min-height: 2.375rem;
+    padding: 0.4375rem 0.75rem;
+    border-radius: var(--radius-control);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-texto-cierre);
+    text-decoration: none;
+    transition:
+      background-color var(--duracion) ease,
+      color var(--duracion) ease;
+  }
+  .nav-lateral__enlace:hover {
+    background-color: rgb(255 255 255 / 0.07);
+    color: #fff;
+  }
+  .nav-lateral__enlace.activo {
+    background-color: rgb(255 255 255 / 0.11);
+    color: #fff;
+  }
+  .nav-lateral__enlace svg {
+    width: 1.125rem;
+    height: 1.125rem;
+    flex-shrink: 0;
+    opacity: 0.85;
+  }
+  /* Marca la pagina actual con un filete dorado a la izquierda, no con color. */
+  .nav-lateral__enlace.activo::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    width: 2px;
+    height: 1.25rem;
+    border-radius: 999px;
+    background-color: var(--color-oro-claro);
+  }
+  .nav-lateral__enlace {
+    position: relative;
+  }
+  .nav-lateral__contador {
+    margin-left: auto;
+    font-size: var(--text-2xs);
+    font-weight: 600;
+    padding: 0.0625rem 0.375rem;
+    border-radius: 999px;
+    background-color: rgb(255 255 255 / 0.12);
+    color: #fff;
+  }
+  .nav-lateral__pie {
+    margin-top: auto;
+    padding: 0.75rem;
+  }
+
+  /* Barra superior (movil) */
+  .barra-superior {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    height: 3.5rem;
+    padding-inline: 1rem;
+    background-color: var(--color-fondo-cierre);
+    color: #fff;
+  }
+  @media (min-width: 64rem) {
+    .barra-superior {
+      display: none;
+    }
+  }
+
+  /* Cajon movil */
+  .cajon-fondo {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background-color: rgb(0 0 0 / 0.55);
+    animation: aparecer 160ms ease;
+  }
+  .cajon {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 51;
+    width: min(18rem, 84vw);
+    display: flex;
+    flex-direction: column;
+    background-color: var(--color-fondo-cierre);
+    box-shadow: var(--shadow-pop);
+    animation: entrar-izq 220ms var(--ease-salida);
+  }
+  @keyframes entrar-izq {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  /* -------------------------------------------------------------------
+     Dialogo modal
+     ------------------------------------------------------------------- */
+  .modal-fondo {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0;
+    background-color: rgb(0 0 0 / 0.55);
+    animation: aparecer 140ms ease;
+  }
+  @media (min-width: 40rem) {
+    .modal-fondo {
+      align-items: center;
+      padding: 1.5rem;
+    }
+  }
+  .modal {
+    width: 100%;
+    max-width: 34rem;
+    max-height: 92dvh;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--color-superficie);
+    border: 1px solid var(--color-filete);
+    border-radius: var(--radius-card) var(--radius-card) 0 0;
+    box-shadow: var(--shadow-pop);
+    animation: subir 200ms var(--ease-salida);
+  }
+  @media (min-width: 40rem) {
+    .modal {
+      border-radius: var(--radius-card);
+    }
+  }
+  @keyframes subir {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .modal__cabecera {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--color-filete);
+  }
+  .modal__cuerpo {
+    padding: 1.25rem;
+    overflow-y: auto;
+  }
+  .modal__pie {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 0.875rem 1.25rem;
+    border-top: 1px solid var(--color-filete);
+    background-color: var(--color-superficie-2);
+  }
+
+  /* -------------------------------------------------------------------
+     Avisos emerged (toasts)
+     ------------------------------------------------------------------- */
+  .avisos {
+    position: fixed;
+    right: 0.75rem;
+    bottom: 0.75rem;
+    z-index: 70;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: min(23rem, calc(100vw - 1.5rem));
+  }
+  .aviso {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.625rem;
+    padding: 0.75rem 0.875rem;
+    border-radius: var(--radius-control);
+    border: 1px solid var(--color-filete);
+    background-color: var(--color-superficie);
+    box-shadow: var(--shadow-pop);
+    font-size: var(--text-sm);
+    animation: entrar-abajo 200ms var(--ease-salida);
+  }
+  @keyframes entrar-abajo {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .aviso svg {
+    width: 1.125rem;
+    height: 1.125rem;
+    flex-shrink: 0;
+    margin-top: 0.0625rem;
+  }
+
+  /* -------------------------------------------------------------------
+     Estados vacios / carga / error
+     ------------------------------------------------------------------- */
+  .esqueleto {
+    background-image: linear-gradient(
+      90deg,
+      var(--color-superficie-2) 25%,
+      var(--color-filete) 37%,
+      var(--color-superficie-2) 63%
+    );
+    background-size: 400% 100%;
+    border-radius: var(--radius-control);
+    animation: brillar 1.4s ease infinite;
+  }
+  @keyframes brillar {
+    from {
+      background-position: 100% 50%;
+    }
+    to {
+      background-position: 0 50%;
+    }
+  }
+
+  .vacio {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 2.5rem 1.25rem;
+    text-align: center;
+  }
+  .vacio__icono {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 999px;
+    background-color: var(--color-superficie-2);
+    color: var(--color-tinta-media);
+  }
+  .vacio__icono svg {
+    width: 1.375rem;
+    height: 1.375rem;
+  }
+
+  /* Fila de filtros */
+  .barra-filtros {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.625rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--color-filete);
+    border-radius: var(--radius-card);
+    background-color: var(--color-superficie);
+  }
+  .barra-filtros .campo {
+    min-width: 9rem;
+  }
+
+  /* Ficha de detalle: pares etiqueta/valor en rejilla */
+  .ficha {
+    display: grid;
+    gap: 0.875rem 1.25rem;
+  }
+  @media (min-width: 40rem) {
+    .ficha {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  .ficha__dato {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-width: 0;
+  }
+  .ficha__clave {
+    font-size: var(--text-2xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--color-tinta-media);
+  }
+  .ficha__valor {
+    font-size: var(--text-sm);
+    overflow-wrap: anywhere;
+  }
+
+  /* Enlace truncado de una clave Stellar (G...) */
+  .direccion {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    max-width: 100%;
+    color: inherit;
+    text-decoration: none;
+  }
+  .direccion:hover {
+    color: var(--color-acento-fuerte);
+    text-decoration: underline;
+  }
+  .direccion__texto {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Utilidades minimas que se usan en varios sitios */
+  .solo-lector {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .truncar {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@keyframes aparecer {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ---------------------------------------------------------------------
+   Tema oscuro. Se activa de dos formas con los MISMOS valores:
+     1. <html data-tema="oscuro">  (eleccion guardada; la imprime index.html)
+     2. Sin eleccion, si el sistema pide modo oscuro.
+   Solo se remapean ROLES. Los colores de marca no cambian: el LED sigue
+   siendo verde y el oro sigue siendo oro.
+   Contraste verificado sobre --color-fondo-alt #0C1017:
+     tinta #EEF1F6  17.2:1 · tinta-media #9AA5B4  7.6:1
+     acento #7FA9E0  8.1:1 · led #6ABF3C (no-texto)  8.9:1
+   --------------------------------------------------------------------- */
+:root {
+  color-scheme: light;
+}
+:root[data-tema='oscuro'] {
+  color-scheme: dark;
+  --color-fondo: #0c1017;
+  --color-fondo-alt: #0a0e14;
+  --color-superficie: #111721;
+  --color-superficie-2: #161d29;
+  --color-tinta: #eef1f6;
+  --color-tinta-media: #9aa5b4;
+  --color-filete: #26313f;
+  --color-filete-fuerte: #66748a;
+
+  --color-acento: #3f6fb5;
+  --color-acento-fuerte: #9db8e3;
+  --color-acento-50: #1b2a3f;
+  --color-acento-sobre-oscuro: #9db8e3;
+
+  --color-led: #6abf3c;
+  --color-led-borde: #7fd155;
+  --color-led-50: #16281a;
+
+  --color-oro: #e0a63a;
+  --color-oro-claro: #e0a63a;
+  --color-oro-50: #2c2313;
+
+  --color-ok: #4ec98a;
+  --color-ok-50: #12291e;
+  --color-aviso: #e0a63a;
+  --color-aviso-50: #2c2313;
+  --color-error: #f0867c;
+  --color-error-50: #2e1614;
+  --color-info: #6fb0d8;
+  --color-info-50: #12242e;
+  --color-neutro: #9aa5b4;
+  --color-neutro-50: #1c232e;
+
+  --color-fondo-cierre: #080c12;
+  --color-texto-cierre: #9fb0c8;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema='claro']) {
+    color-scheme: dark;
+    --color-fondo: #0c1017;
+    --color-fondo-alt: #0a0e14;
+    --color-superficie: #111721;
+    --color-superficie-2: #161d29;
+    --color-tinta: #eef1f6;
+    --color-tinta-media: #9aa5b4;
+    --color-filete: #26313f;
+    --color-filete-fuerte: #66748a;
+    --color-acento: #3f6fb5;
+    --color-acento-fuerte: #9db8e3;
+    --color-acento-50: #1b2a3f;
+    --color-acento-sobre-oscuro: #9db8e3;
+    --color-led: #6abf3c;
+    --color-led-borde: #7fd155;
+    --color-led-50: #16281a;
+    --color-oro: #e0a63a;
+    --color-oro-claro: #e0a63a;
+    --color-oro-50: #2c2313;
+    --color-ok: #4ec98a;
+    --color-ok-50: #12291e;
+    --color-aviso: #e0a63a;
+    --color-aviso-50: #2c2313;
+    --color-error: #f0867c;
+    --color-error-50: #2e1614;
+    --color-info: #6fb0d8;
+    --color-info-50: #12242e;
+    --color-neutro: #9aa5b4;
+    --color-neutro-50: #1c232e;
+    --color-fondo-cierre: #080c12;
+    --color-texto-cierre: #9fb0c8;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media print {
+  .nav-lateral,
+  .barra-superior,
+  .avisos {
+    display: none !important;
+  }
+  .panel-app {
+    grid-template-columns: 1fr;
+  }
+}
