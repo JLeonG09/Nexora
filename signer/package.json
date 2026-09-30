@@ -1,0 +1,36 @@
+{
+  "name": "riendas-signer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Firmante del agente Nexora / Riendas. Deriva llaves Ed25519 por cuenta y versión; firma y envía transferencias USDC en Stellar testnet.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "spike:fund-fee-payer": "tsx scripts/fund-fee-payer.ts",
+    "spike:usdc-trustline": "tsx scripts/add-usdc-trustline.ts",
+    "spike:new-usdc-account": "tsx scripts/new-usdc-account.ts",
+    "spike:d2": "tsx scripts/spike-d2.ts"
+  },
+  "dependencies": {
+    "@stellar/stellar-sdk": "16.3.0",
+    "dotenv": "^16.6.1",
+    "express": "^5.1.0",
+    "smart-account-kit": "0.8.0",
+    "zod": "^4.1.11"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^22.18.6",
+    "@types/supertest": "^6.0.3",
+    "supertest": "^7.1.4",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}
