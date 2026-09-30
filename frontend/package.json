@@ -1,0 +1,42 @@
+{
+  "name": "frontend-nexora",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Riendas: panel de pagos con agente y mandato sobre Stellar. Cliente del backend Riendas (Spring Boot).",
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b",
+    "lint": "eslint .",
+    "smoke": "node --experimental-strip-types --no-warnings scripts/smoke-mock.mts",
+    "check:format": "node --experimental-strip-types --no-warnings scripts/check-format.mts",
+    "check:contrato": "node --experimental-strip-types --no-warnings scripts/check-contrato.mts"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.62.7",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^7.1.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@tailwindcss/vite": "^4.0.0",
+    "@types/node": "^22.10.5",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "@vitejs/plugin-react": "^4.3.4",
+    "eslint": "^9.17.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "eslint-plugin-react-refresh": "^0.4.16",
+    "globals": "^15.14.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "~5.7.2",
+    "typescript-eslint": "^8.18.2",
+    "vite": "^6.0.5"
+  }
+}
