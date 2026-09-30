@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="es" data-tema="oscuro">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/logo-marca.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#0c1017" />
+    <meta
+      name="description"
+      content="Riendas — pagos con agente y mandato sobre Stellar. Escribes el pago, el agente lo firma si cabe en los topes."
+    />
+    <title>Riendas · Pagos sobre Stellar</title>
+    <script>
+      // Aplica el tema ANTES de pintar para que no haya un destello blanco.
+      // Logica espejo de src/hooks/useTheme.ts.
+      ;(function () {
+        try {
+          var guardado = localStorage.getItem('nexora.tema')
+          var oscuro =
+            guardado === 'oscuro' ||
+            (guardado !== 'claro' &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches)
+          document.documentElement.dataset.tema = oscuro ? 'oscuro' : 'claro'
+        } catch (e) {
+          document.documentElement.dataset.tema = 'oscuro'
+        }
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
