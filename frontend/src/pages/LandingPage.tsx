@@ -9,7 +9,7 @@
  * ni gradientes, y el color solo cuando significa algo.
  */
 
-import type { ReactNode } from 'react'
+import { useLayoutEffect, useRef, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { Link } from 'react-router-dom'
 
 import {
@@ -27,9 +27,47 @@ import {
 const TEXTO = 'text-[1.125rem] leading-relaxed'
 const BOTON_GRANDE = 'btn min-h-12 px-6 text-[1.125rem]'
 
+/** Escalona hermanos que se revelan juntos (ver `[data-revelar]` en index.css). */
+function orden(i: number): CSSProperties {
+  return { '--orden': i } as CSSProperties
+}
+
+/**
+ * Revela cada `[data-revelar]` la primera vez que entra en pantalla.
+ * Layout effect para ocultar antes del primer pintado y no parpadear.
+ */
+function useRevelarAlBajar(raiz: RefObject<HTMLElement | null>) {
+  useLayoutEffect(() => {
+    const nodo = raiz.current
+    if (!nodo || !('IntersectionObserver' in window)) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+
+    const observador = new IntersectionObserver(
+      (entradas) => {
+        for (const entrada of entradas) {
+          if (!entrada.isIntersecting) continue
+          entrada.target.classList.add('revelado')
+          observador.unobserve(entrada.target)
+        }
+      },
+      { rootMargin: '0px 0px -8% 0px', threshold: 0.12 },
+    )
+    nodo.querySelectorAll('[data-revelar]').forEach((el) => observador.observe(el))
+    nodo.classList.add('revelar-listo')
+
+    return () => {
+      observador.disconnect()
+      nodo.classList.remove('revelar-listo')
+    }
+  }, [raiz])
+}
+
 export function LandingPage() {
+  const raiz = useRef<HTMLDivElement>(null)
+  useRevelarAlBajar(raiz)
+
   return (
-    <div className="min-h-dvh bg-fondo text-tinta">
+    <div ref={raiz} className="min-h-dvh overflow-x-clip bg-fondo text-tinta">
       <a
         href="#contenido"
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-10 focus:rounded-control focus:bg-acento focus:px-4 focus:py-2 focus:text-white"
@@ -79,10 +117,18 @@ function Seccion({
       className={`border-t border-filete px-5 py-16 sm:py-20 ${alterna ? 'bg-fondo-alt' : ''}`}
     >
       <div className="mx-auto max-w-5xl">
-        <h2 id={`${id}-titulo`} className="text-[1.75rem] font-semibold leading-tight sm:text-[2.25rem]">
+        <h2
+          id={`${id}-titulo`}
+          data-revelar
+          className="text-[1.75rem] font-semibold leading-tight sm:text-[2.25rem]"
+        >
           {titulo}
         </h2>
-        {bajada && <p className={`mt-3 max-w-2xl text-tinta-media ${TEXTO}`}>{bajada}</p>}
+        {bajada && (
+          <p data-revelar style={orden(1)} className={`mt-3 max-w-2xl text-tinta-media ${TEXTO}`}>
+            {bajada}
+          </p>
+        )}
         <div className="mt-10">{children}</div>
       </div>
     </section>
@@ -92,14 +138,21 @@ function Seccion({
 function Tarjeta({
   icono,
   titulo,
+  posicion = 0,
   children,
 }: {
   icono: ReactNode
   titulo: string
+  /** Lugar entre sus hermanas, para escalonar la entrada. */
+  posicion?: number
   children: ReactNode
 }) {
   return (
-    <div className="flex flex-col gap-3 rounded-card border border-filete bg-superficie p-6">
+    <div
+      data-revelar
+      style={orden(posicion)}
+      className="flex flex-col gap-3 rounded-card border border-filete bg-superficie p-6"
+    >
       <span className="flex h-11 w-11 items-center justify-center rounded-control bg-acento-50 text-acento [&>svg]:h-6 [&>svg]:w-6">
         {icono}
       </span>
@@ -150,28 +203,33 @@ function Portada() {
     <section aria-labelledby="portada-titulo" className="px-5 pb-16 pt-10 sm:pb-24 sm:pt-16">
       <div className="mx-auto grid max-w-5xl items-center gap-12 lg:grid-cols-[1.1fr_1fr]">
         <div>
-          <p className="inline-flex items-center gap-2 rounded-full border border-filete px-3 py-1 text-[0.9375rem] text-tinta-media">
+          <p
+            data-revelar
+            className="inline-flex items-center gap-2 rounded-full border border-filete px-3 py-1 text-[0.9375rem] text-tinta-media"
+          >
             <span className="h-2 w-2 rounded-full bg-led" aria-hidden="true" />
             Pagos sencillos y protegidos
           </p>
           <h1
             id="portada-titulo"
+            data-revelar
+            style={orden(1)}
             className="mt-5 text-[2.25rem] font-semibold leading-[1.1] tracking-tight sm:text-[3rem]"
           >
             Paga a quien quieras, solo con decirlo. Sin miedo a equivocarte.
           </h1>
-          <p className={`mt-5 max-w-xl text-tinta-media ${TEXTO} sm:text-[1.25rem]`}>
+          <p data-revelar style={orden(2)} className={`mt-5 max-w-xl text-tinta-media ${TEXTO} sm:text-[1.25rem]`}>
             Nexora es un asistente que hace tus pagos cuando se los pides con tus propias
             palabras. Tú decides cuánto puede gastar y a quién. Si algo no cuadra, se detiene y te
             pregunta.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
+          <div data-revelar style={orden(3)} className="mt-8 flex flex-wrap gap-3">
             <BotonEmpezar />
             <a href="#como-funciona" className={`${BOTON_GRANDE} btn-secundario`}>
               Ver cómo funciona
             </a>
           </div>
-          <p className="mt-5 flex items-center gap-2 text-[1rem] text-tinta-media">
+          <p data-revelar style={orden(4)} className="mt-5 flex items-center gap-2 text-[1rem] text-tinta-media">
             <IconBloqueo className="h-5 w-5 shrink-0" />
             Sin contraseñas largas y sin frases secretas de 24 palabras.
           </p>
@@ -192,7 +250,12 @@ function EjemploMandato() {
     { etiqueta: 'Válido hasta', valor: '8 de octubre', dinero: false },
   ]
   return (
-    <figure className="modulo" aria-label="Ejemplo de reglas que pones al asistente">
+    <figure
+      data-revelar="lateral"
+      style={orden(2)}
+      className="modulo"
+      aria-label="Ejemplo de reglas que pones al asistente"
+    >
       <div className="modulo-cabecera flex items-center justify-between">
         <span className="text-[1.0625rem] font-semibold">Tus reglas</span>
         <span className="inline-flex items-center gap-1.5 rounded-full bg-ok-50 px-2.5 py-0.5 text-[0.875rem] font-medium text-ok">
@@ -201,8 +264,13 @@ function EjemploMandato() {
         </span>
       </div>
       <dl className="divide-y divide-filete">
-        {reglas.map((r) => (
-          <div key={r.etiqueta} className="flex items-baseline justify-between gap-4 px-5 py-3.5">
+        {reglas.map((r, i) => (
+          <div
+            key={r.etiqueta}
+            data-revelar
+            style={orden(i + 4)}
+            className="flex items-baseline justify-between gap-4 px-5 py-3.5"
+          >
             <dt className="text-[1rem] text-tinta-media">{r.etiqueta}</dt>
             <dd className={`text-right text-[1.0625rem] font-semibold ${r.dinero ? 'text-oro' : ''}`}>
               {r.valor}
@@ -230,12 +298,12 @@ function ParaQuien() {
           Que quieren pagar la luz, la farmacia o mandarle dinero a un nieto sin depender de que
           alguien les ayude cada vez, y sin caer en estafas por teléfono o mensaje.
         </Tarjeta>
-        <Tarjeta icono={<IconChat />} titulo="Adultos con poca práctica digital">
+        <Tarjeta icono={<IconChat />} titulo="Adultos con poca práctica digital" posicion={1}>
           Que se pierden entre menús, contraseñas y botones, y prefieren decir lo que necesitan
           como se lo dirían a una persona de confianza.
         </Tarjeta>
       </div>
-      <div className="mt-5 rounded-card border border-filete bg-superficie p-6">
+      <div data-revelar style={orden(2)} className="mt-5 rounded-card border border-filete bg-superficie p-6">
         <p className={TEXTO}>
           <strong className="font-semibold">También para la familia.</strong>{' '}
           <span className="text-tinta-media">
@@ -270,7 +338,12 @@ function ComoFunciona() {
     <Seccion id="como-funciona" titulo="Cómo funciona" bajada="Tres pasos. El primero se hace una sola vez.">
       <ol className="grid gap-5 md:grid-cols-3">
         {pasos.map((p, i) => (
-          <li key={p.titulo} className="flex flex-col gap-3 rounded-card border border-filete bg-superficie p-6">
+          <li
+            key={p.titulo}
+            data-revelar
+            style={orden(i)}
+            className="flex flex-col gap-3 rounded-card border border-filete bg-superficie p-6"
+          >
             <span
               className="flex h-11 w-11 items-center justify-center rounded-full bg-acento text-[1.25rem] font-semibold text-white"
               aria-hidden="true"
@@ -302,22 +375,22 @@ function Protecciones() {
           El límite diario no lo cuida solo nuestra app: lo hace cumplir la red de pagos Stellar.
           Ni el asistente ni nosotros podemos pasarnos.
         </Tarjeta>
-        <Tarjeta icono={<IconContactos />} titulo="Solo a gente de confianza">
+        <Tarjeta icono={<IconContactos />} titulo="Solo a gente de confianza" posicion={1}>
           Únicamente se paga a las personas y comercios que tú agregaste. Un desconocido no puede
           colarse en la lista.
         </Tarjeta>
-        <Tarjeta icono={<IconAprobaciones />} titulo="Lo grande lo apruebas tú">
+        <Tarjeta icono={<IconAprobaciones />} titulo="Lo grande lo apruebas tú" posicion={2}>
           Por encima del monto que elijas, Nexora te muestra el pago y espera a que digas que sí.
         </Tarjeta>
         <Tarjeta icono={<IconError />} titulo="Un botón para detener todo">
           Si algo te parece raro, cancelas el permiso del asistente al instante. Desde ese momento
           no puede mover nada.
         </Tarjeta>
-        <Tarjeta icono={<IconHistorial />} titulo="Todo queda anotado">
+        <Tarjeta icono={<IconHistorial />} titulo="Todo queda anotado" posicion={1}>
           Cada pago, cada rechazo y cada aviso queda en un historial claro, que puedes revisar tú o
           tu familia.
         </Tarjeta>
-        <Tarjeta icono={<IconBloqueo />} titulo="Nunca te pedimos claves">
+        <Tarjeta icono={<IconBloqueo />} titulo="Nunca te pedimos claves" posicion={2}>
           Nexora jamás te pedirá contraseñas, códigos ni frases secretas. Si alguien te las pide
           en nuestro nombre, es una estafa.
         </Tarjeta>
@@ -333,23 +406,27 @@ function Conversacion() {
       titulo="Así se ve en el día a día"
       bajada="Una conversación normal. Fíjate en el último mensaje: alguien intentó pagarle a un desconocido y Nexora lo frenó."
     >
-      <div className="modulo mx-auto max-w-2xl">
+      <div data-revelar className="modulo mx-auto max-w-2xl">
         <div className="modulo-cabecera flex items-center justify-start gap-2">
           <IconChat className="h-5 w-5 text-tinta-media" />
           <span className="text-[1.0625rem] font-semibold">Conversación con Nexora</span>
         </div>
         <ul className="flex flex-col gap-4 p-5">
-          <Mensaje de="usuario">Págale 15 a Ana por el almuerzo.</Mensaje>
-          <Mensaje de="nexora" estado="ok">
+          <Mensaje de="usuario" posicion={0}>
+            Págale 15 a Ana por el almuerzo.
+          </Mensaje>
+          <Mensaje de="nexora" estado="ok" posicion={1}>
             Listo. Le pagué <strong className="text-oro">15 USDC</strong> a Ana. Hoy todavía puedes
             gastar <strong className="text-oro">35 USDC</strong>.
           </Mensaje>
-          <Mensaje de="usuario">Mándale 40 a la farmacia.</Mensaje>
-          <Mensaje de="nexora" estado="aviso">
+          <Mensaje de="usuario" posicion={2}>
+            Mándale 40 a la farmacia.
+          </Mensaje>
+          <Mensaje de="nexora" estado="aviso" posicion={3}>
             Ese pago pasa de tu máximo de 20 USDC. Te lo dejé en <strong>Aprobaciones</strong> para
             que lo confirmes tú.
           </Mensaje>
-          <Mensaje de="nexora" estado="error">
+          <Mensaje de="nexora" estado="error" posicion={4}>
             Alguien intentó enviar 30 USDC a una cuenta que no está en tus contactos. Lo bloqueé y
             no se movió nada.
           </Mensaje>
@@ -368,15 +445,21 @@ const ESTADO = {
 function Mensaje({
   de,
   estado,
+  posicion,
   children,
 }: {
   de: 'usuario' | 'nexora'
   estado?: keyof typeof ESTADO
+  /** Orden en la charla: los mensajes aparecen uno tras otro. */
+  posicion: number
   children: ReactNode
 }) {
   if (de === 'usuario') {
     return (
-      <li className="ml-auto max-w-[85%] rounded-card bg-acento px-4 py-3 text-[1.0625rem] leading-relaxed text-white">
+      <li
+        data-revelar="mensaje"
+        style={orden(posicion)}
+        className="ml-auto max-w-[85%] rounded-card bg-acento px-4 py-3 text-[1.0625rem] leading-relaxed text-white">
         <span className="solo-lector">Tú dices: </span>
         {children}
       </li>
@@ -385,6 +468,8 @@ function Mensaje({
   const e = estado ? ESTADO[estado] : null
   return (
     <li
+      data-revelar="mensaje"
+      style={orden(posicion)}
       className={`mr-auto max-w-[85%] rounded-card border-l-4 px-4 py-3 text-[1.0625rem] leading-relaxed ${
         e ? e.clase : 'border-filete bg-superficie-2'
       }`}
@@ -413,8 +498,8 @@ function PensadoParaTi() {
       bajada="Diseñamos cada pantalla pensando en personas que no tienen por qué saber de tecnología."
     >
       <ul className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
-        {puntos.map((p) => (
-          <li key={p} className={`flex items-start gap-3 ${TEXTO}`}>
+        {puntos.map((p, i) => (
+          <li key={p} data-revelar style={orden(i)} className={`flex items-start gap-3 ${TEXTO}`}>
             <span className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-ok-50 text-ok">
               <IconCheck className="h-4 w-4" />
             </span>
@@ -451,7 +536,7 @@ function Preguntas() {
   ]
   return (
     <Seccion id="preguntas" titulo="Preguntas frecuentes">
-      <div className="modulo">
+      <div data-revelar className="modulo">
         {preguntas.map((q, i) => (
           <details key={q.p} className={`group ${i > 0 ? 'border-t border-filete' : ''}`}>
             <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-[1.125rem] font-semibold [&::-webkit-details-marker]:hidden">
@@ -475,13 +560,17 @@ function Cierre() {
   return (
     <section aria-labelledby="cierre-titulo" className="bg-fondo-cierre px-5 py-16 text-center sm:py-20">
       <div className="mx-auto max-w-2xl">
-        <h2 id="cierre-titulo" className="text-[1.75rem] font-semibold leading-tight text-white sm:text-[2.25rem]">
+        <h2
+          id="cierre-titulo"
+          data-revelar
+          className="text-[1.75rem] font-semibold leading-tight text-white sm:text-[2.25rem]"
+        >
           Tú pones las riendas. El asistente hace el resto.
         </h2>
-        <p className="mt-4 text-[1.125rem] leading-relaxed text-texto-cierre">
+        <p data-revelar style={orden(1)} className="mt-4 text-[1.125rem] leading-relaxed text-texto-cierre">
           Crear tu perfil toma un par de minutos y no necesitas contraseña.
         </p>
-        <div className="mt-8 flex justify-center">
+        <div data-revelar style={orden(2)} className="mt-8 flex justify-center">
           <BotonEmpezar texto="Crear mi perfil" />
         </div>
       </div>

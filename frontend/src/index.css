@@ -1091,6 +1091,33 @@
 }
 
 /* ---------------------------------------------------------------------
+   Landing: revelado al bajar. Consume LandingPage (useRevelarAlBajar).
+   Solo se oculta con `.revelar-listo`, que pone el hook si hay
+   IntersectionObserver y no se pidio movimiento reducido: sin JS el
+   contenido se ve siempre. Lo revelado no vuelve a ocultarse.
+   `--orden` escalona hermanos; cada pieza dura menos de medio segundo.
+   --------------------------------------------------------------------- */
+.revelar-listo [data-revelar] {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 450ms var(--ease-salida),
+    transform 450ms var(--ease-salida);
+  transition-delay: calc(var(--orden, 0) * 80ms);
+}
+.revelar-listo [data-revelar='lateral'] {
+  transform: translateX(28px);
+}
+.revelar-listo [data-revelar='mensaje'] {
+  transform: translateY(10px) scale(0.98);
+  transition-delay: calc(150ms + var(--orden, 0) * 320ms);
+}
+.revelar-listo [data-revelar].revelado {
+  opacity: 1;
+  transform: none;
+}
+
+/* ---------------------------------------------------------------------
    Tema oscuro. Se activa de dos formas con los MISMOS valores:
      1. <html data-tema="oscuro">  (eleccion guardada; la imprime index.html)
      2. Sin eleccion, si el sistema pide modo oscuro.
