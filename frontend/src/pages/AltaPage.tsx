@@ -21,8 +21,9 @@ import { Button, Exito, Field, Input, Spinner } from '@/components/ui'
 import { IconBloqueo, IconCheck, IconInfo, IconMandato } from '@/components/icons'
 import { errorMessage } from '@/api/queries'
 import { useSesion } from '@/sesion/SesionContext'
-import { MOCK_ENABLED } from '@/config/env'
+import { MOCK_ENABLED, PRIVY_ENABLED } from '@/config/env'
 import { LogoRiendas } from '@/components/icons'
+import { PasoUsuarioPrivy } from '@/sesion/PrivyAuth'
 
 /* ------------------------------------------------------------------ */
 /* Direccion de prueba                                                */
@@ -55,7 +56,7 @@ export function AltaPage() {
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center gap-6 px-4 py-10">
       <Marca paso={pasoUsuario ? 1 : 2} />
-      {pasoUsuario ? <PasoUsuario /> : <PasoCuenta />}
+      {pasoUsuario ? PRIVY_ENABLED ? <PasoUsuarioPrivy /> : <PasoUsuario /> : <PasoCuenta />}
       {user && (
         <button
           type="button"

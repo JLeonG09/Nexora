@@ -24,6 +24,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -76,27 +77,32 @@ function cacheUser(user: User | null): void {
   }
 }
 
-export function SesionProvider({ children }: { children: ReactNode }) {
+export function SesionProvider({
+  children,
+  alCerrarSesion,
+}: {
+  children: ReactNode
+  /** Se llama al cerrar la sesion, p. ej. para salir tambien de Privy. */
+  alCerrarSesion?: () => void
+}) {
   const [user, setUser] = useState<User | null>(readCachedUser)
   const [account, setAccount] = useState<Account | null>(null)
   const [cargando, setCargando] = useState(true)
+  const alCerrarRef = useRef(alCerrarSesion)
+  alCerrarRef.current = alCerrarSesion
 
   const cerrarSesion = useCallback(() => {
     setUserId(null)
     cacheUser(null)
     setUser(null)
     setAccount(null)
+    alCerrarRef.current?.()
   }, [])
 
   // Cuando cualquier peticion recibe un 401, se cierra la sesion.
   useEffect(() => {
-    setUnauthorizedHandler(() => {
-      setUserId(null)
-      cacheUser(null)
-      setUser(null)
-      setAccount(null)
-    })
-  }, [])
+    setUnauthorizedHandler(cerrarSesion)
+  }, [cerrarSesion])
 
   // Al montar: si hay id guardado, se confirma contra `/users/me`.
   useEffect(() => {

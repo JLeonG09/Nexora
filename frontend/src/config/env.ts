@@ -45,6 +45,17 @@ export const MOCK_ENABLED =
 export const AGENT_TOOLS_ENABLED =
   (import.meta.env.VITE_AGENT_TOOLS ?? 'false') === 'true'
 
+/**
+ * Login con Privy (correo con codigo o Google). Solo se activa si hay App ID:
+ * sin el, el alta sigue pidiendo nombre y correo a mano.
+ *
+ * Privy solo verifica el correo en el navegador. El backend sigue
+ * identificando al usuario por `X-User-Id` y no valida el token de Privy.
+ */
+export const PRIVY_APP_ID = (import.meta.env.VITE_PRIVY_APP_ID ?? '').trim()
+export const PRIVY_CLIENT_ID = (import.meta.env.VITE_PRIVY_CLIENT_ID ?? '').trim() || undefined
+export const PRIVY_ENABLED = PRIVY_APP_ID !== ''
+
 /** Red Stellar por defecto. El backend solo admite TESTNET por ahora. */
 export const STELLAR_NETWORK = (import.meta.env.VITE_STELLAR_NETWORK ?? 'TESTNET') as
   | 'TESTNET'

@@ -22,7 +22,8 @@ import { Spinner } from './components/ui'
 import { ToastProvider } from './components/Toast'
 import { ConfirmProvider } from './hooks/useConfirm'
 import { TemaProvider } from './hooks'
-import { SesionProvider, useSesion } from './sesion/SesionContext'
+import { useSesion } from './sesion/SesionContext'
+import { ProveedorSesion } from './sesion/PrivyAuth'
 
 import { AltaPage } from './pages/AltaPage'
 import { ChatPage } from './pages/ChatPage'
@@ -153,7 +154,7 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TemaProvider>
-        <SesionProvider>
+        <ProveedorSesion>
           {/* `ToastProvider` envuelve a `ConfirmProvider`: el dialogo de
               confirmacion usa un toast cuando una accion ya confirmada falla. */}
           <ToastProvider>
@@ -165,7 +166,7 @@ export function App() {
               </BrowserRouter>
             </ConfirmProvider>
           </ToastProvider>
-        </SesionProvider>
+        </ProveedorSesion>
       </TemaProvider>
     </QueryClientProvider>
   )
