@@ -27,7 +27,7 @@ export function ProveedorSesion({ children }: { children: ReactNode }) {
       clientId={PRIVY_CLIENT_ID}
       config={{
         loginMethods: ['email', 'google'],
-        appearance: { landingHeader: 'Entra a Riendas' },
+        appearance: { landingHeader: 'Entra a Nexora' },
         embeddedWallets: {
           ethereum: { createOnLogin: 'off' },
           solana: { createOnLogin: 'off' },
@@ -82,7 +82,7 @@ export function PasoUsuarioPrivy() {
   return (
     <div className="modulo w-full max-w-md">
       <div className="modulo-cabecera">
-        <h2 className="modulo-cabecera__titulo">Entra a Riendas</h2>
+        <h2 className="modulo-cabecera__titulo">Entra a Nexora</h2>
         <p className="mt-0.5 text-xs text-tinta-media">
           Con un código a tu correo o con tu cuenta de Google. Sin contraseñas.
         </p>
@@ -122,7 +122,7 @@ export function PasoUsuarioPrivy() {
         <p className="flex items-start gap-1.5 text-2xs text-tinta-media">
           <IconInfo className="mt-px h-3.5 w-3.5 shrink-0" />
           <span>
-            Privy solo confirma tu correo. Riendas no crea ninguna wallet ni ve tus claves.
+            Privy solo confirma tu correo. Nexora no crea ninguna wallet ni ve tus claves.
           </span>
         </p>
       </div>

@@ -21,7 +21,7 @@ import { MOCK_ENABLED } from '@/config/env'
 import { cn } from '@/lib/cn'
 import { formatAmount, initials } from '@/lib/format'
 import { Button } from './ui'
-import { LogoRiendas } from './icons'
+import { LogoNexora } from './icons'
 import {
   IconAlertaMovimiento,
   IconAprobaciones,
@@ -103,9 +103,9 @@ function ContenidoLateral({ onNavegar }: { onNavegar?: () => void }) {
   return (
     <>
       <div className="nav-lateral__marca">
-        <LogoRiendas alto={28} className="nav-lateral__logo" />
+        <LogoNexora alto={28} className="nav-lateral__logo" />
         <div className="min-w-0">
-          <p className="nav-lateral__nombre">Riendas</p>
+          <p className="nav-lateral__nombre">Nexora</p>
           <p className="nav-lateral__version">
             {MOCK_ENABLED ? 'Datos simulados' : 'Datos reales'}
           </p>
@@ -242,8 +242,8 @@ export function AppShell() {
         </Button>
 
         <div className="flex items-center gap-2">
-          <LogoRiendas alto={24} />
-          <span className="text-sm font-semibold">Riendas</span>
+          <LogoNexora alto={24} />
+          <span className="text-sm font-semibold">Nexora</span>
         </div>
 
         <div className="flex items-center gap-1">

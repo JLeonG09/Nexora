@@ -2,7 +2,7 @@
  * Rutas de la API, agrupadas por recurso.
  *
  * Fuente de verdad: los `@RequestMapping` de
- * `backend/src/main/java/com/nexora/riendas/controllers/`.
+ * `backend/src/main/java/com/nexora/controllers/`.
  *
  * OJO, dos cosas que rompieron el contrato anterior y aqui NO se repiten:
  *  - No hay version en la ruta. Los controladores cuelgan de `/api/**`, sin

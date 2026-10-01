@@ -21,7 +21,7 @@ import {
   IconError,
   IconHistorial,
   IconMandato,
-  LogoRiendas,
+  LogoNexora,
 } from '@/components/icons'
 
 const TEXTO = 'text-[1.125rem] leading-relaxed'
@@ -125,9 +125,9 @@ function Cabecera() {
   return (
     <header className="px-5 py-4">
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
-        <Link to="/" className="flex items-center gap-2.5" aria-label="Riendas, inicio">
-          <LogoRiendas alto={32} />
-          <span className="text-[1.25rem] font-semibold tracking-tight">Riendas</span>
+        <Link to="/" className="flex items-center gap-2.5" aria-label="Nexora, inicio">
+          <LogoNexora alto={32} />
+          <span className="text-[1.25rem] font-semibold tracking-tight">Nexora</span>
         </Link>
         <nav aria-label="Principal" className="flex items-center gap-2">
           <a href="#como-funciona" className="hidden px-3 py-2 text-[1rem] text-tinta-media hover:text-tinta sm:inline">
@@ -161,7 +161,7 @@ function Portada() {
             Paga a quien quieras, solo con decirlo. Sin miedo a equivocarte.
           </h1>
           <p className={`mt-5 max-w-xl text-tinta-media ${TEXTO} sm:text-[1.25rem]`}>
-            Riendas es un asistente que hace tus pagos cuando se los pides con tus propias
+            Nexora es un asistente que hace tus pagos cuando se los pides con tus propias
             palabras. Tú decides cuánto puede gastar y a quién. Si algo no cuadra, se detiene y te
             pregunta.
           </p>
@@ -223,7 +223,7 @@ function ParaQuien() {
       id="para-quien"
       alterna
       titulo="Hecho para quien la tecnología se le complica"
-      bajada="Las apps de pago suelen dar por hecho que sabes de tecnología. Riendas no. Está pensado para dos tipos de personas:"
+      bajada="Las apps de pago suelen dar por hecho que sabes de tecnología. Nexora no. Está pensado para dos tipos de personas:"
     >
       <div className="grid gap-5 md:grid-cols-2">
         <Tarjeta icono={<IconContactos />} titulo="Adultos mayores">
@@ -240,7 +240,7 @@ function ParaQuien() {
           <strong className="font-semibold">También para la familia.</strong>{' '}
           <span className="text-tinta-media">
             Un hijo, una hija o un cuidador puede ayudar a poner las reglas una sola vez. Después,
-            la persona usa Riendas por su cuenta, con la tranquilidad de que hay límites que nadie
+            la persona usa Nexora por su cuenta, con la tranquilidad de que hay límites que nadie
             puede saltarse.
           </span>
         </p>
@@ -261,7 +261,7 @@ function ComoFunciona() {
       texto: 'Escribes como hablas: «Págale 15 a Ana por el almuerzo». No hay menús que aprender.',
     },
     {
-      titulo: 'Riendas paga o te pregunta',
+      titulo: 'Nexora paga o te pregunta',
       texto:
         'Si el pago cumple tus reglas, se hace y te avisa. Si es grande o algo no cuadra, se detiene y espera tu permiso.',
     },
@@ -295,7 +295,7 @@ function Protecciones() {
       id="protecciones"
       alterna
       titulo="Tu dinero, con protecciones de verdad"
-      bajada="Lo más importante de Riendas no es que pague: es todo lo que no deja hacer."
+      bajada="Lo más importante de Nexora no es que pague: es todo lo que no deja hacer."
     >
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         <Tarjeta icono={<IconMandato />} titulo="Topes que nadie se salta">
@@ -307,7 +307,7 @@ function Protecciones() {
           colarse en la lista.
         </Tarjeta>
         <Tarjeta icono={<IconAprobaciones />} titulo="Lo grande lo apruebas tú">
-          Por encima del monto que elijas, Riendas te muestra el pago y espera a que digas que sí.
+          Por encima del monto que elijas, Nexora te muestra el pago y espera a que digas que sí.
         </Tarjeta>
         <Tarjeta icono={<IconError />} titulo="Un botón para detener todo">
           Si algo te parece raro, cancelas el permiso del asistente al instante. Desde ese momento
@@ -318,7 +318,7 @@ function Protecciones() {
           tu familia.
         </Tarjeta>
         <Tarjeta icono={<IconBloqueo />} titulo="Nunca te pedimos claves">
-          Riendas jamás te pedirá contraseñas, códigos ni frases secretas. Si alguien te las pide
+          Nexora jamás te pedirá contraseñas, códigos ni frases secretas. Si alguien te las pide
           en nuestro nombre, es una estafa.
         </Tarjeta>
       </div>
@@ -331,25 +331,25 @@ function Conversacion() {
     <Seccion
       id="ejemplo"
       titulo="Así se ve en el día a día"
-      bajada="Una conversación normal. Fíjate en el último mensaje: alguien intentó pagarle a un desconocido y Riendas lo frenó."
+      bajada="Una conversación normal. Fíjate en el último mensaje: alguien intentó pagarle a un desconocido y Nexora lo frenó."
     >
       <div className="modulo mx-auto max-w-2xl">
         <div className="modulo-cabecera flex items-center justify-start gap-2">
           <IconChat className="h-5 w-5 text-tinta-media" />
-          <span className="text-[1.0625rem] font-semibold">Conversación con Riendas</span>
+          <span className="text-[1.0625rem] font-semibold">Conversación con Nexora</span>
         </div>
         <ul className="flex flex-col gap-4 p-5">
           <Mensaje de="usuario">Págale 15 a Ana por el almuerzo.</Mensaje>
-          <Mensaje de="riendas" estado="ok">
+          <Mensaje de="nexora" estado="ok">
             Listo. Le pagué <strong className="text-oro">15 USDC</strong> a Ana. Hoy todavía puedes
             gastar <strong className="text-oro">35 USDC</strong>.
           </Mensaje>
           <Mensaje de="usuario">Mándale 40 a la farmacia.</Mensaje>
-          <Mensaje de="riendas" estado="aviso">
+          <Mensaje de="nexora" estado="aviso">
             Ese pago pasa de tu máximo de 20 USDC. Te lo dejé en <strong>Aprobaciones</strong> para
             que lo confirmes tú.
           </Mensaje>
-          <Mensaje de="riendas" estado="error">
+          <Mensaje de="nexora" estado="error">
             Alguien intentó enviar 30 USDC a una cuenta que no está en tus contactos. Lo bloqueé y
             no se movió nada.
           </Mensaje>
@@ -370,7 +370,7 @@ function Mensaje({
   estado,
   children,
 }: {
-  de: 'usuario' | 'riendas'
+  de: 'usuario' | 'nexora'
   estado?: keyof typeof ESTADO
   children: ReactNode
 }) {
@@ -389,7 +389,7 @@ function Mensaje({
         e ? e.clase : 'border-filete bg-superficie-2'
       }`}
     >
-      <span className="solo-lector">Riendas responde: </span>
+      <span className="solo-lector">Nexora responde: </span>
       {e && <span className={`mb-1 block text-[0.875rem] font-semibold ${e.texto}`}>{e.etiqueta}</span>}
       {children}
     </li>
@@ -430,7 +430,7 @@ function Preguntas() {
   const preguntas = [
     {
       p: '¿Necesito saber de criptomonedas?',
-      r: 'No. Los pagos se hacen en USDC, una moneda digital que vale lo mismo que un dólar. Riendas se encarga de la parte técnica; tú solo dices a quién y cuánto.',
+      r: 'No. Los pagos se hacen en USDC, una moneda digital que vale lo mismo que un dólar. Nexora se encarga de la parte técnica; tú solo dices a quién y cuánto.',
     },
     {
       p: '¿Qué pasa si alguien me engaña o intenta usar mi cuenta?',
@@ -438,7 +438,7 @@ function Preguntas() {
     },
     {
       p: '¿Un familiar me puede ayudar a configurarlo?',
-      r: 'Sí, y lo recomendamos. Las reglas se ponen una sola vez y después puedes usar Riendas por tu cuenta. Tu familia también puede revisar el historial contigo.',
+      r: 'Sí, y lo recomendamos. Las reglas se ponen una sola vez y después puedes usar Nexora por tu cuenta. Tu familia también puede revisar el historial contigo.',
     },
     {
       p: '¿Cuánto dinero puede mover el asistente?',
@@ -446,7 +446,7 @@ function Preguntas() {
     },
     {
       p: '¿Ya puedo usarlo con dinero real?',
-      r: 'Todavía no. Hoy Riendas funciona en la red de pruebas de Stellar, con dinero de práctica, para que puedas probarlo sin ningún riesgo.',
+      r: 'Todavía no. Hoy Nexora funciona en la red de pruebas de Stellar, con dinero de práctica, para que puedas probarlo sin ningún riesgo.',
     },
   ]
   return (
@@ -494,8 +494,8 @@ function Pie() {
     <footer className="border-t border-filete px-5 py-8">
       <div className="mx-auto flex max-w-5xl flex-col items-start justify-between gap-3 text-[0.9375rem] text-tinta-media sm:flex-row sm:items-center">
         <span className="flex items-center gap-2">
-          <LogoRiendas alto={20} />
-          Riendas · un proyecto del equipo Nexora
+          <LogoNexora alto={20} />
+          Nexora · pagos sencillos y protegidos
         </span>
         <span>Funciona sobre la red de pruebas de Stellar (testnet).</span>
       </div>

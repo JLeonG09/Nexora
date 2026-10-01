@@ -1,7 +1,7 @@
 /**
  * Estado de sesion y de alta.
  *
- * Riendas NO tiene login: no hay contrasenas ni JWT. El "inicio de sesion"
+ * Nexora NO tiene login: no hay contrasenas ni JWT. El "inicio de sesion"
  * es `POST /api/users`, que devuelve un id, y a partir de ahi todas las
  * peticiones viajan con `X-User-Id`. Por eso el provider se llama `Sesion` y
  * no `Auth`: lo que se guarda no es una credencial expirable, es el id con el

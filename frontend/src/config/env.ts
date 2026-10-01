@@ -17,7 +17,7 @@ const rawApiUrl = (import.meta.env.VITE_API_URL ?? '').trim()
 export const API_BASE = rawApiUrl.replace(/\/+$/, '')
 
 /**
- * Prefijo de la API. El backend Riendas NO versiona por ruta: sus
+ * Prefijo de la API. El backend Nexora NO versiona por ruta: sus
  * controladores cuelgan directamente de `/api/**` (`/api/chat`,
  * `/api/approvals`, `/api/health`...). No anadir `/v1`.
  */

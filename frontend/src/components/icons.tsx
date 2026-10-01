@@ -292,7 +292,7 @@ export const IconCargar = (p: IconProps) => (
  * cualquier SVG equivalente. Para el color puro de la interfaz estan los tokens
  * de `index.css`.
  */
-export function LogoRiendas(props: {
+export function LogoNexora(props: {
   /** Alto en px. El ancho sale de la proporcion de la marca (577:629). */
   alto?: number
   className?: string

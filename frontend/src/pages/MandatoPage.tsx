@@ -339,7 +339,7 @@ function FormularioNuevoMandato() {
         </div>
 
         <p className="text-2xs text-tinta-media">
-          Riendas no puede firmar esta transacción por ti, y por eso no inventa el hash: es la
+          Nexora no puede firmar esta transacción por ti, y por eso no inventa el hash: es la
           prueba de que la autorizaste fuera de aquí.
         </p>
       </form>

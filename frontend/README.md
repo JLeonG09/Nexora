@@ -1,4 +1,4 @@
-# Riendas
+# Nexora
 
 Panel de pagos con agente y mandato sobre Stellar.
 
@@ -10,7 +10,7 @@ tu llave sin pasar por el agente, te avisa.
 en el backend. El panel registra, muestra y pide las dos cosas que requieren a
 una persona: crear el mandato y aprobar un pago.
 
-Cliente del backend `com.nexora.riendas` (Spring Boot). El contrato que exige
+Cliente del backend `com.nexora` (Spring Boot). El contrato que exige
 está en [`API-CONTRACT.md`](./API-CONTRACT.md).
 
 ---

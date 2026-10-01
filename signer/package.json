@@ -1,8 +1,8 @@
 {
-  "name": "riendas-signer",
+  "name": "nexora-signer",
   "version": "0.1.0",
   "private": true,
-  "description": "Firmante del agente Nexora / Riendas. Deriva llaves Ed25519 por cuenta y versión; firma y envía transferencias USDC en Stellar testnet.",
+  "description": "Firmante del agente Nexora. Deriva llaves Ed25519 por cuenta y versión; firma y envía transferencias USDC en Stellar testnet.",
   "type": "module",
   "engines": {
     "node": ">=22"

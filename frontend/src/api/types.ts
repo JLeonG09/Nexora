@@ -1,8 +1,8 @@
-﻿/**
- * Tipos del dominio Riendas.
+/**
+ * Tipos del dominio Nexora.
  *
  * Reflejan 1:1 los records de `dtos/responses` y `dtos/requests` del
- * backend (`com.nexora.riendas`). Si cambias un campo aqui, cambialo en el
+ * backend (`com.nexora`). Si cambias un campo aqui, cambialo en el
  * DTO de Java: no hay generador de tipos entre los dos.
  *
  * Convenciones heredadas del backend:

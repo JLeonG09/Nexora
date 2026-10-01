@@ -1,6 +1,6 @@
-# Contrato API — Riendas
+# Contrato API — Nexora
 
-Lo que este panel **consume** del backend `com.nexora.riendas` (Spring Boot).
+Lo que este panel **consume** del backend `com.nexora` (Spring Boot).
 
 No es una especificación de lo que el backend debería hacer: describe lo que
 **exige** para que la interfaz funcione. La fuente de verdad son los
@@ -42,7 +42,7 @@ sesión se cierre sola.
 
 Única ruta pública: `GET /api/health`.
 
-El id se guarda en `localStorage` bajo `riendas.userId`. Es un prototipo de
+El id se guarda en `localStorage` bajo `nexora.userId`. Es un prototipo de
 demo; en producción esto lo sustituiría una sesión firmada en servidor.
 
 ---

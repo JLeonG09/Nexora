@@ -1,4 +1,4 @@
-# Firmante (Riendas)
+# Firmante (Nexora)
 
 Servicio Node 22 + TypeScript en el puerto **3001**. Guarda solo `AGENT_MASTER_SECRET` y deriva una llave Ed25519 por smart account y versión. No decide si un pago es válido: firma lo que pide el backend.
 
@@ -59,7 +59,7 @@ Secreto maestro **de prueba** (32 bytes ASCII `riendas-test-master-secret-v1!!!`
 AGENT_MASTER_SECRET_TEST=cmllbmRhcy10ZXN0LW1hc3Rlci1zZWNyZXQtdjEhISE=
 ```
 
-Derivación: HKDF-SHA256, salt `riendas-agent-key-v1`, info `smartAccountAddress:keyVersion`, L=32, luego `Keypair.fromRawEd25519Seed`.
+Derivación: HKDF-SHA256, salt `riendas-agent-key-v1`, info `smartAccountAddress:keyVersion`, L=32, luego `Keypair.fromRawEd25519Seed`. La salt conserva el nombre anterior del proyecto a propósito: cambiarla cambia todas las llaves de agente ya registradas en los mandatos.
 
 | smartAccountAddress | keyVersion | publicKeyHex | address |
 |---|---|---|---|

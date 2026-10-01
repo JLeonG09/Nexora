@@ -525,7 +525,7 @@ export async function mockRequest(
       return ok(contacto)
     }
     if (verbo === 'DELETE') {
-      // Borrar en Riendas es ARCHIVAR: la fila sigue para el historial.
+      // Borrar en Nexora es ARCHIVAR: la fila sigue para el historial.
       estado.contactos = estado.contactos.filter((c) => c.id !== contacto.id)
       auditar('CONTACTO_ARCHIVADO', 'USUARIO', `Contacto archivado: ${contacto.name}`)
       return ok(null, 204)

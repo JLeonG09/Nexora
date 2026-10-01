@@ -1,12 +1,12 @@
 spring:
   application:
-    name: riendas-backend
+    name: nexora-backend
   config:
     import: optional:file:.env[.properties]
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/riendas}
-    username: ${DB_USERNAME:riendas}
-    password: ${DB_PASSWORD:riendas_dev}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/nexora}
+    username: ${DB_USERNAME:nexora}
+    password: ${DB_PASSWORD:nexora_dev}
   jpa:
     open-in-view: false
     hibernate:

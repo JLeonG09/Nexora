@@ -1,6 +1,6 @@
 # Arquitectura
 
-Decisiones estructurales de **Riendas** y el porqué de cada una.
+Decisiones estructurales de **Nexora** y el porqué de cada una.
 
 La idea que ordena todo el resto: *el frontend no firma nada*. Toda la
 seguridad vive en el contrato de Stellar y en el backend. El panel es la forma

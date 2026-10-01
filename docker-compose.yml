@@ -1,4 +1,4 @@
-# Riendas en Docker: Postgres + backend + frontend (nginx).
+# Nexora en Docker: Postgres + backend + frontend (nginx).
 #
 #   cp .env.example .env          # y cambia DB_PASSWORD y AGENT_TOOLS_KEY
 #   docker compose up --build     # panel en http://localhost:8081
@@ -6,19 +6,19 @@
 # El firmante real va aparte porque necesita signer/.env con secretos de testnet:
 #   docker compose --profile signer up --build   (con SIGNER_MODE=http en .env)
 
-name: riendas
+name: nexora
 
 services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: riendas
-      POSTGRES_USER: riendas
+      POSTGRES_DB: nexora
+      POSTGRES_USER: nexora
       POSTGRES_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en .env}
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U riendas -d riendas"]
+      test: ["CMD-SHELL", "pg_isready -U nexora -d nexora"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -29,8 +29,8 @@ services:
       db:
         condition: service_healthy
     environment:
-      DB_URL: jdbc:postgresql://db:5432/riendas
-      DB_USERNAME: riendas
+      DB_URL: jdbc:postgresql://db:5432/nexora
+      DB_USERNAME: nexora
       DB_PASSWORD: ${DB_PASSWORD}
       AGENT_TOOLS_KEY: ${AGENT_TOOLS_KEY:?Define AGENT_TOOLS_KEY en .env}
       CORS_ALLOWED_ORIGINS: http://localhost:${FRONTEND_PORT:-8081}

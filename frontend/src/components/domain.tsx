@@ -1,5 +1,5 @@
 /**
- * Vocabulario visual del dominio Riendas.
+ * Vocabulario visual del dominio Nexora.
  *
  * Aqui es donde los enums del backend se convierten en palabras e iconos.
  * Las paginas NO deben inventar etiquetas: si un estado nuevo aparece en Java,

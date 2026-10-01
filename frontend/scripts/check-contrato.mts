@@ -26,7 +26,7 @@ const CANDIDATOS = [
   'C:/Users/derli/AppData/Local/Temp/opencode/Nexora-dev/backend',
 ].filter((v): v is string => Boolean(v))
 
-const DTOS = CANDIDATOS.map((c) => join(c, 'src/main/java/com/nexora/riendas/dtos/responses')).find((p) =>
+const DTOS = CANDIDATOS.map((c) => join(c, 'src/main/java/com/nexora/dtos/responses')).find((p) =>
   existsSync(p),
 )
 

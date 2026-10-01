@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Riendas: panel de pagos con agente y mandato sobre Stellar. Cliente del backend Riendas (Spring Boot).",
+  "description": "Nexora: panel de pagos con agente y mandato sobre Stellar. Cliente del backend Nexora (Spring Boot).",
   "engines": {
     "node": ">=20.19"
   },

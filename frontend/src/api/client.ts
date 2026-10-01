@@ -18,7 +18,7 @@ import { mockRequest, MockHttpError } from './mock'
 /**
  * Cabecera con la que el backend identifica al usuario (`CurrentUserInterceptor`).
  *
- * Riendas no usa contrasenas ni JWT: `POST /api/users` devuelve el id y todas
+ * Nexora no usa contrasenas ni JWT: `POST /api/users` devuelve el id y todas
  * las peticiones posteriores lo mandan en `X-User-Id`. Es un prototipo de
  * demo, asi que el id viaja en claro; en produccion esto lo sustituiria una
  * sesion firmada en servidor.
@@ -26,9 +26,9 @@ import { mockRequest, MockHttpError } from './mock'
 export const USER_HEADER = 'X-User-Id'
 
 /** Id del usuario cacheado, para no ir a localStorage en cada fetch. */
-export const USER_ID_KEY = 'riendas.userId'
+export const USER_ID_KEY = 'nexora.userId'
 /** Datos del usuario cacheados, para pintar la interfaz sin esperar al backend. */
-export const USER_KEY = 'riendas.user'
+export const USER_KEY = 'nexora.user'
 
 const DEFAULT_TIMEOUT_MS = 15_000
 const MAX_RETRIES = 2

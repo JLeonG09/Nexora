@@ -1,4 +1,4 @@
-# Sistema de diseño — Riendas
+# Sistema de diseño — Nexora
 
 Un panel de pagos se lee como un **panel de control**, no como un tablero de
 anuncios. Eso decide casi todo lo que sigue: la densidad, la jerarquía y,

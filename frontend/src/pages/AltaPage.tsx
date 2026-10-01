@@ -23,7 +23,7 @@ import { IconBloqueo, IconCheck, IconInfo, IconMandato } from '@/components/icon
 import { errorMessage } from '@/api/queries'
 import { useSesion } from '@/sesion/SesionContext'
 import { MOCK_ENABLED, PRIVY_ENABLED } from '@/config/env'
-import { LogoRiendas } from '@/components/icons'
+import { LogoNexora } from '@/components/icons'
 import { PasoUsuarioPrivy } from '@/sesion/PrivyAuth'
 
 /* ------------------------------------------------------------------ */
@@ -82,9 +82,9 @@ export function AltaPage() {
 function Marca({ paso }: { paso: 1 | 2 }) {
   return (
     <div className="flex flex-col items-center gap-3 text-center">
-      <LogoRiendas alto={40} />
+      <LogoNexora alto={40} />
       <div>
-        <h1 className="text-xl font-semibold tracking-tight text-tinta">Riendas</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-tinta">Nexora</h1>
         <p className="mt-1 max-w-sm text-sm text-tinta-media">
           Un agente que paga por ti, con topes que decides tú y que puede parar solo.
         </p>
@@ -208,7 +208,7 @@ function PasoUsuario() {
         <p className="flex items-start gap-1.5 text-2xs text-tinta-media">
           <IconInfo className="mt-px h-3.5 w-3.5 shrink-0" />
           <span>
-            Riendas no guarda contraseñas porque no hay servidor donde compararlas. Tu
+            Nexora no guarda contraseñas porque no hay servidor donde compararlas. Tu
             identificador queda en este navegador y viaja en cada petición.
           </span>
         </p>
@@ -286,8 +286,8 @@ function PasoCuenta() {
         <p className="flex items-start gap-2 rounded-control border border-linea bg-superficie-2 px-2.5 py-2 text-2xs text-tinta-media">
           <IconBloqueo className="mt-0.5 h-3.5 w-3.5 shrink-0 text-tinta-media" />
           <span>
-            Riendas nunca te pedirá tu clave privada ni tu frase de recuperación. Si alguien te
-            las pide, no es Riendas.
+            Nexora nunca te pedirá tu clave privada ni tu frase de recuperación. Si alguien te
+            las pide, no es Nexora.
           </span>
         </p>
 

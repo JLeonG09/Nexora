@@ -83,7 +83,7 @@ class Cortafuegos extends Component<{ children: ReactNode }, { error: Error | nu
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('[riendas] error de render', error, info)
+    console.error('[nexora] error de render', error, info)
   }
 
   render() {
