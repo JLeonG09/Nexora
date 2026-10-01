@@ -16,6 +16,7 @@
  */
 
 import { useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 
 import { Button, Exito, Field, Input, Spinner } from '@/components/ui'
 import { IconBloqueo, IconCheck, IconInfo, IconMandato } from '@/components/icons'
@@ -57,6 +58,14 @@ export function AltaPage() {
     <div className="flex min-h-dvh flex-col items-center justify-center gap-6 px-4 py-10">
       <Marca paso={pasoUsuario ? 1 : 2} />
       {pasoUsuario ? PRIVY_ENABLED ? <PasoUsuarioPrivy /> : <PasoUsuario /> : <PasoCuenta />}
+      {!user && (
+        <Link
+          to="/"
+          className="text-2xs text-tinta-media underline underline-offset-2 hover:text-tinta"
+        >
+          Volver al inicio
+        </Link>
+      )}
       {user && (
         <button
           type="button"

@@ -26,6 +26,7 @@ import { useSesion } from './sesion/SesionContext'
 import { ProveedorSesion } from './sesion/PrivyAuth'
 
 import { AltaPage } from './pages/AltaPage'
+import { LandingPage } from './pages/LandingPage'
 import { ChatPage } from './pages/ChatPage'
 import { AprobacionesPage } from './pages/AprobacionesPage'
 import { AlertasPage } from './pages/AlertasPage'
@@ -122,8 +123,16 @@ function Rutas() {
     )
   }
 
-  // Sin usuario, la unica pantalla posible es el alta.
-  if (!user) return <AltaPage />
+  // Sin usuario solo existen la landing y el alta.
+  if (!user) {
+    return (
+      <Routes>
+        <Route index element={<LandingPage />} />
+        <Route path="empezar" element={<AltaPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    )
+  }
 
   // Con usuario pero sin smart account registrada tampoco hay panel: el
   // backend no aceptaria ni un mandato ni un pago.
