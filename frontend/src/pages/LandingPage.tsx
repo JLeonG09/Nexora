@@ -70,7 +70,7 @@ export function LandingPage() {
     <div ref={raiz} className="min-h-dvh overflow-x-clip bg-fondo text-tinta">
       <a
         href="#contenido"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-10 focus:rounded-control focus:bg-acento focus:px-4 focus:py-2 focus:text-white"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-10 focus:rounded-control focus:bg-acento focus:px-4 focus:py-2 focus:text-sobre-acento"
       >
         Saltar al contenido
       </a>
@@ -345,7 +345,7 @@ function ComoFunciona() {
             className="flex flex-col gap-3 rounded-card border border-filete bg-superficie p-6"
           >
             <span
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-acento text-[1.25rem] font-semibold text-white"
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-acento text-[1.25rem] font-semibold text-sobre-acento"
               aria-hidden="true"
             >
               {i + 1}
@@ -459,7 +459,7 @@ function Mensaje({
       <li
         data-revelar="mensaje"
         style={orden(posicion)}
-        className="ml-auto max-w-[85%] rounded-card bg-acento px-4 py-3 text-[1.0625rem] leading-relaxed text-white">
+        className="ml-auto max-w-[85%] rounded-card bg-acento px-4 py-3 text-[1.0625rem] leading-relaxed text-sobre-acento">
         <span className="solo-lector">Tú dices: </span>
         {children}
       </li>

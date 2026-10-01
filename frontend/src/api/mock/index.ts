@@ -370,7 +370,7 @@ export async function mockRequest(
   /* --- Salud: la unica ruta sin usuario --------------------------- */
   if (verbo === 'GET' && ruta === '/health') {
     const payload: Health = {
-      status: 'UP',
+      status: 'OK',
       aiMode: 'mock',
       signerMode: 'mock',
       network: 'TESTNET',
@@ -841,7 +841,7 @@ export async function mockRequest(
   }
 
   if (verbo === 'GET' && ruta === '/chat/messages') {
-    return ok(estado.mensajes)
+    return ok(pagina(estado.mensajes, 0, Math.max(estado.mensajes.length, 1)))
   }
 
   /* --- Propuestas --------------------------------------------------- */

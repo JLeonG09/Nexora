@@ -11,29 +11,28 @@
  * se pase por alto—dinero o una llave.
  */
 
-import { useState } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { Suspense, useState } from 'react'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 import { useTheme } from '@/hooks'
-import { useAprobaciones, useAlertas, useHealth, useLimites } from '@/api/queries'
+import { useAprobaciones, useAlertas, useHealth } from '@/api/queries'
 import { useSesion } from '@/sesion/SesionContext'
-import { MOCK_ENABLED } from '@/config/env'
 import { cn } from '@/lib/cn'
-import { formatAmount, initials } from '@/lib/format'
-import { Button } from './ui'
+import { initials } from '@/lib/format'
+import { Button, Spinner } from './ui'
 import { LogoNexora } from './icons'
 import {
-  IconAlertaMovimiento,
   IconAprobaciones,
-  IconAuditoria,
+  IconBilletera,
   IconChat,
   IconCerrar,
   IconContactos,
-  IconDemo,
   IconHistorial,
+  IconInicio,
   IconLuna,
   IconMandato,
   IconMenu,
+  IconOjo,
   IconSalir,
   IconSol,
 } from './icons'
@@ -46,6 +45,8 @@ interface Enlace {
   to: string
   texto: string
   Icono: typeof IconChat
+  /** Rutas que tambien marcan este enlace como activo. */
+  activoEn?: string[]
   /** Numero de elementos que esperan una accion del usuario. */
   contador?: number
   /** Se avisa de que algo requiere atencion inmediata. */
@@ -53,7 +54,17 @@ interface Enlace {
 }
 
 /**
- * Se construye dentro del componente porque los contadores vienen de datos.
+ * Seis entradas y ninguna mas, sin tecnicismos: quien la usa no sabe que es
+ * un "mandato" ni una "auditoria". Aprobaciones y alertas van juntas en
+ * "Pendientes" porque para el usuario son lo mismo: algo que espera su
+ * respuesta. "Mi billetera" va justo despues de Inicio: es la pregunta
+ * que mas se repite ("cuanto puedo gastar hoy").
+ *
+ * Fuera del menu, a proposito:
+ *  - Accesibilidad va en el pie, junto a la cuenta: se ajusta una vez.
+ *  - `/auditoria` y `/demo` siguen existiendo por URL. La auditoria es para
+ *    soporte y la demo del atacante es para presentar el proyecto, no para
+ *    quien paga.
  */
 function useEnlaces(): Enlace[] {
   const { data: aprobaciones } = useAprobaciones('PENDIENTE', 0, 1)
@@ -63,106 +74,108 @@ function useEnlaces(): Enlace[] {
   const sinRevisar = alertas?.totalItems ?? 0
 
   return [
-    { to: '/', texto: 'Chat', Icono: IconChat },
+    { to: '/', texto: 'Inicio', Icono: IconInicio },
+    { to: '/billetera', texto: 'Mi billetera', Icono: IconBilletera },
     {
-      to: '/aprobaciones',
-      texto: 'Aprobaciones',
+      to: sinRevisar > 0 && pendientes === 0 ? '/alertas' : '/aprobaciones',
+      texto: 'Pendientes',
       Icono: IconAprobaciones,
-      contador: pendientes,
-    },
-    {
-      to: '/alertas',
-      texto: 'Alertas',
-      Icono: IconAlertaMovimiento,
-      contador: sinRevisar,
+      activoEn: ['/aprobaciones', '/alertas'],
+      contador: pendientes + sinRevisar,
       urgente: sinRevisar > 0,
     },
-    { to: '/contactos', texto: 'Contactos', Icono: IconContactos },
-    { to: '/mandato', texto: 'Mandato', Icono: IconMandato },
-    { to: '/historial', texto: 'Historial', Icono: IconHistorial },
-    { to: '/auditoria', texto: 'Auditoría', Icono: IconAuditoria },
-    { to: '/demo', texto: 'Demo llave robada', Icono: IconDemo },
+    { to: '/contactos', texto: 'Mis contactos', Icono: IconContactos },
+    { to: '/mandato', texto: 'Mis reglas de pago', Icono: IconMandato },
+    { to: '/historial', texto: 'Mis movimientos', Icono: IconHistorial },
   ]
 }
 
-const GRUPOS: { titulo: string; enlaces: string[] }[] = [
-  { titulo: 'Operar', enlaces: ['/', '/aprobaciones'] },
-  { titulo: 'Permisos', enlaces: ['/alertas', '/contactos', '/mandato'] },
-  { titulo: 'Registrar', enlaces: ['/historial', '/auditoria'] },
-  { titulo: 'Demostración', enlaces: ['/demo'] },
-]
+function EnlaceLateral({ enlace, onNavegar }: { enlace: Enlace; onNavegar?: () => void }) {
+  const { pathname } = useLocation()
+  const { to, texto, Icono, activoEn, contador, urgente } = enlace
+
+  return (
+    <li>
+      <NavLink
+        to={to}
+        end={to === '/'}
+        onClick={onNavegar}
+        className={({ isActive }) =>
+          cn('nav-lateral__enlace', (isActive || activoEn?.includes(pathname)) && 'activo')
+        }
+      >
+        <Icono />
+        <span className="truncar">{texto}</span>
+        {contador !== undefined && contador > 0 && (
+          <span
+            className={cn('nav-lateral__contador', urgente && 'bg-error text-blanco')}
+            aria-label={`${contador} sin revisar`}
+          >
+            {contador > 99 ? '99+' : contador}
+          </span>
+        )}
+      </NavLink>
+    </li>
+  )
+}
 
 /* ------------------------------------------------------------------ */
 /* Contenido de la barra lateral                                      */
 /* ------------------------------------------------------------------ */
 
 function ContenidoLateral({ onNavegar }: { onNavegar?: () => void }) {
-  const enlaces = useEnlaces()
-  const { user } = useSesion()
+  const principales = useEnlaces()
+  const { user, cerrarSesion } = useSesion()
+  const navegar = useNavigate()
 
   return (
     <>
       <div className="nav-lateral__marca">
-        <LogoNexora alto={28} className="nav-lateral__logo" />
+        <LogoNexora alto={28} tono="claro" className="nav-lateral__logo" />
         <div className="min-w-0">
           <p className="nav-lateral__nombre">Nexora</p>
-          <p className="nav-lateral__version">
-            {MOCK_ENABLED ? 'Datos simulados' : 'Datos reales'}
-          </p>
+          <p className="nav-lateral__version">Tu asistente de pagos</p>
         </div>
       </div>
 
-      <nav className="min-h-0 flex-1 overflow-y-auto" aria-label="Navegación principal">
-        {GRUPOS.map((grupo) => {
-          const delGrupo = enlaces.filter((e) => grupo.enlaces.includes(e.to))
-          if (delGrupo.length === 0) return null
-          return (
-            <div key={grupo.titulo}>
-              <p className="nav-lateral__grupo">{grupo.titulo}</p>
-              <ul className="nav-lateral__lista">
-                {delGrupo.map(({ to, texto, Icono, contador, urgente }) => (
-                  <li key={to}>
-                    <NavLink
-                      to={to}
-                      end={to === '/'}
-                      onClick={onNavegar}
-                      className={({ isActive }) =>
-                        cn('nav-lateral__enlace', isActive && 'activo')
-                      }
-                    >
-                      <Icono />
-                      <span className="truncar">{texto}</span>
-                      {contador !== undefined && contador > 0 && (
-                        <span
-                          className={cn(
-                            'nav-lateral__contador',
-                            urgente && 'bg-error text-white',
-                          )}
-                          aria-label={`${contador} sin revisar`}
-                        >
-                          {contador > 99 ? '99+' : contador}
-                        </span>
-                      )}
-                    </NavLink>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )
-        })}
+      <nav className="min-h-0 flex-1 overflow-y-auto pt-2" aria-label="Navegación principal">
+        <ul className="nav-lateral__lista">
+          {principales.map((enlace) => (
+            <EnlaceLateral key={enlace.texto} enlace={enlace} onNavegar={onNavegar} />
+          ))}
+        </ul>
       </nav>
 
       {user && (
-        <div className="nav-lateral__pie">
-          <div className="flex items-center gap-2.5 rounded-control px-2 py-2">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blanco/10 text-xs font-semibold text-blanco">
+        <div className="nav-lateral__pie space-y-1">
+          <div className="flex items-center gap-3 rounded-control px-2 py-2">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blanco/10 text-sm font-semibold text-blanco">
               {initials(user.displayName)}
             </span>
             <div className="min-w-0 flex-1">
-              <p className="truncar text-xs font-medium text-blanco">{user.displayName}</p>
+              <p className="truncar text-sm font-medium text-blanco">{user.displayName}</p>
               <p className="truncar text-2xs text-texto-cierre opacity-70">{user.email}</p>
             </div>
           </div>
+          <NavLink
+            to="/accesibilidad"
+            onClick={onNavegar}
+            className={({ isActive }) => cn('nav-lateral__enlace w-full', isActive && 'activo')}
+          >
+            <IconOjo />
+            <span>Accesibilidad</span>
+          </NavLink>
+          <button
+            type="button"
+            onClick={() => {
+              cerrarSesion()
+              navegar('/')
+            }}
+            className="nav-lateral__enlace w-full"
+          >
+            <IconSalir />
+            <span>Cerrar sesión</span>
+          </button>
         </div>
       )}
     </>
@@ -174,40 +187,31 @@ function ContenidoLateral({ onNavegar }: { onNavegar?: () => void }) {
 /* ------------------------------------------------------------------ */
 
 /**
- * Pie fijo con lo que el backend esta haciendo ahora.
+ * Pie fijo con el estado del servicio, en palabras.
  *
- * Importa mas de lo que parece: si el firmante esta caido, el chat seguira
- * aceptando mensajes y creyendo que paga, cuando en realidad los pagos se
- * quedaran en ENVIADO. Decirlo aqui evita esa sorpresa.
+ * El detalle tecnico (modo de la IA, del firmante, red) sigue disponible
+ * plegado: si el firmante esta caido, los pagos se quedan en ENVIADO y quien
+ * da soporte necesita verlo sin abrir la consola.
  */
 function BarraEstado() {
   const { data: salud, isError } = useHealth()
-  const { data: limites } = useLimites()
+  const funciona = !!salud && !isError
 
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-blanco/10 px-4 py-2 text-2xs text-texto-cierre">
-      <span className="flex items-center gap-1.5">
-        <span
-          className={cn('led', (salud?.status === 'UP' && !isError) && 'encendido')}
-          aria-hidden="true"
-        />
-        {isError ? 'Backend no responde' : `Backend ${salud?.status ?? '...'}`}
-      </span>
-
+    <details className="border-t border-blanco/10 px-4 py-2.5 text-xs text-texto-cierre">
+      <summary className="flex cursor-pointer list-none items-center gap-2">
+        <span className={cn('led', funciona && 'encendido')} aria-hidden="true" />
+        {isError ? 'Sin conexión con el servicio' : funciona ? 'Todo funciona bien' : 'Conectando…'}
+      </summary>
       {salud && (
-        <>
+        <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-2xs opacity-80">
+          <span>Servicio: {salud.status}</span>
           <span>IA: {salud.aiMode === 'mock' ? 'simulada' : 'real'}</span>
           <span>Firmante: {salud.signerMode === 'mock' ? 'simulado' : 'real'}</span>
-          <span>{salud.network}</span>
-        </>
+          <span>Red: {salud.network}</span>
+        </p>
       )}
-
-      {limites?.dailyLimit && (
-        <span className="cifras ml-auto">
-          Quedan {formatAmount(limites.availableLast24h ?? '0')} USDC hoy
-        </span>
-      )}
-    </div>
+    </details>
   )
 }
 
@@ -242,7 +246,7 @@ export function AppShell() {
         </Button>
 
         <div className="flex items-center gap-2">
-          <LogoNexora alto={24} />
+          <LogoNexora alto={24} tono="claro" />
           <span className="text-sm font-semibold">Nexora</span>
         </div>
 
@@ -264,8 +268,18 @@ export function AppShell() {
         </div>
       </header>
 
-      <main className="min-w-0">
-        <Outlet />
+      <main className="min-w-0 bg-fondo">
+        {/* Cada pantalla llega por separado: mientras tanto el marco se queda. */}
+        <Suspense
+          fallback={
+            <div className="flex min-h-dvh items-center justify-center">
+              <Spinner className="h-6 w-6 text-tinta-media" />
+              <span className="solo-lector">Cargando</span>
+            </div>
+          }
+        >
+          <Outlet />
+        </Suspense>
       </main>
 
       {/* Cajon en movil */}

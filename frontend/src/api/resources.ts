@@ -128,7 +128,9 @@ export const chat = {
   send: (message: string, conversationId?: string | null) =>
     http.post<ChatResponse>(endpoints.sendChat(), { message, conversationId: conversationId ?? null }),
   messages: (conversationId?: string | null) =>
-    http.get<ChatMessage[]>(endpoints.chatMessages(conversationId)),
+    http
+      .get<Page<ChatMessage>>(endpoints.chatMessages(conversationId))
+      .then((pagina) => pagina.items),
 }
 
 /* --- Propuestas de pago --------------------------------------------- */

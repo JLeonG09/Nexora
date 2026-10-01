@@ -25,7 +25,7 @@ import {
   LogoNexora,
 } from '@/components/icons'
 import { ApiError } from '@/api/errors'
-import { errorMessage } from '@/api/queries'
+import { errorMessage, useHealth } from '@/api/queries'
 import { useSesion } from '@/sesion/SesionContext'
 import { MOCK_ENABLED, PRIVY_ENABLED } from '@/config/env'
 import { AccesoPrivy } from '@/sesion/PrivyAuth'
@@ -49,7 +49,8 @@ const BASE32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
 /**
  * Direccion de contrato ficticia pero CON FORMATO VALIDO.
  *
- * Solo se usa en modo mock, y esta marcada como tal en la interfaz. Existe
+ * Solo se ofrece con datos simulados o con el firmante del backend en modo
+ * mock (con uno real fallaria el primer pago), y esta marcada como tal. Existe
  * porque el alta exige una direccion real de 56 caracteres: sin ella nadie
  * puede recorrer la demo.
  */
@@ -111,7 +112,7 @@ function PanelMarca() {
   return (
     <aside className="hidden flex-col justify-between bg-fondo-cierre p-12 text-white lg:flex">
       <Link to="/" className="flex items-center gap-2.5 self-start" aria-label="Nexora, inicio">
-        <LogoNexora alto={34} />
+        <LogoNexora alto={34} tono="claro" />
         <span className="text-[1.375rem] font-semibold tracking-tight">Nexora</span>
       </Link>
 
@@ -375,6 +376,8 @@ function FormCrear() {
 
 function PasoCuenta() {
   const { registrarCuenta, account, user } = useSesion()
+  const { data: salud } = useHealth()
+  const permiteDireccionDePrueba = MOCK_ENABLED || salud?.signerMode === 'mock'
   const [direccion, setDireccion] = useState('')
   const [credentialId, setCredentialId] = useState('')
   const [tocado, setTocado] = useState(false)
@@ -458,7 +461,7 @@ function PasoCuenta() {
           )}
         </Field>
 
-        {MOCK_ENABLED && !formatoOk && (
+        {permiteDireccionDePrueba && !formatoOk && (
           <Button
             type="button"
             variante="fantasma"
