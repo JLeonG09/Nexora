@@ -128,7 +128,8 @@ function Rutas() {
     return (
       <Routes>
         <Route index element={<LandingPage />} />
-        <Route path="empezar" element={<AltaPage />} />
+        <Route path="entrar" element={<AltaPage modo="entrar" />} />
+        <Route path="empezar" element={<AltaPage modo="crear" />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     )

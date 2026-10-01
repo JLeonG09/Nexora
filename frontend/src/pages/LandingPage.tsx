@@ -189,8 +189,8 @@ function Cabecera() {
           <a href="#preguntas" className="hidden px-3 py-2 text-[1rem] text-tinta-media hover:text-tinta sm:inline">
             Preguntas
           </a>
-          <Link to="/empezar" className="btn btn-secundario min-h-11 px-4 text-[1rem]">
-            Entrar
+          <Link to="/entrar" className="btn btn-secundario min-h-11 px-4 text-[1rem]">
+            Iniciar sesión
           </Link>
         </nav>
       </div>

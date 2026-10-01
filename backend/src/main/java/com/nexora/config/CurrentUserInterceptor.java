@@ -27,7 +27,7 @@ public class CurrentUserInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-        if (CorsUtils.isPreFlightRequest(request) || isUserCreation(request)) {
+        if (CorsUtils.isPreFlightRequest(request) || isUserCreation(request) || isLogin(request)) {
             return true;
         }
         UUID userId = parse(request.getHeader(HEADER));
@@ -40,6 +40,10 @@ public class CurrentUserInterceptor implements HandlerInterceptor {
 
     private static boolean isUserCreation(HttpServletRequest request) {
         return HttpMethod.POST.matches(request.getMethod()) && "/api/users".equals(request.getRequestURI());
+    }
+
+    private static boolean isLogin(HttpServletRequest request) {
+        return HttpMethod.POST.matches(request.getMethod()) && "/api/users/login".equals(request.getRequestURI());
     }
 
     private static UUID parse(String header) {

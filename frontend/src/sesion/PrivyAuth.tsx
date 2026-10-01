@@ -3,7 +3,7 @@
  *
  * Privy solo sustituye el paso 1 del alta: en vez de escribir nombre y correo
  * a mano, el usuario entra con un codigo al correo o con Google, y con esos
- * datos verificados se llama a `POST /api/users`. El resto de la sesion sigue
+ * datos verificados se entra o se crea la cuenta. El resto de la sesion sigue
  * igual (`X-User-Id`). No se crean wallets de Privy: los pagos salen de la
  * smart account de Stellar que el usuario registra en el paso 2.
  */
@@ -13,6 +13,7 @@ import { PrivyProvider, usePrivy, type User as PrivyUser } from '@privy-io/react
 
 import { Button } from '@/components/ui'
 import { IconInfo } from '@/components/icons'
+import { ApiError } from '@/api/errors'
 import { errorMessage } from '@/api/queries'
 import { PRIVY_APP_ID, PRIVY_CLIENT_ID, PRIVY_ENABLED } from '@/config/env'
 import { SesionProvider, useSesion } from './SesionContext'
@@ -51,10 +52,14 @@ function datosDelUsuario(user: PrivyUser): { displayName: string; email: string 
   return { displayName, email }
 }
 
-/** Paso 1 del alta cuando Privy esta activo. */
-export function PasoUsuarioPrivy() {
+/**
+ * Acceso cuando Privy esta activo. Privy no distingue entrar de registrarse,
+ * asi que con el correo verificado se intenta entrar y, si no hay cuenta, se
+ * crea.
+ */
+export function AccesoPrivy({ textoBoton }: { textoBoton: string }) {
   const { ready, authenticated, user, login, logout } = usePrivy()
-  const { crearUsuario } = useSesion()
+  const { crearUsuario, iniciarSesion } = useSesion()
   const [error, setError] = useState<string | null>(null)
   const [creando, setCreando] = useState(false)
   const intentado = useRef(false)
@@ -68,10 +73,14 @@ export function PasoUsuarioPrivy() {
     }
     intentado.current = true
     setCreando(true)
-    crearUsuario(datos)
+    iniciarSesion(datos.email)
+      .catch((err: unknown) => {
+        if (err instanceof ApiError && err.isNotFound) return crearUsuario(datos)
+        throw err
+      })
       .catch((err: unknown) => setError(errorMessage(err)))
       .finally(() => setCreando(false))
-  }, [ready, authenticated, user, crearUsuario])
+  }, [ready, authenticated, user, crearUsuario, iniciarSesion])
 
   async function salir() {
     await logout()
@@ -80,52 +89,44 @@ export function PasoUsuarioPrivy() {
   }
 
   return (
-    <div className="modulo w-full max-w-md">
-      <div className="modulo-cabecera">
-        <h2 className="modulo-cabecera__titulo">Entra a Nexora</h2>
-        <p className="mt-0.5 text-xs text-tinta-media">
-          Con un código a tu correo o con tu cuenta de Google. Sin contraseñas.
+    <div className="flex flex-col gap-4">
+      {error && (
+        <p role="alert" className="text-[1rem] text-error">
+          {error}
         </p>
-      </div>
+      )}
 
-      <div className="modulo-cuerpo flex flex-col gap-3">
-        {error && (
-          <p role="alert" className="text-xs text-error">
-            {error}
-          </p>
-        )}
-
-        {authenticated ? (
-          <>
-            <Button type="button" variante="primario" bloque cargando={creando} disabled>
-              {creando ? 'Creando tu perfil' : 'Sesión iniciada'}
-            </Button>
-            {error && (
-              <Button type="button" variante="fantasma" tamano="sm" onClick={() => void salir()}>
-                Entrar con otra cuenta
-              </Button>
-            )}
-          </>
-        ) : (
-          <Button
-            type="button"
-            variante="primario"
-            bloque
-            cargando={!ready}
-            disabled={!ready}
-            onClick={() => login()}
-          >
-            Iniciar sesión
+      {authenticated ? (
+        <>
+          <Button type="button" variante="primario" bloque cargando={creando} disabled>
+            {creando ? 'Preparando tu cuenta' : 'Sesión iniciada'}
           </Button>
-        )}
+          {error && (
+            <Button type="button" variante="fantasma" tamano="sm" onClick={() => void salir()}>
+              Entrar con otra cuenta
+            </Button>
+          )}
+        </>
+      ) : (
+        <Button
+          type="button"
+          variante="primario"
+          bloque
+          cargando={!ready}
+          disabled={!ready}
+          onClick={() => login()}
+        >
+          {textoBoton}
+        </Button>
+      )}
 
-        <p className="flex items-start gap-1.5 text-2xs text-tinta-media">
-          <IconInfo className="mt-px h-3.5 w-3.5 shrink-0" />
-          <span>
-            Privy solo confirma tu correo. Nexora no crea ninguna wallet ni ve tus claves.
-          </span>
-        </p>
-      </div>
+      <p className="flex items-start gap-2 text-[1rem] text-tinta-media">
+        <IconInfo className="mt-1 h-4 w-4 shrink-0" />
+        <span>
+          Te llega un código a tu correo, o entras con Google. Nexora no crea ninguna wallet ni ve
+          tus claves.
+        </span>
+      </p>
     </div>
   )
 }

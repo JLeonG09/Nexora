@@ -1118,6 +1118,73 @@
 }
 
 /* ---------------------------------------------------------------------
+   Pantalla de acceso (AltaPage). Mismo publico que la landing: los campos
+   y botones del panel se agrandan solo aqui, no en el resto de la app.
+   --------------------------------------------------------------------- */
+.acceso .campo {
+  gap: 0.5rem;
+}
+.acceso .campo__etiqueta {
+  font-size: 1.0625rem;
+}
+.acceso .campo__ayuda,
+.acceso .campo__error {
+  font-size: 1rem;
+}
+.acceso .entrada {
+  min-height: 3rem;
+  padding: 0.75rem 0.875rem;
+  font-size: 1.125rem;
+}
+.acceso .btn:not(.btn-sm) {
+  min-height: 3rem;
+  padding-inline: 1.25rem;
+  font-size: 1.125rem;
+}
+.acceso .btn-sm {
+  min-height: 2.75rem;
+  font-size: 1rem;
+}
+
+.acceso-pestanas {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border: 1px solid var(--color-filete);
+  border-radius: var(--radius-control);
+  background-color: var(--color-superficie-2);
+}
+.acceso-pestanas a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  border: 1px solid transparent;
+  border-radius: calc(var(--radius-control) - 2px);
+  font-size: 1.0625rem;
+  font-weight: 500;
+  color: var(--color-tinta-media);
+  transition:
+    background-color var(--duracion) ease,
+    color var(--duracion) ease;
+}
+.acceso-pestanas a:hover {
+  color: var(--color-tinta);
+}
+.acceso-pestanas a[aria-current='page'] {
+  border-color: var(--color-filete);
+  background-color: var(--color-superficie);
+  color: var(--color-tinta);
+  font-weight: 600;
+}
+
+/* Al cambiar de pestana el formulario entra, no salta. */
+.acceso-entrada {
+  animation: subir 260ms var(--ease-salida);
+}
+
+/* ---------------------------------------------------------------------
    Tema oscuro. Se activa de dos formas con los MISMOS valores:
      1. <html data-tema="oscuro">  (eleccion guardada; la imprime index.html)
      2. Sin eleccion, si el sistema pide modo oscuro.

@@ -56,11 +56,13 @@ export const health = {
 /* --- Usuario y cuenta ---------------------------------------------- */
 
 /**
- * `POST /api/users` es la CREACION de la sesion: no hay login. Devuelve el
- * usuario con su id, que es lo que pasa a ser la credencial (`X-User-Id`).
+ * `POST /api/users` crea el usuario y `POST /api/users/login` lo recupera por
+ * correo (simulado: sin contrasena ni verificacion). Ambos devuelven el id,
+ * que es lo que pasa a ser la credencial (`X-User-Id`).
  */
 export const users = {
   create: (payload: CreateUserInput) => http.post<User>(endpoints.createUser(), payload),
+  login: (email: string) => http.post<User>(endpoints.login(), { email }),
   /** Usuario del `X-User-Id` actual. Primera llamada al montar la app. */
   me: () => http.get<User>(endpoints.me()),
 }

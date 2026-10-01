@@ -38,6 +38,14 @@ public class UserService {
         return saved;
     }
 
+    // TODO(auth real): login simulado del MVP; cualquiera que conozca el correo entra.
+    @Transactional(readOnly = true)
+    public User login(String rawEmail) {
+        return userRepository.findByEmail(normalizeEmail(rawEmail))
+                .orElseThrow(() -> ApiException.field(ErrorCode.RECURSO_NO_ENCONTRADO, "email",
+                        "No hay ninguna cuenta con ese correo."));
+    }
+
     @Transactional(readOnly = true)
     public User get(UUID userId) {
         return userRepository.findById(userId)

@@ -407,6 +407,19 @@ export async function mockRequest(
     return ok(usuario, 201)
   }
 
+  if (verbo === 'POST' && ruta === '/users/login') {
+    const correo = String(datos.email ?? '').trim().toLowerCase()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
+      validarCampos({ email: 'El correo no es v\u00e1lido.' })
+    }
+    if (!estado.usuario || estado.usuario.email.toLowerCase() !== correo) {
+      throw new MockHttpError(404, 'RECURSO_NO_ENCONTRADO', 'No hay ninguna cuenta con ese correo.', {
+        email: 'No hay ninguna cuenta con ese correo.',
+      })
+    }
+    return ok(estado.usuario)
+  }
+
   if (!estado.usuario) sinSesion()
   const usuario = estado.usuario
 

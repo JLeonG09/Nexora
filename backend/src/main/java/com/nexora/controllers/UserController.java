@@ -2,6 +2,7 @@ package com.nexora.controllers;
 
 import com.nexora.config.CurrentUser;
 import com.nexora.dtos.requests.CreateUserRequest;
+import com.nexora.dtos.requests.LoginRequest;
 import com.nexora.dtos.responses.UserResponse;
 import com.nexora.services.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -35,6 +36,13 @@ public class UserController {
     @Operation(summary = "Crear usuario (devuelve el id para X-User-Id)")
     public UserResponse create(@Valid @RequestBody CreateUserRequest request) {
         return UserResponse.from(userService.create(request));
+    }
+
+    @PostMapping("/login")
+    @SecurityRequirements
+    @Operation(summary = "Iniciar sesión con el correo (simulado: devuelve el id para X-User-Id)")
+    public UserResponse login(@Valid @RequestBody LoginRequest request) {
+        return UserResponse.from(userService.login(request.email()));
     }
 
     @GetMapping("/me")

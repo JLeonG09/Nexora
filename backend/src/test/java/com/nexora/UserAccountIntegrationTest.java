@@ -42,6 +42,26 @@ class UserAccountIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    void logsInWithEmailWithoutUserHeader() throws Exception {
+        String userId = createUser("Josué", "josue@example.com");
+
+        mockMvc.perform(post("/api/users/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"JOSUE@Example.com\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(userId))
+                .andExpect(jsonPath("$.displayName").value("Josué"));
+    }
+
+    @Test
+    void loginWithUnknownEmailIsNotFound() throws Exception {
+        mockMvc.perform(post("/api/users/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"nadie@example.com\"}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("RECURSO_NO_ENCONTRADO"))
+                .andExpect(jsonPath("$.details[0].field").value("email"));
+    }
+
+    @Test
     void registersAccountOncePerUser() throws Exception {
         String userId = createUser("Josué", null);
 

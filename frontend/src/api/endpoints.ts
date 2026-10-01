@@ -46,6 +46,7 @@ export const endpoints = {
    * credencial durante toda la demo. Se llama una vez, en el onboarding.
    */
   createUser: () => `${API_PREFIX}/users`,
+  login: () => `${API_PREFIX}/users/login`,
   me: () => `${API_PREFIX}/users/me`,
 
   /* --- Smart account ----------------------------------------------- */
