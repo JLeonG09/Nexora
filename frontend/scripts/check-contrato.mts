@@ -10,7 +10,7 @@
  * Solo comprueba los NOMBRES de los campos, no los tipos: comparar
  * `Instant` con `string | null` a ojo es ruidoso y lo hace mejor el revisor.
  *
- *   npm run check:contrato
+ *   pnpm check:contrato
  *
  * Si el backend no esta en la ruta de abajo, se avisa y se sale con 0: el
  * frontend se puede construir sin el repositorio de Java al lado.

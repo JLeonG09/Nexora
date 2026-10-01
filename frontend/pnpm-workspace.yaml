@@ -1,0 +1,8 @@
+# pnpm 11 no ejecuta scripts de instalación sin permiso explícito.
+allowBuilds:
+  esbuild: true
+  # Aceleradores nativos opcionales y telemetría: tienen alternativa en JS.
+  '@reown/appkit': false
+  bufferutil: false
+  keccak: false
+  utf-8-validate: false

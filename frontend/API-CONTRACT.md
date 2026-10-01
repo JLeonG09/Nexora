@@ -10,7 +10,7 @@ No es una especificación de lo que el backend debería hacer: describe lo que
 Ese contrato se comprueba solo:
 
 ```bash
-npm run check:contrato
+pnpm check:contrato
 ```
 
 El script parsea los records de Java y los compara con `src/api/types.ts`.

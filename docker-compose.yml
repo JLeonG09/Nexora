@@ -1,10 +1,13 @@
-# Nexora en Docker: Postgres + backend + frontend (nginx).
+# Nexora en Docker: Postgres + agente (Ollama) + backend + frontend (nginx), todos en la red `nexora_default`.
 #
 #   cp .env.example .env          # y cambia DB_PASSWORD y AGENT_TOOLS_KEY
-#   docker compose up --build     # panel en http://localhost:8081
+#   docker compose up -d --build  # panel en http://localhost:8081
+#
+# La primera vez el agente descarga el modelo (AI_MODEL, ~2 GB); `docker compose logs -f agent` muestra el avance.
+# Hasta que termine, el chat responde que la IA no está disponible.
 #
 # El firmante real va aparte porque necesita signer/.env con secretos de testnet:
-#   docker compose --profile signer up --build   (con SIGNER_MODE=http en .env)
+#   docker compose --profile signer up -d --build   (con SIGNER_MODE=http en .env)
 
 name: nexora
 
@@ -22,21 +25,50 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+    restart: unless-stopped
+
+  # Modelo propio con API compatible con OpenAI. Cactus no compila en x86, por eso aquí va Ollama.
+  agent:
+    image: ollama/ollama:latest
+    entrypoint:
+      - /bin/sh
+      - -c
+      - ollama serve & until ollama list >/dev/null 2>&1; do sleep 1; done; ollama pull "$$AI_MODEL" && wait
+    environment:
+      AI_MODEL: ${AI_MODEL:-qwen2.5:3b}
+      OLLAMA_HOST: 0.0.0.0:11434
+      OLLAMA_KEEP_ALIVE: "-1"
+    volumes:
+      - agent-models:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "ollama show \"$$AI_MODEL\" >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15m
+    expose:
+      - "11434"
+    restart: unless-stopped
 
   backend:
     build: ./backend
     depends_on:
       db:
         condition: service_healthy
+      agent:
+        condition: service_started
     environment:
       DB_URL: jdbc:postgresql://db:5432/nexora
       DB_USERNAME: nexora
       DB_PASSWORD: ${DB_PASSWORD}
       AGENT_TOOLS_KEY: ${AGENT_TOOLS_KEY:?Define AGENT_TOOLS_KEY en .env}
       CORS_ALLOWED_ORIGINS: http://localhost:${FRONTEND_PORT:-8081}
-      AI_MODE: ${AI_MODE:-mock}
-      AI_BASE_URL: ${AI_BASE_URL:-http://host.docker.internal:8000}
+      AI_MODE: ${AI_MODE:-local}
+      AI_BASE_URL: ${AI_BASE_URL:-http://agent:11434}
+      AI_MODEL: ${AI_MODEL:-qwen2.5:3b}
       AI_SERVICE_KEY: ${AI_SERVICE_KEY:-cambia-esto}
+      # En CPU el primer mensaje carga el modelo en memoria y tarda más.
+      AI_READ_TIMEOUT_MS: ${AI_READ_TIMEOUT_MS:-90000}
       SIGNER_MODE: ${SIGNER_MODE:-mock}
       SIGNER_BASE_URL: http://signer:3001
       SIGNER_SERVICE_KEY: ${SIGNER_SERVICE_KEY:-cambia-esto}
@@ -44,6 +76,7 @@ services:
       DEMO_ATTACK_ENABLED: ${DEMO_ATTACK_ENABLED:-true}
     ports:
       - "127.0.0.1:${BACKEND_PORT:-8080}:8080"
+    restart: unless-stopped
 
   signer:
     build: ./signer
@@ -58,6 +91,7 @@ services:
       - signer-data:/app/data
     expose:
       - "3001"
+    restart: unless-stopped
 
   frontend:
     build:
@@ -69,7 +103,9 @@ services:
       - backend
     ports:
       - "${FRONTEND_PORT:-8081}:80"
+    restart: unless-stopped
 
 volumes:
   db-data:
+  agent-models:
   signer-data:

@@ -54,8 +54,9 @@ auditoría. También vigila la red: si sale de la smart account un pago que no h
 | `SERVER_PORT` | `8080` | Puerto HTTP |
 | `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | `jdbc:postgresql://localhost:5432/nexora`, `nexora`, `nexora_dev` | Base de datos |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | Origen del frontend |
-| `AI_MODE` | `mock` | `mock` (reglas fijas) o `http` (servicio de IA real) |
+| `AI_MODE` | `mock` | `mock` (reglas fijas), `http` (servicio de IA propio) o `local` (modelo propio con Ollama o `cactus serve`) |
 | `AI_BASE_URL`, `AI_SERVICE_KEY` | `http://localhost:8000` | Servicio de IA y la clave que le manda el backend |
+| `AI_MODEL` | `qwen2.5:3b` | Solo con `AI_MODE=local`: modelo que sirve Ollama o Cactus |
 | `AI_CONNECT_TIMEOUT_MS`, `AI_READ_TIMEOUT_MS` | `2000`, `15000` | Tiempos de espera de la IA |
 | `AI_MIN_CONFIDENCE` | `0.7` | Confianza mínima para aceptar un pago |
 | `SIGNER_MODE` | `mock` | `mock` o `http` (firmante real) |
@@ -126,6 +127,25 @@ Si pasa y el monto supera el umbral de aprobación, queda `PENDIENTE_APROBACION`
 `PROPUESTO → RECHAZADO | PENDIENTE_APROBACION | APROBADO → ENVIADO → CONFIRMADO | FALLIDO`.
 
 Encima de todo esto, el contrato on-chain aplica su propio tope de gasto (`SpendingLimitExceeded`).
+
+## IA local (Ollama o Cactus)
+
+Con `AI_MODE=local` el backend habla con cualquier servidor compatible con la API de OpenAI
+(`POST {AI_BASE_URL}/v1/chat/completions`) y un modelo con tool calling:
+
+- **Docker (por defecto):** el servicio `agent` de `docker-compose.yml` corre Ollama con `AI_MODEL`.
+- **ARM (Mac M, Raspberry Pi, móvil):** [`cactus serve`](https://github.com/cactus-compute/cactus) con
+  `--host 0.0.0.0 --no-cloud-handoff`. Cactus no compila en x86 (sus kernels son solo NEON).
+
+```bash
+AI_MODE=local AI_BASE_URL=http://localhost:11434 AI_MODEL=qwen2.5:3b ./mvnw spring-boot:run
+```
+
+- El backend escribe las instrucciones y ofrece la herramienta `propose_payment` con los ids de los contactos como
+  lista cerrada. El activo lo fija el backend (`USDC`); el modelo solo elige contacto, monto y memo.
+- La API de OpenAI no trae confianza: es 0,9 si el contacto elegido aparece nombrado en el mensaje; si no, el
+  campo `contactId` va como no fundamentado y la regla 2 rechaza el pago.
+- Todo lo demás sigue igual: las 8 reglas se aplican a la IA local como a cualquier otra.
 
 ## Marcadores `#` de los mocks
 

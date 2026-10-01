@@ -18,8 +18,9 @@ está en [`API-CONTRACT.md`](./API-CONTRACT.md).
 ## Arrancar
 
 ```bash
-npm install
-npm run dev
+corepack enable   # una vez: activa la versión de pnpm fijada en package.json
+pnpm install
+pnpm dev
 ```
 
 Y ya está. Sin backend, sin PostgreSQL: si no hay `VITE_API_URL`, la app usa
@@ -30,12 +31,12 @@ comportamiento. Sirve para trabajar la interfaz entera.
 
 ```bash
 # PowerShell
-$env:VITE_API_URL="http://localhost:8080"; npm run dev
+$env:VITE_API_URL="http://localhost:8080"; pnpm dev
 ```
 
 ```bash
 # bash
-VITE_API_URL=http://localhost:8080 npm run dev
+VITE_API_URL=http://localhost:8080 pnpm dev
 ```
 
 | Variable | Por defecto | |
@@ -52,21 +53,21 @@ Requiere **Node ≥ 20.19** (usa `--experimental-strip-types`).
 
 | | |
 |---|---|
-| `npm run dev` | Servidor de Vite. |
-| `npm run build` | `tsc -b` + build de producción. |
-| `npm run preview` | Sirve el build. |
-| `npm run typecheck` | El contrato de TypeScript entero. |
-| `npm run lint` | ESLint. |
-| `npm run smoke` | **62 comprobaciones** del mock, sin navegador. |
-| `npm run check:format` | Aritmética decimal: acarreos, nulos, cifras grandes. |
-| `npm run check:contrato` | Compara los DTO de Java con `src/api/types.ts`. |
+| `pnpm dev` | Servidor de Vite. |
+| `pnpm build` | `tsc -b` + build de producción. |
+| `pnpm preview` | Sirve el build. |
+| `pnpm typecheck` | El contrato de TypeScript entero. |
+| `pnpm lint` | ESLint. |
+| `pnpm smoke` | **62 comprobaciones** del mock, sin navegador. |
+| `pnpm check:format` | Aritmética decimal: acarreos, nulos, cifras grandes. |
+| `pnpm check:contrato` | Compara los DTO de Java con `src/api/types.ts`. |
 
 Los tres últimos no usan framework de tests: son scripts de Node que se leen y
 se ejecutan en un segundo. El de contrato necesita el backend a disco; si no
 está, lo dice y sale bien:
 
 ```bash
-NEXORA_BACKEND="C:/ruta/al/backend" npm run check:contrato
+NEXORA_BACKEND="C:/ruta/al/backend" pnpm check:contrato
 ```
 
 ---
@@ -126,7 +127,7 @@ visible. La aritmética está en `src/lib/format.ts` con `BigInt`, y
 **El chat es la pantalla principal.** Las otras ocho páginas son vistas del
 mismo estado, no secciones independientes.
 
-**El contrato se comprueba solo.** `npm run check:contrato` compara los records
+**El contrato se comprueba solo.** `pnpm check:contrato` compara los records
 de Java con los tipos de TypeScript. Hoy coinciden **19/19**. Hay cuatro
 diferencias aceptadas a propósito, documentadas en el propio script y en
 `API-CONTRACT.md`.

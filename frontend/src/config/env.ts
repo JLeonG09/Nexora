@@ -28,7 +28,7 @@ export const API_PREFIX = `${API_BASE}/api`
  * resuelven contra los datos de `src/api/mock/`, con latencia simulada.
  *
  * Prioridad: la variable de entorno gana; si no esta, el mock se activa solo
- * cuando no hay backend configurado. Asi un `git clone` + `npm run dev`
+ * cuando no hay backend configurado. Asi un `git clone` + `pnpm dev`
  * levanta la app completa sin tener Spring Boot con PostgreSQL levantado.
  */
 export const MOCK_ENABLED =

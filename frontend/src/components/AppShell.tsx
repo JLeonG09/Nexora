@@ -206,7 +206,7 @@ function BarraEstado() {
       {salud && (
         <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-2xs opacity-80">
           <span>Servicio: {salud.status}</span>
-          <span>IA: {salud.aiMode === 'mock' ? 'simulada' : 'real'}</span>
+          <span>IA: {salud.aiMode === 'mock' ? 'simulada' : salud.aiMode === 'local' ? 'local' : 'real'}</span>
           <span>Firmante: {salud.signerMode === 'mock' ? 'simulado' : 'real'}</span>
           <span>Red: {salud.network}</span>
         </p>

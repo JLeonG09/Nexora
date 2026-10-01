@@ -18,7 +18,7 @@
 
 export interface Health {
   status: string
-  aiMode: 'mock' | 'http'
+  aiMode: 'mock' | 'http' | 'local'
   signerMode: 'mock' | 'http'
   network: string
 }
