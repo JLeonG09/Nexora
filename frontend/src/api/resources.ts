@@ -26,6 +26,7 @@ import type {
   AuditEvent,
   ChatMessage,
   ChatResponse,
+  ConversationSummary,
   Contact,
   ContactInput,
   CreateMandateInput,
@@ -135,6 +136,10 @@ export const chat = {
   messages: (conversationId?: string | null) =>
     http
       .get<Page<ChatMessage>>(endpoints.chatMessages(conversationId))
+      .then((pagina) => pagina.items),
+  conversations: (limit = 30) =>
+    http
+      .get<Page<ConversationSummary>>(endpoints.chatConversations(limit))
       .then((pagina) => pagina.items),
 }
 

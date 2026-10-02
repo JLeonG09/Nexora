@@ -204,6 +204,21 @@ export const IconMenu = (p: IconProps) => (
   </Icon>
 )
 
+/** Panel lateral: rectangulo con la columna izquierda marcada. */
+export const IconPanel = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="3" y="4" width="18" height="16" rx="2" />
+    <path d="M9 4v16" />
+  </Icon>
+)
+
+export const IconNuevoChat = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M12 20h-6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6" />
+    <path d="M18 15v6M15 18h6" />
+  </Icon>
+)
+
 export const IconSol = (p: IconProps) => (
   <Icon {...p}>
     <circle cx="12" cy="12" r="4" />

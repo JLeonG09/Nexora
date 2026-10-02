@@ -20,6 +20,7 @@ import type {
   ChatMessage,
   ChatResponse,
   Contact,
+  ConversationSummary,
   Health,
   HistoryItem,
   Limits,
@@ -695,7 +696,7 @@ export async function mockRequest(
       proposalId: null,
       createdAt: ahora(),
     }
-    estado.mensajes.push(usuarioMsg)
+    estado.mensajes.push({ ...usuarioMsg, conversationId })
     auditar('CHAT_RECIBIDO', 'USUARIO', 'Mensaje recibido en el chat', {
       data: { longitud: mensaje.length },
     })
@@ -814,7 +815,7 @@ export async function mockRequest(
         proposalId: propuesta.id,
         createdAt: ahora(),
       }
-      estado.mensajes.push(agenteMsg)
+      estado.mensajes.push({ ...agenteMsg, conversationId })
       const payload: ChatResponse = {
         conversationId,
         reply: { ...agenteMsg },
@@ -831,7 +832,7 @@ export async function mockRequest(
       proposalId: null,
       createdAt: ahora(),
     }
-    estado.mensajes.push(agenteMsg)
+    estado.mensajes.push({ ...agenteMsg, conversationId })
     const payload: ChatResponse = {
       conversationId,
       reply: { ...agenteMsg },
@@ -841,7 +842,34 @@ export async function mockRequest(
   }
 
   if (verbo === 'GET' && ruta === '/chat/messages') {
-    return ok(pagina(estado.mensajes, 0, Math.max(estado.mensajes.length, 1)))
+    const conversacion = queryParams(search).get('conversationId')
+    const items = estado.mensajes
+      .filter((m) => !conversacion || m.conversationId === conversacion)
+      .map(({ conversationId: _conversacion, ...m }) => m)
+    return ok(pagina(items, 0, Math.max(items.length, 1)))
+  }
+
+  if (verbo === 'GET' && ruta === '/chat/conversations') {
+    const porConversacion = new Map<string, ConversationSummary>()
+    for (const m of estado.mensajes) {
+      const id = m.conversationId ?? 'demo'
+      const actual = porConversacion.get(id)
+      if (!actual) {
+        porConversacion.set(id, {
+          conversationId: id,
+          title: m.role === 'USUARIO' ? m.text.slice(0, 60) : 'Conversación',
+          startedAt: m.createdAt,
+          lastMessageAt: m.createdAt,
+          messageCount: 1,
+        })
+        continue
+      }
+      if (actual.title === 'Conversación' && m.role === 'USUARIO') actual.title = m.text.slice(0, 60)
+      actual.lastMessageAt = m.createdAt
+      actual.messageCount += 1
+    }
+    const items = [...porConversacion.values()].sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt))
+    return ok(pagina(items, 0, Math.max(items.length, 1)))
   }
 
   /* --- Propuestas --------------------------------------------------- */

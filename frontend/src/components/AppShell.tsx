@@ -15,10 +15,11 @@ import { Suspense, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 import { useTheme } from '@/hooks'
-import { useAprobaciones, useAlertas, useHealth } from '@/api/queries'
+import { useAprobaciones, useAlertas, useConversaciones, useHealth } from '@/api/queries'
 import { useSesion } from '@/sesion/SesionContext'
+import { ConversacionProvider, useConversacion } from '@/sesion/ConversacionContext'
 import { cn } from '@/lib/cn'
-import { initials } from '@/lib/format'
+import { formatRelative, initials } from '@/lib/format'
 import { Button, Spinner } from './ui'
 import { LogoNexora } from './icons'
 import {
@@ -32,7 +33,9 @@ import {
   IconLuna,
   IconMandato,
   IconMenu,
+  IconNuevoChat,
   IconOjo,
+  IconPanel,
   IconSalir,
   IconSol,
 } from './icons'
@@ -123,27 +126,96 @@ function EnlaceLateral({ enlace, onNavegar }: { enlace: Enlace; onNavegar?: () =
 /* Contenido de la barra lateral                                      */
 /* ------------------------------------------------------------------ */
 
-function ContenidoLateral({ onNavegar }: { onNavegar?: () => void }) {
+/**
+ * Chats anteriores. Cada inicio de sesion abre un chat nuevo, asi que esta
+ * lista es la unica forma de volver a una conversacion pasada.
+ */
+function HistorialChats({ onNavegar }: { onNavegar?: () => void }) {
+  const { data: conversaciones } = useConversaciones()
+  const { conversationId, abrir } = useConversacion()
+  const { pathname } = useLocation()
+  const navegar = useNavigate()
+
+  if (!conversaciones || conversaciones.length === 0) return null
+
+  return (
+    <>
+      <p className="nav-lateral__grupo">Chats recientes</p>
+      <ul className="nav-lateral__lista pb-2">
+        {conversaciones.map((c) => (
+          <li key={c.conversationId}>
+            <button
+              type="button"
+              title={`${c.title} · ${formatRelative(c.lastMessageAt)}`}
+              onClick={() => {
+                abrir(c.conversationId)
+                navegar('/')
+                onNavegar?.()
+              }}
+              className={cn(
+                'nav-lateral__enlace nav-lateral__chat w-full text-left',
+                pathname === '/' && c.conversationId === conversationId && 'activo',
+              )}
+            >
+              <span className="truncar">{c.title}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </>
+  )
+}
+
+function ContenidoLateral({ onNavegar, onEsconder }: { onNavegar?: () => void; onEsconder?: () => void }) {
   const principales = useEnlaces()
   const { user, cerrarSesion } = useSesion()
+  const { nueva } = useConversacion()
   const navegar = useNavigate()
 
   return (
     <>
       <div className="nav-lateral__marca">
         <LogoNexora alto={28} tono="claro" className="nav-lateral__logo" />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="nav-lateral__nombre">Nexora</p>
           <p className="nav-lateral__version">Tu asistente de pagos</p>
         </div>
+        {onEsconder && (
+          <Button
+            variante="fantasma"
+            icono
+            onClick={onEsconder}
+            aria-label="Esconder el menú"
+            title="Esconder el menú"
+            className="text-texto-cierre hover:bg-blanco/10 hover:text-blanco"
+          >
+            <IconPanel />
+          </Button>
+        )}
       </div>
 
-      <nav className="min-h-0 flex-1 overflow-y-auto pt-2" aria-label="Navegación principal">
+      <div className="px-2.5 pb-1">
+        <button
+          type="button"
+          onClick={() => {
+            nueva()
+            navegar('/')
+            onNavegar?.()
+          }}
+          className="nav-lateral__enlace nav-lateral__nuevo w-full"
+        >
+          <IconNuevoChat />
+          <span>Nuevo chat</span>
+        </button>
+      </div>
+
+      <nav className="min-h-0 flex-1 overflow-y-auto pt-1" aria-label="Navegación principal">
         <ul className="nav-lateral__lista">
           {principales.map((enlace) => (
             <EnlaceLateral key={enlace.texto} enlace={enlace} onNavegar={onNavegar} />
           ))}
         </ul>
+        <HistorialChats onNavegar={onNavegar} />
       </nav>
 
       {user && (
@@ -206,7 +278,7 @@ function BarraEstado() {
       {salud && (
         <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-2xs opacity-80">
           <span>Servicio: {salud.status}</span>
-          <span>IA: {salud.aiMode === 'mock' ? 'simulada' : salud.aiMode === 'local' ? 'local' : 'real'}</span>
+          <span>IA: {salud.aiMode === 'mock' ? 'simulada' : salud.aiMode === 'local' || salud.aiMode === 'hybrid' ? 'local' : 'real'}</span>
           <span>Firmante: {salud.signerMode === 'mock' ? 'simulado' : 'real'}</span>
           <span>Red: {salud.network}</span>
         </p>
@@ -219,19 +291,64 @@ function BarraEstado() {
 /* Marco                                                              */
 /* ------------------------------------------------------------------ */
 
+const CLAVE_LATERAL_OCULTO = 'nexora.lateral.oculto'
+
+/** En escritorio el lateral se puede esconder; la preferencia se recuerda. */
+function useLateralOculto() {
+  const [oculto, setOculto] = useState(() => {
+    try {
+      return localStorage.getItem(CLAVE_LATERAL_OCULTO) === '1'
+    } catch {
+      return false
+    }
+  })
+
+  function cambiar(valor: boolean) {
+    setOculto(valor)
+    try {
+      localStorage.setItem(CLAVE_LATERAL_OCULTO, valor ? '1' : '0')
+    } catch {
+      /* sin persistencia */
+    }
+  }
+
+  return [oculto, cambiar] as const
+}
+
 export function AppShell() {
+  return (
+    <ConversacionProvider>
+      <Marco />
+    </ConversacionProvider>
+  )
+}
+
+function Marco() {
   const [cajonAbierto, setCajonAbierto] = useState(false)
+  const [lateralOculto, setLateralOculto] = useLateralOculto()
   const { tema, alternar } = useTheme()
   const { user, cerrarSesion } = useSesion()
   const navegar = useNavigate()
 
   return (
-    <div className="panel-app">
+    <div className={cn('panel-app', lateralOculto && 'lateral-oculto')}>
       {/* Lateral de escritorio */}
       <aside className="nav-lateral">
-        <ContenidoLateral />
+        <ContenidoLateral onEsconder={() => setLateralOculto(true)} />
         <BarraEstado />
       </aside>
+
+      {lateralOculto && (
+        <button
+          type="button"
+          onClick={() => setLateralOculto(false)}
+          aria-label="Mostrar el menú"
+          title="Mostrar el menú"
+          className="abrir-lateral"
+        >
+          <IconPanel className="h-5 w-5" />
+        </button>
+      )}
 
       {/* Barra superior en movil */}
       <header className="barra-superior">
@@ -268,7 +385,7 @@ export function AppShell() {
         </div>
       </header>
 
-      <main className="min-w-0 bg-fondo">
+      <main className="fondo-galaxia min-w-0 bg-fondo">
         {/* Cada pantalla llega por separado: mientras tanto el marco se queda. */}
         <Suspense
           fallback={
