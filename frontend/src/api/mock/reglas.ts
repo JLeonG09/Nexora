@@ -230,12 +230,14 @@ function detectarContacto(texto: string): string | null {
  * nombre porque exige mayúscula detrás, así que "por para luego" no inventa
  * destinatario.
  *
- * El modificador `(?i:...)` es solo para la palabra clave; el nombre se exige
- * en mayúscula porque así se escribe un nombre en español.
+ * "a" y "para" se aceptan en cualquier combinación de mayúsculas. El nombre
+ * se exige con mayúscula inicial, como se escribe un nombre en español.
+ * Cada letra de la palabra clave va entre corchetes porque un grupo `(?i:...)`
+ * no es una expresión regular válida en JavaScript y Vite rechaza el build.
  */
 function nombreEnTexto(texto: string): string | null {
   const m = texto.match(
-    /\b(?i:a|para)\s+([A-ZÁÉÍÓÚÑÜ][\p{L}'’-]{1,20}(?:\s+[A-ZÁÉÍÓÚÑÜ][\p{L}'’-]{1,20}){0,2})/u,
+    /\b(?:[aA]|[pP][aA][rR][aA])\s+([A-ZÁÉÍÓÚÑÜ][\p{L}'’-]{1,20}(?:\s+[A-ZÁÉÍÓÚÑÜ][\p{L}'’-]{1,20}){0,2})/u,
   )
   if (!m) return null
   return m[1].trim()
