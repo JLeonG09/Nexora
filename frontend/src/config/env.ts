@@ -57,9 +57,8 @@ export const PRIVY_CLIENT_ID = (import.meta.env.VITE_PRIVY_CLIENT_ID ?? '').trim
 export const PRIVY_ENABLED = PRIVY_APP_ID !== ''
 
 /** Red Stellar por defecto. El backend solo admite TESTNET por ahora. */
-export const STELLAR_NETWORK = (import.meta.env.VITE_STELLAR_NETWORK ?? 'TESTNET') as
-  | 'TESTNET'
-  | 'PUBLIC'
+export const STELLAR_NETWORK: 'TESTNET' | 'PUBLIC' =
+  (import.meta.env.VITE_STELLAR_NETWORK ?? '').toUpperCase() === 'PUBLIC' ? 'PUBLIC' : 'TESTNET'
 
 /**
  * Base del explorador (Stellar Expert) para abrir una transaccion o un

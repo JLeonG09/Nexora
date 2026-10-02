@@ -142,7 +142,8 @@ async function requestHttp<T>(
   const {
     signal: externalSignal,
     timeoutMs = DEFAULT_TIMEOUT_MS,
-    retries = MAX_RETRIES,
+    // Reintentar una escritura que expiró en el navegador la repite en el backend (p. ej. un pago duplicado).
+    retries = method.toUpperCase() === 'GET' ? MAX_RETRIES : 0,
     headers: extraHeaders,
   } = options
 
@@ -157,7 +158,7 @@ async function requestHttp<T>(
   if (body !== undefined) headers['Content-Type'] = 'application/json'
   if (userId) headers[USER_HEADER] = userId
 
-  const url = path.startsWith('http') ? path : path
+  const url = path
 
   let lastError: unknown
 

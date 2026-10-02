@@ -29,21 +29,19 @@ comportamiento. Sirve para trabajar la interfaz entera.
 
 ### Contra el backend real
 
-```bash
-# PowerShell
-$env:VITE_API_URL="http://localhost:8080"; pnpm dev
-```
+Con el backend en `localhost:8080` (por ejemplo `docker compose up -d` en la raíz), crea `.env.local` con
+`VITE_MOCK=false` y deja `VITE_API_URL` vacía: las rutas siguen siendo relativas y el proxy de Vite las manda al
+backend (`VITE_DEV_PROXY_TARGET` si está en otro puerto).
 
-```bash
-# bash
-VITE_API_URL=http://localhost:8080 pnpm dev
-```
+`VITE_API_URL` solo hace falta si el frontend se sirve en un dominio distinto al de la API; entonces ese origen
+tiene que estar en `CORS_ALLOWED_ORIGINS` del backend.
 
 | Variable | Por defecto | |
 |---|---|---|
-| `VITE_API_URL` | *(vacío)* | Base de la API. Vacío = rutas relativas + mock. |
-| `VITE_MOCK` | `auto` | `true` fuerza el mock; `auto` lo activa si no hay `VITE_API_URL`. |
-| `VITE_STELLAR_NETWORK` | `TESTNET` | El backend solo admite TESTNET. |
+| `VITE_API_URL` | *(vacío)* | Base absoluta de la API. Vacío = rutas relativas (`/api/...`). |
+| `VITE_MOCK` | `auto` | `true` = mock, `false` = backend real; `auto` usa el mock si no hay `VITE_API_URL`. |
+| `VITE_DEV_PROXY_TARGET` | `http://localhost:8080` | Destino del proxy de `pnpm dev`. |
+| `VITE_STELLAR_NETWORK` | `testnet` | `testnet` o `public`; solo cambia los enlaces al explorador. |
 
 Requiere **Node ≥ 20.19** (usa `--experimental-strip-types`).
 

@@ -126,7 +126,12 @@ export const chat = {
    * `proposal` resumido con su estado.
    */
   send: (message: string, conversationId?: string | null) =>
-    http.post<ChatResponse>(endpoints.sendChat(), { message, conversationId: conversationId ?? null }),
+    http.post<ChatResponse>(
+      endpoints.sendChat(),
+      { message, conversationId: conversationId ?? null },
+      // Un modelo local en CPU tarda; el backend espera a la IA hasta 90 s.
+      { timeoutMs: 120_000 },
+    ),
   messages: (conversationId?: string | null) =>
     http
       .get<Page<ChatMessage>>(endpoints.chatMessages(conversationId))

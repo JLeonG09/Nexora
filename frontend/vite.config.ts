@@ -14,8 +14,7 @@ export default defineConfig({
   server: {
     port: 5173,
     // El backend corre en 8080. Este proxy hace que /api vaya al backend real
-    // sin tocar CORS ni usar URLs absolutas en el codigo.
-    // En produccion lo desactivas con VITE_USE_PROXY=false y usas VITE_API_URL.
+    // sin URLs absolutas en el codigo. Solo se usa con VITE_API_URL vacia.
     proxy: {
       '/api': {
         target: process.env.VITE_DEV_PROXY_TARGET ?? 'http://localhost:8080',
