@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/riendas_test
-    username: riendas
-    password: riendas_dev
+    url: jdbc:postgresql://localhost:5432/nexora_test
+    username: nexora
+    password: nexora_dev
 
 app:
   ai:

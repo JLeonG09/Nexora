@@ -37,6 +37,20 @@ function Icon({ children, ...props }: IconProps) {
 
 /* --- Navegacion ------------------------------------------------------ */
 
+/** Inicio: casa. */
+export const IconInicio = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z" />
+  </Icon>
+)
+
+/** Desplegar: flecha hacia abajo. */
+export const IconFlechaAbajo = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="m6 9 6 6 6-6" />
+  </Icon>
+)
+
 /** El chat: la pantalla principal. Burbuja con puntos. */
 export const IconChat = (p: IconProps) => (
   <Icon {...p}>
@@ -100,6 +114,15 @@ export const IconDemo = (p: IconProps) => (
     <circle cx="12" cy="12" r="8.5" />
     <path d="M12 7.5v5" />
     <path d="M8.5 15.5a4 4 0 0 0 7 0" />
+  </Icon>
+)
+
+/** Mi billetera: cartera con una tarjeta asomando y el cierre a la derecha. */
+export const IconBilletera = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M6 7V6a1.5 1.5 0 0 1 1.5-1.5h9A1.5 1.5 0 0 1 18 6v1" />
+    <rect x="3.5" y="7" width="17" height="12.5" rx="2" />
+    <path d="M20.5 11.5H16a1.75 1.75 0 0 0 0 3.5h4.5" />
   </Icon>
 )
 /** Alias con nombre de dominio: "la billetera" en vez de "la cartera". */
@@ -280,37 +303,37 @@ export const IconCargar = (p: IconProps) => (
 )
 
 /**
- * La marca real, como imagen.
+ * La marca: monograma "N" en un cuadrado con un nodo dorado.
  *
- * Sustituye al antiguo `LogoNexora` (una "N" dibujada a mano) porque la marca
- * buena la trae el usuario como raster. Los PNG de `public/` salen del recorte
- * del original, con el fondo puesto a transparente; `logo-original.png` es el
- * archivo tal cual llegó, por si hay que volver a recortar.
- *
- * Se usa `<img>` y no un SVG en linea a proposito: el logo tiene degradados
- * multicolor y un PNG de 32 px pesa 3,7 kB contra los kilobytes que haria
- * cualquier SVG equivalente. Para el color puro de la interfaz estan los tokens
- * de `index.css`.
+ * SVG en linea para que tome los colores del tema. La misma figura esta en
+ * `public/favicon.svg`; si se cambia aqui, hay que cambiarla alli.
  */
-export function LogoRiendas(props: {
-  /** Alto en px. El ancho sale de la proporcion de la marca (577:629). */
+export function LogoNexora(props: {
+  /** Lado en px: el logo es cuadrado. */
   alto?: number
   className?: string
+  /**
+   * `tema` sigue al tema (negro en claro, blanco en oscuro). `claro` es para
+   * fondos que siempre son oscuros, como la barra lateral.
+   */
+  tono?: 'tema' | 'claro'
 }) {
-  const { alto = 24, className } = props
-  // Cada tamano tiene su archivo: en la barra lateral (24 px) no tiene sentido
-  // descargar el de 256.
-  const archivo = alto <= 40 ? 'logo-32.png' : alto <= 72 ? 'logo-64.png' : 'logo-128.png'
+  const { alto = 24, className, tono = 'tema' } = props
+  const fondo = tono === 'claro' ? '#ffffff' : 'var(--color-tinta)'
+  const letra = tono === 'claro' ? '#0a0a0a' : 'var(--color-fondo)'
   return (
-    <img
-      src={`/${archivo}`}
-      alt=""
-      aria-hidden="true"
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 32 32"
       width={alto}
-      height={Math.round((alto * 629) / 577)}
-      decoding="async"
+      height={alto}
+      aria-hidden="true"
+      focusable="false"
       className={className}
-      style={{ height: `${alto}px`, width: 'auto' }}
-    />
+    >
+      <rect width="32" height="32" rx="8" fill={fondo} />
+      <path d="M9 23V9h3.4l6.8 9.6V9h3.4v14h-3.4l-6.8-9.6V23z" fill={letra} />
+      <circle cx="24.6" cy="7.4" r="2.4" fill="var(--color-oro-claro)" />
+    </svg>
   )
 }

@@ -1,0 +1,3 @@
+# pnpm 11 no ejecuta scripts de instalación sin permiso explícito.
+allowBuilds:
+  esbuild: true

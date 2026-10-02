@@ -238,7 +238,7 @@ async function main(): Promise<void> {
     console.log("5) Agregando regla CallContract(USDC) + agente + spending-limit...");
     const addTx = await kit.rules.add(
       createCallContractContext(usdc),
-      "agente-riendas",
+      "agente-nexora",
       [agentSigner],
       policies,
       validUntil,

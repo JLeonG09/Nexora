@@ -1,4 +1,4 @@
-# Riendas
+# Nexora
 
 Panel de pagos con agente y mandato sobre Stellar.
 
@@ -10,7 +10,7 @@ tu llave sin pasar por el agente, te avisa.
 en el backend. El panel registra, muestra y pide las dos cosas que requieren a
 una persona: crear el mandato y aprobar un pago.
 
-Cliente del backend `com.nexora.riendas` (Spring Boot). El contrato que exige
+Cliente del backend `com.nexora` (Spring Boot). El contrato que exige
 está en [`API-CONTRACT.md`](./API-CONTRACT.md).
 
 ---
@@ -18,8 +18,9 @@ está en [`API-CONTRACT.md`](./API-CONTRACT.md).
 ## Arrancar
 
 ```bash
-npm install
-npm run dev
+corepack enable   # una vez: activa la versión de pnpm fijada en package.json
+pnpm install
+pnpm dev
 ```
 
 Y ya está. Sin backend, sin PostgreSQL: si no hay `VITE_API_URL`, la app usa
@@ -28,21 +29,19 @@ comportamiento. Sirve para trabajar la interfaz entera.
 
 ### Contra el backend real
 
-```bash
-# PowerShell
-$env:VITE_API_URL="http://localhost:8080"; npm run dev
-```
+Con el backend en `localhost:8080` (por ejemplo `docker compose up -d` en la raíz), crea `.env.local` con
+`VITE_MOCK=false` y deja `VITE_API_URL` vacía: las rutas siguen siendo relativas y el proxy de Vite las manda al
+backend (`VITE_DEV_PROXY_TARGET` si está en otro puerto).
 
-```bash
-# bash
-VITE_API_URL=http://localhost:8080 npm run dev
-```
+`VITE_API_URL` solo hace falta si el frontend se sirve en un dominio distinto al de la API; entonces ese origen
+tiene que estar en `CORS_ALLOWED_ORIGINS` del backend.
 
 | Variable | Por defecto | |
 |---|---|---|
-| `VITE_API_URL` | *(vacío)* | Base de la API. Vacío = rutas relativas + mock. |
-| `VITE_MOCK` | `auto` | `true` fuerza el mock; `auto` lo activa si no hay `VITE_API_URL`. |
-| `VITE_STELLAR_NETWORK` | `TESTNET` | El backend solo admite TESTNET. |
+| `VITE_API_URL` | *(vacío)* | Base absoluta de la API. Vacío = rutas relativas (`/api/...`). |
+| `VITE_MOCK` | `auto` | `true` = mock, `false` = backend real; `auto` usa el mock si no hay `VITE_API_URL`. |
+| `VITE_DEV_PROXY_TARGET` | `http://localhost:8080` | Destino del proxy de `pnpm dev`. |
+| `VITE_STELLAR_NETWORK` | `testnet` | `testnet` o `public`; solo cambia los enlaces al explorador. |
 
 Requiere **Node ≥ 20.19** (usa `--experimental-strip-types`).
 
@@ -52,21 +51,21 @@ Requiere **Node ≥ 20.19** (usa `--experimental-strip-types`).
 
 | | |
 |---|---|
-| `npm run dev` | Servidor de Vite. |
-| `npm run build` | `tsc -b` + build de producción. |
-| `npm run preview` | Sirve el build. |
-| `npm run typecheck` | El contrato de TypeScript entero. |
-| `npm run lint` | ESLint. |
-| `npm run smoke` | **62 comprobaciones** del mock, sin navegador. |
-| `npm run check:format` | Aritmética decimal: acarreos, nulos, cifras grandes. |
-| `npm run check:contrato` | Compara los DTO de Java con `src/api/types.ts`. |
+| `pnpm dev` | Servidor de Vite. |
+| `pnpm build` | `tsc -b` + build de producción. |
+| `pnpm preview` | Sirve el build. |
+| `pnpm typecheck` | El contrato de TypeScript entero. |
+| `pnpm lint` | ESLint. |
+| `pnpm smoke` | **62 comprobaciones** del mock, sin navegador. |
+| `pnpm check:format` | Aritmética decimal: acarreos, nulos, cifras grandes. |
+| `pnpm check:contrato` | Compara los DTO de Java con `src/api/types.ts`. |
 
 Los tres últimos no usan framework de tests: son scripts de Node que se leen y
 se ejecutan en un segundo. El de contrato necesita el backend a disco; si no
 está, lo dice y sale bien:
 
 ```bash
-NEXORA_BACKEND="C:/ruta/al/backend" npm run check:contrato
+NEXORA_BACKEND="C:/ruta/al/backend" pnpm check:contrato
 ```
 
 ---
@@ -126,7 +125,7 @@ visible. La aritmética está en `src/lib/format.ts` con `BigInt`, y
 **El chat es la pantalla principal.** Las otras ocho páginas son vistas del
 mismo estado, no secciones independientes.
 
-**El contrato se comprueba solo.** `npm run check:contrato` compara los records
+**El contrato se comprueba solo.** `pnpm check:contrato` compara los records
 de Java con los tipos de TypeScript. Hoy coinciden **19/19**. Hay cuatro
 diferencias aceptadas a propósito, documentadas en el propio script y en
 `API-CONTRACT.md`.

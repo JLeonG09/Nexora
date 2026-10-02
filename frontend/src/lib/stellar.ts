@@ -54,6 +54,17 @@ export function explorerAccount(publicKey: string): string {
   return `${STELLAR_EXPLORER}/account/${publicKey}`
 }
 
+/**
+ * Enlace al explorador para cualquier direccion. Las `C...` son contratos
+ * (la smart account) y Stellar Expert las muestra en `/contract/`; las
+ * `G...` son cuentas normales.
+ */
+export function explorerAddress(address: string): string {
+  return address.startsWith('C')
+    ? `${STELLAR_EXPLORER}/contract/${address}`
+    : explorerAccount(address)
+}
+
 /** Enlace al explorador para una transaccion. */
 export function explorerTx(hash: string): string {
   return `${STELLAR_EXPLORER}/tx/${hash}`

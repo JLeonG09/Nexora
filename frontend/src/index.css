@@ -1,5 +1,5 @@
 /* =====================================================================
-   RIENDAS — sistema de diseño "valla de paso"
+   NEXORA — sistema de diseño "valla de paso"
    Tailwind CSS v4. En v4 la configuracion vive AQUI, no en un
    tailwind.config.js. Cada token genera utilidades automaticamente.
 
@@ -66,19 +66,21 @@
 
   /* Superficies y tinta */
   --color-fondo: #ffffff;
-  --color-fondo-alt: #f3f5f8;
+  --color-fondo-alt: #f5f5f4;
   --color-superficie: #ffffff;
-  --color-superficie-2: #f8fafc;
-  --color-tinta: #16191d;
-  --color-tinta-media: #555c66;
-  --color-filete: #dde2e9;
-  --color-filete-fuerte: #8b95a3;
+  --color-superficie-2: #fafafa;
+  --color-tinta: #111111;
+  --color-tinta-media: #57575e;
+  --color-filete: #e4e4e7;
+  --color-filete-fuerte: #8a8a92;
 
-  /* Accion (botones, enlaces, foco). */
-  --color-acento: #2f5fa8;
-  --color-acento-fuerte: #1f4480;
-  --color-acento-50: #e6eef8;
-  --color-acento-sobre-oscuro: #9db8e3;
+  /* Accion (botones, enlaces, foco). Negro en claro, casi blanco en oscuro. */
+  --color-acento: #111111;
+  --color-acento-fuerte: #000000;
+  --color-acento-50: #ededed;
+  --color-acento-sobre-oscuro: #e8e8e8;
+  /* Texto e iconos encima de un fondo de acento. */
+  --color-sobre-acento: #ffffff;
 
   /* LED encendido: estado vivo (online, confirmado, sincronizado). */
   --color-led: #6abf3c;
@@ -102,9 +104,9 @@
   --color-neutro: #4d545e;
   --color-neutro-50: #eef0f3;
 
-  /* Cierre (pie, login): azul casi negro. */
-  --color-fondo-cierre: #0f1e36;
-  --color-texto-cierre: #c3d0e4;
+  /* Cierre (barra lateral, pie, login): negro. */
+  --color-fondo-cierre: #0a0a0a;
+  --color-texto-cierre: #c9c9cc;
 
   /* `--color-*: initial` de arriba borra TODA la paleta de Tailwind v4,
      incluidos `white` y `current`. Sobre el fondo de cierre el texto tiene que
@@ -308,6 +310,7 @@
     background-color: var(--color-superficie);
     border: 1px solid var(--color-filete);
     border-radius: var(--radius-card);
+    box-shadow: inset 0 1px 0 var(--brillo-borde), var(--sombra-1);
   }
 
   /* Panel "valla": celdas pegadas separadas por filetes de 1px.
@@ -415,7 +418,12 @@
 
   .btn-primario {
     background-color: var(--color-acento);
-    color: #fff;
+    color: var(--color-sobre-acento);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.14), var(--sombra-2);
+  }
+  .btn-primario:active:not(:disabled) {
+    transform: translateY(1px);
+    box-shadow: var(--sombra-1);
   }
   .btn-primario:hover:not(:disabled) {
     background-color: var(--color-acento-fuerte);
@@ -691,9 +699,12 @@
     top: 0;
     height: 100dvh;
     flex-direction: column;
-    background-color: var(--color-fondo-cierre);
+    background:
+      radial-gradient(18rem 14rem at 0% 0%, rgb(224 166 58 / 0.08), transparent 70%),
+      linear-gradient(180deg, #121212, var(--color-fondo-cierre) 40%);
     color: var(--color-texto-cierre);
     border-right: 1px solid rgb(255 255 255 / 0.08);
+    box-shadow: 8px 0 24px -12px rgb(0 0 0 / 0.5);
   }
   @media (min-width: 64rem) {
     .nav-lateral {
@@ -744,7 +755,7 @@
     display: flex;
     align-items: center;
     gap: 0.625rem;
-    min-height: 2.375rem;
+    min-height: 2.5rem;
     padding: 0.4375rem 0.75rem;
     border-radius: var(--radius-control);
     font-size: var(--text-sm);
@@ -760,7 +771,8 @@
     color: #fff;
   }
   .nav-lateral__enlace.activo {
-    background-color: rgb(255 255 255 / 0.11);
+    background: linear-gradient(90deg, rgb(255 255 255 / 0.12), rgb(255 255 255 / 0.03));
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06);
     color: #fff;
   }
   .nav-lateral__enlace svg {
@@ -778,6 +790,7 @@
     height: 1.25rem;
     border-radius: 999px;
     background-color: var(--color-oro-claro);
+    box-shadow: 0 0 10px 1px rgb(224 166 58 / 0.6);
   }
   .nav-lateral__enlace {
     position: relative;
@@ -1091,6 +1104,100 @@
 }
 
 /* ---------------------------------------------------------------------
+   Landing: revelado al bajar. Consume LandingPage (useRevelarAlBajar).
+   Solo se oculta con `.revelar-listo`, que pone el hook si hay
+   IntersectionObserver y no se pidio movimiento reducido: sin JS el
+   contenido se ve siempre. Lo revelado no vuelve a ocultarse.
+   `--orden` escalona hermanos; cada pieza dura menos de medio segundo.
+   --------------------------------------------------------------------- */
+.revelar-listo [data-revelar] {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 450ms var(--ease-salida),
+    transform 450ms var(--ease-salida);
+  transition-delay: calc(var(--orden, 0) * 80ms);
+}
+.revelar-listo [data-revelar='lateral'] {
+  transform: translateX(28px);
+}
+.revelar-listo [data-revelar='mensaje'] {
+  transform: translateY(10px) scale(0.98);
+  transition-delay: calc(150ms + var(--orden, 0) * 320ms);
+}
+.revelar-listo [data-revelar].revelado {
+  opacity: 1;
+  transform: none;
+}
+
+/* ---------------------------------------------------------------------
+   Pantalla de acceso (AltaPage). Mismo publico que la landing: los campos
+   y botones del panel se agrandan solo aqui, no en el resto de la app.
+   --------------------------------------------------------------------- */
+.acceso .campo {
+  gap: 0.5rem;
+}
+.acceso .campo__etiqueta {
+  font-size: 1.0625rem;
+}
+.acceso .campo__ayuda,
+.acceso .campo__error {
+  font-size: 1rem;
+}
+.acceso .entrada {
+  min-height: 3rem;
+  padding: 0.75rem 0.875rem;
+  font-size: 1.125rem;
+}
+.acceso .btn:not(.btn-sm) {
+  min-height: 3rem;
+  padding-inline: 1.25rem;
+  font-size: 1.125rem;
+}
+.acceso .btn-sm {
+  min-height: 2.75rem;
+  font-size: 1rem;
+}
+
+.acceso-pestanas {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border: 1px solid var(--color-filete);
+  border-radius: var(--radius-control);
+  background-color: var(--color-superficie-2);
+}
+.acceso-pestanas a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  border: 1px solid transparent;
+  border-radius: calc(var(--radius-control) - 2px);
+  font-size: 1.0625rem;
+  font-weight: 500;
+  color: var(--color-tinta-media);
+  transition:
+    background-color var(--duracion) ease,
+    color var(--duracion) ease;
+}
+.acceso-pestanas a:hover {
+  color: var(--color-tinta);
+}
+.acceso-pestanas a[aria-current='page'] {
+  border-color: var(--color-filete);
+  background-color: var(--color-superficie);
+  color: var(--color-tinta);
+  font-weight: 600;
+}
+
+/* Al cambiar de pestana el formulario entra, no salta. */
+.acceso-entrada {
+  animation: subir 260ms var(--ease-salida);
+}
+
+/* ---------------------------------------------------------------------
    Tema oscuro. Se activa de dos formas con los MISMOS valores:
      1. <html data-tema="oscuro">  (eleccion guardada; la imprime index.html)
      2. Sin eleccion, si el sistema pide modo oscuro.
@@ -1105,19 +1212,20 @@
 }
 :root[data-tema='oscuro'] {
   color-scheme: dark;
-  --color-fondo: #0c1017;
-  --color-fondo-alt: #0a0e14;
-  --color-superficie: #111721;
-  --color-superficie-2: #161d29;
-  --color-tinta: #eef1f6;
-  --color-tinta-media: #9aa5b4;
-  --color-filete: #26313f;
-  --color-filete-fuerte: #66748a;
+  --color-fondo: #0b0b0c;
+  --color-fondo-alt: #080809;
+  --color-superficie: #131315;
+  --color-superficie-2: #1a1a1d;
+  --color-tinta: #f2f2f2;
+  --color-tinta-media: #a1a1aa;
+  --color-filete: #2a2a2e;
+  --color-filete-fuerte: #6b6b72;
 
-  --color-acento: #3f6fb5;
-  --color-acento-fuerte: #9db8e3;
-  --color-acento-50: #1b2a3f;
-  --color-acento-sobre-oscuro: #9db8e3;
+  --color-acento: #f2f2f2;
+  --color-acento-fuerte: #ffffff;
+  --color-acento-50: #222225;
+  --color-acento-sobre-oscuro: #e8e8e8;
+  --color-sobre-acento: #0b0b0c;
 
   --color-led: #6abf3c;
   --color-led-borde: #7fd155;
@@ -1138,24 +1246,25 @@
   --color-neutro: #9aa5b4;
   --color-neutro-50: #1c232e;
 
-  --color-fondo-cierre: #080c12;
-  --color-texto-cierre: #9fb0c8;
+  --color-fondo-cierre: #050505;
+  --color-texto-cierre: #b5b5ba;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-tema='claro']) {
     color-scheme: dark;
-    --color-fondo: #0c1017;
-    --color-fondo-alt: #0a0e14;
-    --color-superficie: #111721;
-    --color-superficie-2: #161d29;
-    --color-tinta: #eef1f6;
-    --color-tinta-media: #9aa5b4;
-    --color-filete: #26313f;
-    --color-filete-fuerte: #66748a;
-    --color-acento: #3f6fb5;
-    --color-acento-fuerte: #9db8e3;
-    --color-acento-50: #1b2a3f;
-    --color-acento-sobre-oscuro: #9db8e3;
+    --color-fondo: #0b0b0c;
+    --color-fondo-alt: #080809;
+    --color-superficie: #131315;
+    --color-superficie-2: #1a1a1d;
+    --color-tinta: #f2f2f2;
+    --color-tinta-media: #a1a1aa;
+    --color-filete: #2a2a2e;
+    --color-filete-fuerte: #6b6b72;
+    --color-acento: #f2f2f2;
+    --color-acento-fuerte: #ffffff;
+    --color-acento-50: #222225;
+    --color-acento-sobre-oscuro: #e8e8e8;
+    --color-sobre-acento: #0b0b0c;
     --color-led: #6abf3c;
     --color-led-borde: #7fd155;
     --color-led-50: #16281a;
@@ -1172,8 +1281,8 @@
     --color-info-50: #12242e;
     --color-neutro: #9aa5b4;
     --color-neutro-50: #1c232e;
-    --color-fondo-cierre: #080c12;
-    --color-texto-cierre: #9fb0c8;
+    --color-fondo-cierre: #050505;
+    --color-texto-cierre: #b5b5ba;
   }
 }
 
@@ -1186,6 +1295,99 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ---------------------------------------------------------------------
+   Sombras (solo para separar capas reales, como un dialogo) y la marca
+   del asistente. Sin luz ambiental, sin grano, sin texto con degradado.
+   --------------------------------------------------------------------- */
+:root {
+  --sombra-1: 0 1px 2px rgb(0 0 0 / 0.06), 0 1px 1px rgb(0 0 0 / 0.04);
+  --sombra-2: 0 6px 16px -4px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.06);
+  --sombra-3: 0 28px 56px -16px rgb(0 0 0 / 0.22), 0 10px 20px -10px rgb(0 0 0 / 0.12);
+  --brillo-borde: rgb(255 255 255 / 0.9);
+}
+:root[data-tema='oscuro'] {
+  --sombra-1: 0 1px 2px rgb(0 0 0 / 0.5);
+  --sombra-2: 0 8px 20px -6px rgb(0 0 0 / 0.7), 0 2px 4px -2px rgb(0 0 0 / 0.5);
+  --sombra-3: 0 36px 72px -20px rgb(0 0 0 / 0.9), 0 0 0 1px rgb(255 255 255 / 0.04);
+  --brillo-borde: rgb(255 255 255 / 0.07);
+}
+
+/* Superficie de apoyo: borde de 1 px y una sombra minima. Nada flota. */
+.elevada {
+  background-color: var(--color-superficie);
+  border: 1px solid var(--color-filete);
+  box-shadow: var(--sombra-1);
+}
+
+/* El asistente tiene una marca fija: un circulo dorado sin brillo ni ondas.
+   Solo se mueve cuando esta pensando, porque eso SI es un estado. */
+.orbe {
+  flex-shrink: 0;
+  width: var(--orbe, 3rem);
+  height: var(--orbe, 3rem);
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 30%, #f6d891 0%, #e0a63a 45%, #a8741c 100%);
+}
+.orbe-pequeno {
+  --orbe: 1.75rem;
+}
+.orbe.pensando {
+  animation: orbe-pensar 1.2s ease-in-out infinite;
+}
+@keyframes orbe-pensar {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* Entrada suave; `--orden` escalona varios elementos seguidos. */
+.emerger {
+  animation: emerger 240ms var(--ease-salida) both;
+  animation-delay: calc(var(--orden, 0) * 60ms);
+}
+@keyframes emerger {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---------------------------------------------------------------------
+   Accesibilidad elegida por el usuario (Primeros pasos o /accesibilidad).
+   Los tamanos del tema van en rem, asi que cambiar la letra del <html>
+   escala toda la interfaz de forma proporcional.
+   --------------------------------------------------------------------- */
+:root[data-letra='grande'] {
+  font-size: 112.5%;
+}
+:root[data-letra='muy-grande'] {
+  font-size: 125%;
+}
+:root[data-contraste='alto'] {
+  --color-tinta-media: var(--color-tinta);
+  --color-filete: var(--color-filete-fuerte);
+  --color-texto-cierre: #ffffff;
+}
+:root[data-contraste='alto'] a:not(.btn):not(.nav-lateral__enlace) {
+  text-decoration: underline;
+}
+:root[data-movimiento='reducido'] *,
+:root[data-movimiento='reducido'] *::before,
+:root[data-movimiento='reducido'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
 }
 
 @media print {

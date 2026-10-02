@@ -93,7 +93,7 @@ function toFieldMap(details: FieldError[] | null | undefined): Record<string, st
 }
 
 /**
- * Filtra el cuerpo de error de Riendas.
+ * Filtra el cuerpo de error de Nexora.
  *
  * El unico formato valido es `ErrorResponse` (record del backend). Se tolera
  * que venga otra cosa (un 502 de un proxy, por ejemplo) sin romper.

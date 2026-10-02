@@ -1,7 +1,7 @@
 /**
  * Estado en memoria del backend simulado.
  *
- * Reproduce lo que hace `com.nexora.riendas` para que el panel se pueda
+ * Reproduce lo que hace `com.nexora` para que el panel se pueda
  * probar sin PostgreSQL ni servicios externos. La regla que mas importa:
  *
  *   TODOS los ids se guardan y se comparan como UUID CRUDOS.

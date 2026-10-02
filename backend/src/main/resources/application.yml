@@ -1,12 +1,12 @@
 spring:
   application:
-    name: riendas-backend
+    name: nexora-backend
   config:
     import: optional:file:.env[.properties]
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/riendas}
-    username: ${DB_USERNAME:riendas}
-    password: ${DB_PASSWORD:riendas_dev}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/nexora}
+    username: ${DB_USERNAME:nexora}
+    password: ${DB_PASSWORD:nexora_dev}
   jpa:
     open-in-view: false
     hibernate:
@@ -46,6 +46,8 @@ app:
     connect-timeout-ms: ${AI_CONNECT_TIMEOUT_MS:2000}
     read-timeout-ms: ${AI_READ_TIMEOUT_MS:15000}
     min-confidence: ${AI_MIN_CONFIDENCE:0.7}
+    # Solo con AI_MODE=local: modelo que sirve Ollama o `cactus serve`.
+    model: ${AI_MODEL:qwen2.5:3b}
   signer:
     mode: ${SIGNER_MODE:mock}
     base-url: ${SIGNER_BASE_URL:http://localhost:3001}

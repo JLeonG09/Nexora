@@ -1,6 +1,6 @@
-# Riendas · Backend
+# Nexora · Backend
 
-API REST de Riendas: recibe los pedidos de pago en lenguaje natural, los pasa a la IA, **valida todo lo que la IA
+API REST de Nexora: recibe los pedidos de pago en lenguaje natural, los pasa a la IA, **valida todo lo que la IA
 devuelve** contra los contactos y el mandato del usuario, pide la firma al servicio firmante y deja cada paso en la
 auditoría. También vigila la red: si sale de la smart account un pago que no hizo el agente, avisa al usuario.
 
@@ -16,9 +16,9 @@ auditoría. También vigila la red: si sale de la smart account un pago que no h
 1. Crea el usuario y las bases (la de tests se limpia antes de cada test):
 
    ```sql
-   CREATE USER riendas WITH PASSWORD 'riendas_dev';
-   CREATE DATABASE riendas OWNER riendas;
-   CREATE DATABASE riendas_test OWNER riendas;
+   CREATE USER nexora WITH PASSWORD 'nexora_dev';
+   CREATE DATABASE nexora OWNER nexora;
+   CREATE DATABASE nexora_test OWNER nexora;
    ```
 
 2. Copia `.env.example` a `.env` y ajusta lo que necesites. Sin `.env` arranca con los valores por defecto:
@@ -34,7 +34,7 @@ auditoría. También vigila la red: si sale de la smart account un pago que no h
    - Swagger: `http://localhost:8080/swagger-ui.html`
    - Salud: `GET /api/health`
 
-4. Tests (usan `riendas_test` y el perfil `test`, con todo simulado y las tareas programadas apagadas):
+4. Tests (usan `nexora_test` y el perfil `test`, con todo simulado y las tareas programadas apagadas):
 
    ```bash
    ./mvnw test
@@ -52,10 +52,11 @@ auditoría. También vigila la red: si sale de la smart account un pago que no h
 | Variable | Por defecto | Para qué |
 |---|---|---|
 | `SERVER_PORT` | `8080` | Puerto HTTP |
-| `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | `jdbc:postgresql://localhost:5432/riendas`, `riendas`, `riendas_dev` | Base de datos |
+| `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | `jdbc:postgresql://localhost:5432/nexora`, `nexora`, `nexora_dev` | Base de datos |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | Origen del frontend |
-| `AI_MODE` | `mock` | `mock` (reglas fijas) o `http` (servicio de IA real) |
+| `AI_MODE` | `mock` | `mock` (reglas fijas), `http` (servicio de IA propio) o `local` (modelo propio con Ollama o `cactus serve`) |
 | `AI_BASE_URL`, `AI_SERVICE_KEY` | `http://localhost:8000` | Servicio de IA y la clave que le manda el backend |
+| `AI_MODEL` | `qwen2.5:3b` | Solo con `AI_MODE=local`: modelo que sirve Ollama o Cactus |
 | `AI_CONNECT_TIMEOUT_MS`, `AI_READ_TIMEOUT_MS` | `2000`, `15000` | Tiempos de espera de la IA |
 | `AI_MIN_CONFIDENCE` | `0.7` | Confianza mínima para aceptar un pago |
 | `SIGNER_MODE` | `mock` | `mock` o `http` (firmante real) |
@@ -78,7 +79,7 @@ auditoría. También vigila la red: si sale de la smart account un pago que no h
 
 Nunca subas `.env`: está en `.gitignore`. Las claves reales se comparten por fuera del repo.
 
-El backend **no arranca** si detecta valores de ejemplo (`cambia-esto`, `<…>`, vacío o `riendas_dev`) donde
+El backend **no arranca** si detecta valores de ejemplo (`cambia-esto`, `<…>`, vacío o `nexora_dev`) donde
 pueden quedar expuestos:
 
 - `AI_SERVICE_KEY` y `AGENT_TOOLS_KEY` con `AI_MODE=http`.
@@ -126,6 +127,25 @@ Si pasa y el monto supera el umbral de aprobación, queda `PENDIENTE_APROBACION`
 `PROPUESTO → RECHAZADO | PENDIENTE_APROBACION | APROBADO → ENVIADO → CONFIRMADO | FALLIDO`.
 
 Encima de todo esto, el contrato on-chain aplica su propio tope de gasto (`SpendingLimitExceeded`).
+
+## IA local (Ollama o Cactus)
+
+Con `AI_MODE=local` el backend habla con cualquier servidor compatible con la API de OpenAI
+(`POST {AI_BASE_URL}/v1/chat/completions`) y un modelo con tool calling:
+
+- **Docker (por defecto):** el servicio `agent` de `docker-compose.yml` corre Ollama con `AI_MODEL`.
+- **ARM (Mac M, Raspberry Pi, móvil):** [`cactus serve`](https://github.com/cactus-compute/cactus) con
+  `--host 0.0.0.0 --no-cloud-handoff`. Cactus no compila en x86 (sus kernels son solo NEON).
+
+```bash
+AI_MODE=local AI_BASE_URL=http://localhost:11434 AI_MODEL=qwen2.5:3b ./mvnw spring-boot:run
+```
+
+- El backend escribe las instrucciones y ofrece la herramienta `propose_payment` con los ids de los contactos como
+  lista cerrada. El activo lo fija el backend (`USDC`); el modelo solo elige contacto, monto y memo.
+- La API de OpenAI no trae confianza: es 0,9 si el contacto elegido aparece nombrado en el mensaje; si no, el
+  campo `contactId` va como no fundamentado y la regla 2 rechaza el pago.
+- Todo lo demás sigue igual: las 8 reglas se aplican a la IA local como a cualquier otra.
 
 ## Marcadores `#` de los mocks
 
@@ -192,7 +212,7 @@ chat y del ataque. Con `rpc` se leen los eventos `transfer` reales del contrato 
 ## Estructura
 
 ```
-src/main/java/com/nexora/riendas/
+src/main/java/com/nexora/
   clients/       IA, firmante y eventos de la red (implementaciones mock, http y rpc)
   config/        propiedades, interceptores de headers, CORS, OpenAPI, tareas programadas
   controllers/   endpoints REST

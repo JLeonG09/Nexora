@@ -7,6 +7,9 @@ const config = loadConfig();
 const store = createFileProposalStore(resolve(import.meta.dirname, "../data/proposals.json"));
 const app = createApp(config, { store });
 
-app.listen(config.port, "127.0.0.1", () => {
-  console.log(`Firmante escuchando en http://127.0.0.1:${config.port}`);
+// En Docker va HOST=0.0.0.0 para que el backend lo alcance por la red interna; el puerto no se publica.
+const host = process.env.HOST?.trim() || "127.0.0.1";
+
+app.listen(config.port, host, () => {
+  console.log(`Firmante escuchando en http://${host}:${config.port}`);
 });

@@ -1,9 +1,10 @@
 /**
  * Estado de sesion y de alta.
  *
- * Riendas NO tiene login: no hay contrasenas ni JWT. El "inicio de sesion"
- * es `POST /api/users`, que devuelve un id, y a partir de ahi todas las
- * peticiones viajan con `X-User-Id`. Por eso el provider se llama `Sesion` y
+ * Nexora no tiene autenticacion real: no hay contrasenas ni JWT. Crear la
+ * cuenta (`POST /api/users`) o entrar con el correo (`POST /api/users/login`,
+ * simulado) devuelve un id, y a partir de ahi todas las peticiones viajan
+ * con `X-User-Id`. Por eso el provider se llama `Sesion` y
  * no `Auth`: lo que se guarda no es una credencial expirable, es el id con el
  * que el backend identifica al usuario durante la demo.
  *
@@ -24,6 +25,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -47,6 +49,8 @@ interface SesionContextValue {
   /** Que falta para poder operar. La app enruta segun esto. */
   paso: PasoAlta
   crearUsuario: (input: CreateUserInput) => Promise<User>
+  /** Recupera un usuario existente por su correo. 404 si no hay ninguno. */
+  iniciarSesion: (email: string) => Promise<User>
   registrarCuenta: (input: RegisterAccountInput) => Promise<Account>
   cerrarSesion: () => void
   /** Vuelve a leer usuario y cuenta del backend. */
@@ -76,27 +80,32 @@ function cacheUser(user: User | null): void {
   }
 }
 
-export function SesionProvider({ children }: { children: ReactNode }) {
+export function SesionProvider({
+  children,
+  alCerrarSesion,
+}: {
+  children: ReactNode
+  /** Se llama al cerrar la sesion, p. ej. para salir tambien de Privy. */
+  alCerrarSesion?: () => void
+}) {
   const [user, setUser] = useState<User | null>(readCachedUser)
   const [account, setAccount] = useState<Account | null>(null)
   const [cargando, setCargando] = useState(true)
+  const alCerrarRef = useRef(alCerrarSesion)
+  alCerrarRef.current = alCerrarSesion
 
   const cerrarSesion = useCallback(() => {
     setUserId(null)
     cacheUser(null)
     setUser(null)
     setAccount(null)
+    alCerrarRef.current?.()
   }, [])
 
   // Cuando cualquier peticion recibe un 401, se cierra la sesion.
   useEffect(() => {
-    setUnauthorizedHandler(() => {
-      setUserId(null)
-      cacheUser(null)
-      setUser(null)
-      setAccount(null)
-    })
-  }, [])
+    setUnauthorizedHandler(cerrarSesion)
+  }, [cerrarSesion])
 
   // Al montar: si hay id guardado, se confirma contra `/users/me`.
   useEffect(() => {
@@ -155,13 +164,22 @@ export function SesionProvider({ children }: { children: ReactNode }) {
     }
   }, [user, account])
 
-  const crearUsuario = useCallback(async (input: CreateUserInput) => {
-    const fresh = await usersApi.create(input)
+  const guardarUsuario = useCallback((fresh: User) => {
     setUserId(fresh.id)
     cacheUser(fresh)
     setUser(fresh)
     return fresh
   }, [])
+
+  const crearUsuario = useCallback(
+    async (input: CreateUserInput) => guardarUsuario(await usersApi.create(input)),
+    [guardarUsuario],
+  )
+
+  const iniciarSesion = useCallback(
+    async (email: string) => guardarUsuario(await usersApi.login(email)),
+    [guardarUsuario],
+  )
 
   const registrarCuenta = useCallback(async (input: RegisterAccountInput) => {
     // Ya hay `X-User-Id` porque `crearUsuario` se ejecuto antes.
@@ -190,13 +208,14 @@ export function SesionProvider({ children }: { children: ReactNode }) {
       cargando,
       paso,
       crearUsuario,
+      iniciarSesion,
       registrarCuenta,
       cerrarSesion,
       refrescar: async () => {
         await refrescar()
       },
     }),
-    [user, account, cargando, paso, crearUsuario, registrarCuenta, cerrarSesion, refrescar],
+    [user, account, cargando, paso, crearUsuario, iniciarSesion, registrarCuenta, cerrarSesion, refrescar],
   )
 
   return <SesionContext.Provider value={value}>{children}</SesionContext.Provider>

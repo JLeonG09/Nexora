@@ -15,6 +15,7 @@
  */
 
 import {
+  keepPreviousData,
   useMutation,
   useQuery,
   useQueryClient,
@@ -68,7 +69,9 @@ export const queryKeys = {
   approvals: (status: ApprovalStatus | null, page: number) =>
     ['approvals', status ?? 'todas', page] as const,
   alerts: (status: AlertStatus | null, page: number) => ['alerts', status ?? 'todas', page] as const,
-  history: (page: number) => ['history', page] as const,
+  // El tamano va en la clave: Mi billetera pide 10 y Mis movimientos 15. Con
+  // solo la pagina, las dos compartian cache y una pintaba los datos de la otra.
+  history: (page: number, size: number) => ['history', page, size] as const,
   audit: (proposalId: string | null, page: number) =>
     ['audit', proposalId ?? 'todos', page] as const,
 } as const
@@ -220,6 +223,9 @@ export function useChat(conversationId: string | null) {
     queryKey: queryKeys.chat(conversationId),
     queryFn: () => chat.messages(conversationId),
     staleTime: 30_000,
+    // Al mandar el primer mensaje la clave pasa de "ultima" al id nuevo. Sin
+    // esto el hilo desaparece un instante y sale "Cargando la conversacion".
+    placeholderData: keepPreviousData,
   })
 }
 
@@ -357,7 +363,7 @@ export function useReportarAlerta() {
 
 export function useHistorial(page: number, size = 20) {
   return useQuery({
-    queryKey: queryKeys.history(page),
+    queryKey: queryKeys.history(page, size),
     queryFn: () => history.list({ page, size }),
     staleTime: 15_000,
   })

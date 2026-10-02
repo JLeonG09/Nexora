@@ -17,7 +17,7 @@ const rawApiUrl = (import.meta.env.VITE_API_URL ?? '').trim()
 export const API_BASE = rawApiUrl.replace(/\/+$/, '')
 
 /**
- * Prefijo de la API. El backend Riendas NO versiona por ruta: sus
+ * Prefijo de la API. El backend Nexora NO versiona por ruta: sus
  * controladores cuelgan directamente de `/api/**` (`/api/chat`,
  * `/api/approvals`, `/api/health`...). No anadir `/v1`.
  */
@@ -28,7 +28,7 @@ export const API_PREFIX = `${API_BASE}/api`
  * resuelven contra los datos de `src/api/mock/`, con latencia simulada.
  *
  * Prioridad: la variable de entorno gana; si no esta, el mock se activa solo
- * cuando no hay backend configurado. Asi un `git clone` + `npm run dev`
+ * cuando no hay backend configurado. Asi un `git clone` + `pnpm dev`
  * levanta la app completa sin tener Spring Boot con PostgreSQL levantado.
  */
 export const MOCK_ENABLED =
@@ -45,10 +45,20 @@ export const MOCK_ENABLED =
 export const AGENT_TOOLS_ENABLED =
   (import.meta.env.VITE_AGENT_TOOLS ?? 'false') === 'true'
 
+/**
+ * Login con Privy (correo con codigo o Google). Solo se activa si hay App ID:
+ * sin el, el alta sigue pidiendo nombre y correo a mano.
+ *
+ * Privy solo verifica el correo en el navegador. El backend sigue
+ * identificando al usuario por `X-User-Id` y no valida el token de Privy.
+ */
+export const PRIVY_APP_ID = (import.meta.env.VITE_PRIVY_APP_ID ?? '').trim()
+export const PRIVY_CLIENT_ID = (import.meta.env.VITE_PRIVY_CLIENT_ID ?? '').trim() || undefined
+export const PRIVY_ENABLED = PRIVY_APP_ID !== ''
+
 /** Red Stellar por defecto. El backend solo admite TESTNET por ahora. */
-export const STELLAR_NETWORK = (import.meta.env.VITE_STELLAR_NETWORK ?? 'TESTNET') as
-  | 'TESTNET'
-  | 'PUBLIC'
+export const STELLAR_NETWORK: 'TESTNET' | 'PUBLIC' =
+  (import.meta.env.VITE_STELLAR_NETWORK ?? '').toUpperCase() === 'PUBLIC' ? 'PUBLIC' : 'TESTNET'
 
 /**
  * Base del explorador (Stellar Expert) para abrir una transaccion o un

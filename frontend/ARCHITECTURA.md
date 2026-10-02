@@ -1,6 +1,6 @@
 # Arquitectura
 
-Decisiones estructurales de **Riendas** y el porqué de cada una.
+Decisiones estructurales de **Nexora** y el porqué de cada una.
 
 La idea que ordena todo el resto: *el frontend no firma nada*. Toda la
 seguridad vive en el contrato de Stellar y en el backend. El panel es la forma
@@ -73,7 +73,7 @@ o alta de mandato. `AppShell` no se monta hasta que los tres han respondido.
 ## Mock
 
 Un backend falso en memoria, con el mismo contrato que el de verdad. Se activa
-cuando `VITE_API_URL` está vacío, así que `git clone` + `npm run dev` levanta la
+cuando `VITE_API_URL` está vacío, así que `git clone` + `pnpm dev` levanta la
 app completa sin Spring Boot ni PostgreSQL.
 
 `client.ts` decide: si `MOCK_ENABLED`, `request()` va a `requestMock()` y no
@@ -96,7 +96,7 @@ Lo que replica del backend, porque el panel depende de ello:
 - Latencia simulada y errores tipados (`MockHttpError`) para que el
   `401`/`404`/`409` se comporten como en el de verdad.
 
-El smoke test (`npm run smoke`) es el contrato ejecutable: **62 comprobaciones**
+El smoke test (`pnpm smoke`) es el contrato ejecutable: **62 comprobaciones**
 contra el mock, sin navegador. Es lo que atrapa bugs como un endpoint que
 devuelve `status` sin desestructurar, o un aprobador que recibe el id de la
 propuesta en vez del de la aprobación.
@@ -185,12 +185,12 @@ Ver [`DESIGN.md`](./DESIGN.md) para el sistema visual y
 
 | Comando | Qué cubre |
 |---|---|
-| `npm run typecheck` | El contrato de TypeScript entero. |
-| `npm run lint` | ESLint. Hoy: 0 errores, 13 avisos de `react-refresh`. |
-| `npm run build` | `tsc -b` + build de Vite. |
-| `npm run smoke` | 62 comprobaciones del mock, sin navegador. |
-| `npm run check:format` | Aritmética decimal: acarreos, nulos, cifras grandes. |
-| `npm run check:contrato` | Compara los records de Java con `api/types.ts`. |
+| `pnpm typecheck` | El contrato de TypeScript entero. |
+| `pnpm lint` | ESLint. Hoy: 0 errores, 13 avisos de `react-refresh`. |
+| `pnpm build` | `tsc -b` + build de Vite. |
+| `pnpm smoke` | 62 comprobaciones del mock, sin navegador. |
+| `pnpm check:format` | Aritmética decimal: acarreos, nulos, cifras grandes. |
+| `pnpm check:contrato` | Compara los records de Java con `api/types.ts`. |
 
 Los tres últimos son scripts de Node con `--experimental-strip-types`, sin
 framework de test: son lo bastante directos para leerse y ejecutarse en un

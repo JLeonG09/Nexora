@@ -370,7 +370,7 @@ export async function mockRequest(
   /* --- Salud: la unica ruta sin usuario --------------------------- */
   if (verbo === 'GET' && ruta === '/health') {
     const payload: Health = {
-      status: 'UP',
+      status: 'OK',
       aiMode: 'mock',
       signerMode: 'mock',
       network: 'TESTNET',
@@ -405,6 +405,19 @@ export async function mockRequest(
     estado.usuario = usuario
     auditar('USUARIO_CREADO', 'USUARIO', `Usuario creado: ${usuario.displayName}`)
     return ok(usuario, 201)
+  }
+
+  if (verbo === 'POST' && ruta === '/users/login') {
+    const correo = String(datos.email ?? '').trim().toLowerCase()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
+      validarCampos({ email: 'El correo no es v\u00e1lido.' })
+    }
+    if (!estado.usuario || estado.usuario.email.toLowerCase() !== correo) {
+      throw new MockHttpError(404, 'RECURSO_NO_ENCONTRADO', 'No hay ninguna cuenta con ese correo.', {
+        email: 'No hay ninguna cuenta con ese correo.',
+      })
+    }
+    return ok(estado.usuario)
   }
 
   if (!estado.usuario) sinSesion()
@@ -525,7 +538,7 @@ export async function mockRequest(
       return ok(contacto)
     }
     if (verbo === 'DELETE') {
-      // Borrar en Riendas es ARCHIVAR: la fila sigue para el historial.
+      // Borrar en Nexora es ARCHIVAR: la fila sigue para el historial.
       estado.contactos = estado.contactos.filter((c) => c.id !== contacto.id)
       auditar('CONTACTO_ARCHIVADO', 'USUARIO', `Contacto archivado: ${contacto.name}`)
       return ok(null, 204)
@@ -828,7 +841,7 @@ export async function mockRequest(
   }
 
   if (verbo === 'GET' && ruta === '/chat/messages') {
-    return ok(estado.mensajes)
+    return ok(pagina(estado.mensajes, 0, Math.max(estado.mensajes.length, 1)))
   }
 
   /* --- Propuestas --------------------------------------------------- */

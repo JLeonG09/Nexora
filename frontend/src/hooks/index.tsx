@@ -34,6 +34,7 @@ export type Tema = 'claro' | 'oscuro'
 interface TemaContextValue {
   tema: Tema
   alternar: () => void
+  elegir: (tema: Tema) => void
   esOscuro: boolean
 }
 
@@ -77,7 +78,12 @@ export function TemaProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo<TemaContextValue>(
-    () => ({ tema, alternar: () => setTema((t) => (t === 'oscuro' ? 'claro' : 'oscuro')), esOscuro: tema === 'oscuro' }),
+    () => ({
+      tema,
+      alternar: () => setTema((t) => (t === 'oscuro' ? 'claro' : 'oscuro')),
+      elegir: setTema,
+      esOscuro: tema === 'oscuro',
+    }),
     [tema],
   )
 

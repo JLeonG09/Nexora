@@ -13,26 +13,69 @@
  * responde con 409.
  */
 
-import { Component, type ErrorInfo, type ReactNode } from 'react'
+import { Component, Suspense, lazy, type ErrorInfo, type ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
-import { AppShell } from './components/AppShell'
 import { Spinner } from './components/ui'
 import { ToastProvider } from './components/Toast'
 import { ConfirmProvider } from './hooks/useConfirm'
 import { TemaProvider } from './hooks'
-import { SesionProvider, useSesion } from './sesion/SesionContext'
+import { useSesion } from './sesion/SesionContext'
+import { ProveedorSesion } from './sesion/PrivyAuth'
 
-import { AltaPage } from './pages/AltaPage'
-import { ChatPage } from './pages/ChatPage'
-import { AprobacionesPage } from './pages/AprobacionesPage'
-import { AlertasPage } from './pages/AlertasPage'
-import { ContactosPage } from './pages/ContactosPage'
-import { MandatoPage } from './pages/MandatoPage'
-import { HistorialPage } from './pages/HistorialPage'
-import { AuditoriaPage } from './pages/AuditoriaPage'
-import { DemoPage } from './pages/DemoPage'
+import { LandingPage } from './pages/LandingPage'
+import { AccesibilidadProvider, useAccesibilidad } from './accesibilidad'
+
+/* ------------------------------------------------------------------ */
+/* Carga diferida                                                     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * La landing es lo unico que llega en el primer archivo: quien la abre desde
+ * un celular modesto no descarga el panel entero para leer una portada. El
+ * alta, los primeros pasos y cada pantalla del panel se piden al entrar.
+ */
+const AppShell = lazy(() => import('./components/AppShell').then((m) => ({ default: m.AppShell })))
+const AltaPage = lazy(() => import('./pages/AltaPage').then((m) => ({ default: m.AltaPage })))
+const PrimerosPasosPage = lazy(() =>
+  import('./pages/PrimerosPasosPage').then((m) => ({ default: m.PrimerosPasosPage })),
+)
+const ChatPage = lazy(() => import('./pages/ChatPage').then((m) => ({ default: m.ChatPage })))
+const BilleteraPage = lazy(() =>
+  import('./pages/BilleteraPage').then((m) => ({ default: m.BilleteraPage })),
+)
+const PendientesLayout = lazy(() =>
+  import('./pages/PendientesLayout').then((m) => ({ default: m.PendientesLayout })),
+)
+const AprobacionesPage = lazy(() =>
+  import('./pages/AprobacionesPage').then((m) => ({ default: m.AprobacionesPage })),
+)
+const AlertasPage = lazy(() => import('./pages/AlertasPage').then((m) => ({ default: m.AlertasPage })))
+const ContactosPage = lazy(() =>
+  import('./pages/ContactosPage').then((m) => ({ default: m.ContactosPage })),
+)
+const MandatoPage = lazy(() => import('./pages/MandatoPage').then((m) => ({ default: m.MandatoPage })))
+const HistorialPage = lazy(() =>
+  import('./pages/HistorialPage').then((m) => ({ default: m.HistorialPage })),
+)
+const AuditoriaPage = lazy(() =>
+  import('./pages/AuditoriaPage').then((m) => ({ default: m.AuditoriaPage })),
+)
+const DemoPage = lazy(() => import('./pages/DemoPage').then((m) => ({ default: m.DemoPage })))
+const AccesibilidadPage = lazy(() =>
+  import('./pages/AccesibilidadPage').then((m) => ({ default: m.AccesibilidadPage })),
+)
+
+/** Lo que se ve mientras llega una pantalla: lo mismo que el arranque. */
+function CargandoPantalla() {
+  return (
+    <div className="flex min-h-dvh items-center justify-center">
+      <Spinner className="h-6 w-6 text-tinta-media" />
+      <span className="solo-lector">Cargando</span>
+    </div>
+  )
+}
 
 /* ------------------------------------------------------------------ */
 /* Configuracion de la cache                                          */
@@ -81,7 +124,7 @@ class Cortafuegos extends Component<{ children: ReactNode }, { error: Error | nu
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('[riendas] error de render', error, info)
+    console.error('[nexora] error de render', error, info)
   }
 
   render() {
@@ -111,34 +154,43 @@ class Cortafuegos extends Component<{ children: ReactNode }, { error: Error | nu
 
 function Rutas() {
   const { cargando, user, paso } = useSesion()
+  const { primerosPasosHechos } = useAccesibilidad()
 
-  if (cargando) {
+  if (cargando) return <CargandoPantalla />
+
+  // Sin usuario solo existen la landing y el alta.
+  if (!user) {
     return (
-      <div className="flex min-h-dvh items-center justify-center">
-        <Spinner className="h-6 w-6 text-tinta-media" />
-        <span className="solo-lector">Cargando</span>
-      </div>
+      <Routes>
+        <Route index element={<LandingPage />} />
+        <Route path="entrar" element={<AltaPage modo="entrar" />} />
+        <Route path="empezar" element={<AltaPage modo="crear" />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     )
   }
-
-  // Sin usuario, la unica pantalla posible es el alta.
-  if (!user) return <AltaPage />
 
   // Con usuario pero sin smart account registrada tampoco hay panel: el
   // backend no aceptaria ni un mandato ni un pago.
   if (paso !== 'listo') return <AltaPage />
 
+  if (!primerosPasosHechos(user.id)) return <PrimerosPasosPage />
+
   return (
     <Routes>
       <Route element={<AppShell />}>
         <Route index element={<ChatPage />} />
-        <Route path="aprobaciones" element={<AprobacionesPage />} />
-        <Route path="alertas" element={<AlertasPage />} />
+        <Route path="billetera" element={<BilleteraPage />} />
+        <Route element={<PendientesLayout />}>
+          <Route path="aprobaciones" element={<AprobacionesPage />} />
+          <Route path="alertas" element={<AlertasPage />} />
+        </Route>
         <Route path="contactos" element={<ContactosPage />} />
         <Route path="mandato" element={<MandatoPage />} />
         <Route path="historial" element={<HistorialPage />} />
         <Route path="auditoria" element={<AuditoriaPage />} />
         <Route path="demo" element={<DemoPage />} />
+        <Route path="accesibilidad" element={<AccesibilidadPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
@@ -153,19 +205,23 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TemaProvider>
-        <SesionProvider>
-          {/* `ToastProvider` envuelve a `ConfirmProvider`: el dialogo de
-              confirmacion usa un toast cuando una accion ya confirmada falla. */}
-          <ToastProvider>
-            <ConfirmProvider>
-              <BrowserRouter>
-                <Cortafuegos>
-                  <Rutas />
-                </Cortafuegos>
-              </BrowserRouter>
-            </ConfirmProvider>
-          </ToastProvider>
-        </SesionProvider>
+        <AccesibilidadProvider>
+          <ProveedorSesion>
+            {/* `ToastProvider` envuelve a `ConfirmProvider`: el dialogo de
+                confirmacion usa un toast cuando una accion ya confirmada falla. */}
+            <ToastProvider>
+              <ConfirmProvider>
+                <BrowserRouter>
+                  <Cortafuegos>
+                    <Suspense fallback={<CargandoPantalla />}>
+                      <Rutas />
+                    </Suspense>
+                  </Cortafuegos>
+                </BrowserRouter>
+              </ConfirmProvider>
+            </ToastProvider>
+          </ProveedorSesion>
+        </AccesibilidadProvider>
       </TemaProvider>
     </QueryClientProvider>
   )

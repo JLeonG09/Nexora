@@ -10,7 +10,7 @@
  * Solo comprueba los NOMBRES de los campos, no los tipos: comparar
  * `Instant` con `string | null` a ojo es ruidoso y lo hace mejor el revisor.
  *
- *   npm run check:contrato
+ *   pnpm check:contrato
  *
  * Si el backend no esta en la ruta de abajo, se avisa y se sale con 0: el
  * frontend se puede construir sin el repositorio de Java al lado.
@@ -26,7 +26,7 @@ const CANDIDATOS = [
   'C:/Users/derli/AppData/Local/Temp/opencode/Nexora-dev/backend',
 ].filter((v): v is string => Boolean(v))
 
-const DTOS = CANDIDATOS.map((c) => join(c, 'src/main/java/com/nexora/riendas/dtos/responses')).find((p) =>
+const DTOS = CANDIDATOS.map((c) => join(c, 'src/main/java/com/nexora/dtos/responses')).find((p) =>
   existsSync(p),
 )
 
