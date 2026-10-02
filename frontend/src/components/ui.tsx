@@ -192,16 +192,12 @@ export interface BadgeProps {
   tone?: BadgeTone
   /** Punto de estado a la izquierda. */
   led?: 'encendido' | 'apagado' | 'pulsando'
-  /** `grande`: letra de lectura y mas aire, para pantallas de publico mayor. */
-  tamano?: 'normal' | 'grande'
   className?: string
 }
 
-export function Badge({ children, tone = 'neutro', led, tamano = 'normal', className }: BadgeProps) {
+export function Badge({ children, tone = 'neutro', led, className }: BadgeProps) {
   return (
-    <span
-      className={cn('insignia', TONO[tone], tamano === 'grande' && 'px-2.5 py-1 text-base', className)}
-    >
+    <span className={cn('insignia', TONO[tone], className)}>
       {led && <span className={cn('led', led !== 'apagado' && 'encendido', led === 'pulsando' && 'pulsando')} aria-hidden="true" />}
       {children}
     </span>

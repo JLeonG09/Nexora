@@ -2,11 +2,9 @@
  * Mi billetera: la cuenta, lo que se puede gastar hoy y los ultimos pagos.
  *
  * Tres bloques, uno debajo del otro, y en cada uno una sola idea:
- *  1. La tarjeta: cuanto queda para hoy. Nada mas. Los datos tecnicos de la
- *     cuenta (direccion, registro publico) van debajo, plegados.
+ *  1. La tarjeta: de quien es la cuenta y cuanto queda para hoy.
  *  2. El resumen: cuatro cifras, sin graficos.
- *  3. Los ultimos movimientos. La fila no es un enlace: el comprobante es
- *     una accion aparte y discreta.
+ *  3. Los ultimos movimientos, con enlace a la red.
  *
  * Lo que esta pantalla NO inventa:
  *  - El saldo. No hay endpoint que lo lea de Stellar, asi que se dice
@@ -14,7 +12,7 @@
  *  - Los ingresos. El historial solo trae pagos SALIENTES: una cifra de
  *    "entro" seria siempre cero y daria a entender que no entra nada.
  *  - Totales historicos. El historial llega paginado y aqui solo se pide la
- *    primera pagina.
+ *    primera pagina; lo que se cuenta se cuenta "entre los ultimos N".
  *
  * La tarjeta es de muestra y lo dice: quien no tiene practica con lo digital
  * puede creer que es una tarjeta real con la que pagar en una tienda.
@@ -24,32 +22,21 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
 import { Badge, Button, EmptyState, ErrorState, Skeleton, Spinner } from '@/components/ui'
-import {
-  IconCheck,
-  IconCopiar,
-  IconExterno,
-  IconFlechaAbajo,
-  IconHistorial,
-  LogoNexora,
-} from '@/components/icons'
+import { IconCheck, IconCopiar, IconExterno, IconHistorial, LogoNexora } from '@/components/icons'
 import { Monto, ProposalStatusBadge } from '@/components/domain'
 import { limpiarMarcadores } from '@/components/Propuesta'
 import { useCopy } from '@/hooks'
 import { useHistorial, useLimites } from '@/api/queries'
 import { useSesion } from '@/sesion/SesionContext'
-import { cn } from '@/lib/cn'
-import { formatAmount, formatDate, formatDateTime, formatFechaAmigable } from '@/lib/format'
+import { formatAmount, formatDateLong, formatDateTime } from '@/lib/format'
 import { explorerAddress, explorerTx, shortKey } from '@/lib/stellar'
-import type { Account, HistoryItem, MandateStatus, ProposalStatus } from '@/api/types'
+import type { Account, HistoryItem, MandateStatus } from '@/api/types'
 
-/** Cuantos movimientos se enseñan aqui. El resto, en "Mis movimientos". */
+/** Cuantos movimientos se ensenan aqui. El resto, en "Mis movimientos". */
 const CUANTOS = 10
 
 /** Clases de los controles grandes de esta pantalla: 48 px de alto. */
 const CONTROL_GRANDE = 'min-h-12 px-5 text-base'
-
-/** Lo que se dice de cualquier enlace al registro publico de Stellar. */
-const AVISO_REGISTRO = 'Abre el registro público de Stellar en otra pestaña'
 
 /* ------------------------------------------------------------------ */
 /* Estado de los topes                                                */
@@ -113,31 +100,6 @@ function useEstadoTopes(): EstadoTopes {
 }
 
 /* ------------------------------------------------------------------ */
-/* Movimientos: utilidades                                            */
-/* ------------------------------------------------------------------ */
-
-/** Pagos que no movieron dinero: se pintan apagados y con el monto tachado. */
-function noSalio(status: ProposalStatus): boolean {
-  return status === 'FALLIDO' || status === 'RECHAZADO'
-}
-
-/**
- * Ultimo instante real del movimiento. `HistoryItem` no trae fecha de
- * creacion, asi que se usa la confirmacion o, si no hubo, el envio.
- */
-function instanteDe(item: HistoryItem): string | null {
-  return item.confirmedAt ?? item.sentAt ?? null
-}
-
-/** El movimiento ocurrio en las ultimas 24 h (la misma ventana que el tope). */
-function enUltimas24h(item: HistoryItem, ahoraMs: number): boolean {
-  const instante = instanteDe(item)
-  if (!instante) return false
-  const ms = new Date(instante).getTime()
-  return !Number.isNaN(ms) && ms >= ahoraMs - 24 * 60 * 60 * 1000 && ms <= ahoraMs
-}
-
-/* ------------------------------------------------------------------ */
 /* Pagina                                                             */
 /* ------------------------------------------------------------------ */
 
@@ -154,7 +116,7 @@ export function BilleteraPage() {
       <header className="space-y-2">
         <h1 className="text-2xl font-semibold text-tinta">Mi billetera</h1>
         <p className="text-lg text-tinta-media">
-          Lo que puedes gastar hoy y tus últimos pagos.
+          Tu cuenta en Stellar, lo que puedes gastar hoy y tus últimos pagos.
         </p>
       </header>
 
@@ -183,56 +145,60 @@ export function BilleteraPage() {
 /* 1. Tarjeta                                                         */
 /* ------------------------------------------------------------------ */
 
-/** Tipo de cuenta en palabras, sin "testnet". El backend solo admite TESTNET. */
-function nombreCuenta(account: Account | null): string {
-  if (!account) return 'Sin cuenta registrada'
-  const red = account.network.trim().toUpperCase()
-  if (red === 'TESTNET') return 'Cuenta de prueba'
-  if (red === 'PUBLIC' || red === 'MAINNET') return 'Cuenta real'
-  return account.network
+/** Nombre de la red en palabras. El backend solo admite TESTNET por ahora. */
+function nombreRed(network: string): string {
+  const red = network.trim().toUpperCase()
+  if (red === 'TESTNET') return 'Testnet (red de pruebas)'
+  if (red === 'PUBLIC' || red === 'MAINNET') return 'Red principal'
+  return network
 }
 
 function BloqueTarjeta({ account, topes }: { account: Account | null; topes: EstadoTopes }) {
   return (
-    <section aria-labelledby="billetera-tarjeta" className="flex flex-col gap-4">
+    <section aria-labelledby="billetera-tarjeta" className="flex flex-col gap-3">
       <h2 id="billetera-tarjeta" className="text-xl font-semibold text-tinta">
         Tu cuenta
       </h2>
 
-      {/* Tarjeta plana: borde de 1 px, sin sombra, sin degradado, sin giro.
-          Dentro solo lo esencial: marca, "de muestra" y lo disponible hoy. */}
+      {/* Tarjeta plana: borde de 1 px, sin sombra, sin degradado, sin giro. */}
       <div className="flex flex-col gap-6 rounded-card border border-filete-fuerte bg-superficie p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <LogoNexora alto={32} />
             <div>
               <p className="text-lg font-semibold text-tinta">Nexora</p>
-              <p className="text-base text-tinta-media">{nombreCuenta(account)}</p>
+              <p className="text-base text-tinta-media">
+                {account ? nombreRed(account.network) : 'Sin red'}
+              </p>
             </div>
           </div>
-          <Badge tone="neutro" tamano="grande">
-            Tarjeta de muestra
-          </Badge>
+          <Badge tone="neutro">Tarjeta de muestra</Badge>
         </div>
 
         <DisponibleHoy topes={topes} />
+
+        <div className="rounded-control border border-filete bg-superficie-2 px-4 py-3">
+          <p className="text-lg font-medium text-tinta">Saldo: próximamente</p>
+          <p className="mt-1 text-base text-tinta-media">
+            Todavía no leemos el saldo de tu cuenta en Stellar. Cuando esté listo, lo verás
+            aquí.
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-3 border-t border-filete pt-5">
+          {account ? (
+            <DireccionCuenta account={account} />
+          ) : (
+            <p className="text-base text-tinta-media">
+              No hay ninguna cuenta de Stellar registrada todavía.
+            </p>
+          )}
+        </div>
       </div>
 
-      <div className="space-y-1 text-base text-tinta-media">
-        <p>
-          <span className="font-medium text-tinta">Saldo: próximamente.</span> Todavía no lo
-          leemos de Stellar.
-        </p>
-        <p>La tarjeta es solo una muestra: no sirve para pagar en tiendas.</p>
-      </div>
-
-      {account ? (
-        <DatosCuenta account={account} />
-      ) : (
-        <p className="text-base text-tinta-media">
-          No hay ninguna cuenta de Stellar registrada todavía.
-        </p>
-      )}
+      <p className="text-base text-tinta-media">
+        Es una tarjeta de muestra para ver tu cuenta de un vistazo: no sirve para pagar en tiendas.
+      </p>
     </section>
   )
 }
@@ -268,9 +234,9 @@ function DisponibleHoy({ topes }: { topes: EstadoTopes }) {
           : 'No tienes reglas de pago activas'
     return (
       <div className="flex flex-col items-start gap-3">
-        <p className="text-xl font-semibold text-tinta">{titulo}</p>
+        <p className="text-lg font-medium text-tinta">{titulo}</p>
         <p className="text-base text-tinta-media">
-          Sin reglas activas, Nexora no puede pagar por ti.
+          Sin reglas activas, Nexora no puede pagar por ti, así que hoy no hay nada disponible.
         </p>
         <Link to="/mandato" className={`btn btn-primario ${CONTROL_GRANDE}`}>
           Ir a Mis reglas de pago
@@ -282,7 +248,7 @@ function DisponibleHoy({ topes }: { topes: EstadoTopes }) {
   const { asset, availableLast24h, dailyLimit, expiresAt } = topes.topes
   return (
     <div className="flex flex-col gap-1">
-      <p className="text-lg text-tinta-media">Disponible hoy</p>
+      <p className="text-base text-tinta-media">Disponible hoy</p>
       <p className="cifras text-3xl font-semibold text-oro">
         {formatAmount(availableLast24h, asset)}
       </p>
@@ -291,51 +257,40 @@ function DisponibleHoy({ topes }: { topes: EstadoTopes }) {
         <span className="cifras font-medium">{formatAmount(dailyLimit, asset)}</span>
       </p>
       <p className="mt-1 text-base text-tinta-media">
-        Cuenta las últimas 24 horas
-        {expiresAt ? ` · reglas hasta el ${formatDate(expiresAt)}` : ''}
+        Cuenta lo pagado en las últimas 24 horas.
+        {expiresAt && <> Tus reglas valen hasta el {formatDateLong(expiresAt)}.</>}
       </p>
     </div>
   )
 }
 
-/**
- * Datos tecnicos de la cuenta, plegados: la direccion abreviada, copiarla y
- * verla en el registro publico. Hacen falta poco, asi que no estorban.
- */
-function DatosCuenta({ account }: { account: Account }) {
+/** Direccion abreviada, boton de copiar la completa y enlace al explorador. */
+function DireccionCuenta({ account }: { account: Account }) {
   const direccion = account.smartAccountAddress
   const href = account.explorerUrl ?? explorerAddress(direccion)
 
   return (
-    <details className="group rounded-card border border-filete bg-superficie">
-      <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 text-base font-medium text-tinta [&::-webkit-details-marker]:hidden">
-        Datos de tu cuenta
-        <IconFlechaAbajo className="h-5 w-5 shrink-0 text-tinta-media group-open:rotate-180" />
-      </summary>
-
-      <div className="flex flex-col gap-3 border-t border-filete px-4 py-4">
-        <div>
-          <p className="text-base text-tinta-media">Dirección de tu cuenta</p>
-          <p className="mono text-lg text-tinta" title={direccion}>
-            {shortKey(direccion)}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <BotonCopiar valor={direccion} />
-          <a
-            href={href}
-            target="_blank"
-            rel="noreferrer noopener"
-            title={AVISO_REGISTRO}
-            className={`btn btn-secundario ${CONTROL_GRANDE}`}
-          >
-            Ver registro de la cuenta
-            <IconExterno />
-            <span className="solo-lector">({AVISO_REGISTRO.toLowerCase()})</span>
-          </a>
-        </div>
+    <>
+      <div>
+        <p className="text-base text-tinta-media">Dirección de tu cuenta</p>
+        <p className="mono text-lg text-tinta" title={direccion}>
+          {shortKey(direccion)}
+        </p>
       </div>
-    </details>
+      <div className="flex flex-wrap gap-3">
+        <BotonCopiar valor={direccion} />
+        <a
+          href={href}
+          target="_blank"
+          rel="noreferrer noopener"
+          className={`btn btn-secundario ${CONTROL_GRANDE}`}
+        >
+          Ver en el explorador
+          <IconExterno />
+          <span className="solo-lector">(se abre en otra pestaña)</span>
+        </a>
+      </div>
+    </>
   )
 }
 
@@ -370,7 +325,7 @@ function Cifra({
 }) {
   return (
     <div className="flex flex-col gap-1 p-4 sm:p-5">
-      <dt className="text-lg text-tinta-media">{etiqueta}</dt>
+      <dt className="text-base text-tinta-media">{etiqueta}</dt>
       <dd className="m-0 cifras text-2xl font-semibold text-tinta">{valor}</dd>
       {nota && <dd className="m-0 text-base text-tinta-media">{nota}</dd>}
     </div>
@@ -448,30 +403,23 @@ function ResumenCifras({
   const asset = activos?.asset ?? 'USDC'
   const sinReglas = 'Sin reglas de pago activas'
 
-  // "Pagos de hoy" usa la misma ventana que el tope diario: 24 h moviles.
-  // Solo cuentan los que la red confirmo. Si TODO lo cargado cae dentro de
-  // la ventana y hay mas paginas, puede haber pagos de hoy sin cargar.
-  const ahoraMs = Date.now()
-  const pagosHoy = items.filter((i) => i.status === 'CONFIRMADO' && enUltimas24h(i, ahoraMs)).length
-  const truncado =
-    total > items.length && items.length > 0 && items.every((i) => enUltimas24h(i, ahoraMs))
+  // Solo los que la red confirmo: un pago FALLIDO o ENVIADO no ha movido
+  // dinero todavia. Y solo entre los que se han cargado, no del historico.
+  const confirmados = items.filter((i) => i.status === 'CONFIRMADO').length
+  const notaPagos =
+    items.length === 0
+      ? 'Todavía no hay movimientos'
+      : `Confirmados en la red, entre tus últimos ${items.length} movimientos` +
+        (total > items.length ? ` (tienes ${total} en total)` : '')
 
   return (
     <dl className="valla m-0 sm:grid-cols-2">
       <Cifra
-        etiqueta="Gastado hoy"
+        etiqueta="Gastado en 24 h"
         valor={activos ? formatAmount(activos.spentLast24h, asset) : '—'}
-        nota={activos ? 'En las últimas 24 horas' : sinReglas}
+        nota={activos ? 'Pagos de las últimas 24 horas' : sinReglas}
       />
-      <Cifra
-        etiqueta="Pagos de hoy"
-        valor={truncado ? `${pagosHoy} o más` : pagosHoy}
-        nota={
-          truncado
-            ? 'Confirmados en las últimas 24 horas. Hay más en Mis movimientos.'
-            : 'Confirmados en las últimas 24 horas'
-        }
-      />
+      <Cifra etiqueta="Pagos enviados" valor={confirmados} nota={notaPagos} />
       <Cifra
         etiqueta="Tope por pago"
         valor={activos?.perTxLimit ? formatAmount(activos.perTxLimit, asset) : '—'}
@@ -553,73 +501,71 @@ function BloqueMovimientos({
   )
 }
 
+/**
+ * Cuando paso, en palabras. `HistoryItem` no trae fecha de creacion: se usa
+ * el ultimo instante real que hay, igual que en "Mis movimientos".
+ */
 function FechaMovimiento({ item }: { item: HistoryItem }) {
-  const instante = instanteDe(item)
-  if (!instante) return <>Sin fecha: no llegó a enviarse</>
-  return (
-    <time dateTime={instante} title={formatDateTime(instante)}>
-      {formatFechaAmigable(instante)}
-    </time>
-  )
-}
-
-/** Lo que oye un lector de pantalla antes del monto. */
-function prefijoMonto(status: ProposalStatus): string {
-  if (noSalio(status)) return 'No salió: '
-  if (status === 'CONFIRMADO') return 'Enviaste '
-  return 'En curso: '
+  if (item.confirmedAt) {
+    return (
+      <>
+        Confirmado el <time dateTime={item.confirmedAt}>{formatDateTime(item.confirmedAt)}</time>
+      </>
+    )
+  }
+  if (item.sentAt) {
+    return (
+      <>
+        {item.status === 'ENVIADO' ? 'Enviado el ' : 'Intentado el '}
+        <time dateTime={item.sentAt}>{formatDateTime(item.sentAt)}</time>
+        {item.status === 'ENVIADO' && ', esperando confirmación'}
+      </>
+    )
+  }
+  return <>Sin fecha: no llegó a firmarse</>
 }
 
 function FilaMovimiento({ item }: { item: HistoryItem }) {
   const nombre = item.contactName ?? 'Destinatario sin nombre'
   const memo = item.memo ? limpiarMarcadores(item.memo) : ''
-  const apagado = noSalio(item.status)
 
-  // Rejilla: en movil todo apilado (datos, monto y estado, comprobante); en
-  // pantallas anchas el monto y el estado ocupan la columna derecha y el
-  // comprobante queda debajo de los datos, sin dejar huecos.
   return (
-    <li className="grid gap-x-4 gap-y-2 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:px-5">
+    <li className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-5">
       <div className="min-w-0 space-y-1">
-        <p className={cn('text-lg font-medium', apagado ? 'text-tinta-media' : 'text-tinta')}>
-          {nombre}
-        </p>
+        <p className="text-lg font-medium text-tinta">{nombre}</p>
+        {!item.contactName && item.destinationAddress && (
+          <p className="mono text-base text-tinta-media" title={item.destinationAddress}>
+            {shortKey(item.destinationAddress)}
+          </p>
+        )}
         <p className="text-base text-tinta-media">
           <FechaMovimiento item={item} />
         </p>
         {memo && <p className="text-base text-tinta-media">«{memo}»</p>}
-        {apagado && <p className="text-base text-tinta-media">No se movió dinero.</p>}
       </div>
 
-      <div className="flex flex-col items-start gap-2 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:items-end">
-        <p
-          className={cn(
-            'cifras text-lg font-semibold',
-            apagado ? 'text-tinta-media line-through' : 'text-tinta',
-          )}
-        >
-          <span className="solo-lector">{prefijoMonto(item.status)}</span>
+      <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
+        <p className="cifras text-lg font-semibold text-tinta">
+          <span className="solo-lector">Enviaste </span>
           <Monto amount={item.amount} asset={item.asset} />
         </p>
-        <ProposalStatusBadge status={item.status} tamano="grande" />
+        <ProposalStatusBadge status={item.status} />
+        {item.txHash && (
+          <a
+            href={item.explorerUrl ?? explorerTx(item.txHash)}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="btn btn-fantasma min-h-12 px-3 text-base text-tinta underline underline-offset-2"
+          >
+            Ver en el explorador
+            <IconExterno />
+            <span className="solo-lector">
+              {' '}
+              el pago a {nombre} (se abre en otra pestaña)
+            </span>
+          </a>
+        )}
       </div>
-
-      {item.txHash && (
-        <a
-          href={item.explorerUrl ?? explorerTx(item.txHash)}
-          target="_blank"
-          rel="noreferrer noopener"
-          title={AVISO_REGISTRO}
-          className="-my-2 inline-flex min-h-12 items-center gap-1.5 justify-self-start text-base text-tinta-media underline underline-offset-2 hover:text-tinta sm:col-start-1"
-        >
-          Comprobante
-          <IconExterno className="h-4 w-4" />
-          <span className="solo-lector">
-            {' '}
-            del pago a {nombre} ({AVISO_REGISTRO.toLowerCase()})
-          </span>
-        </a>
-      )}
     </li>
   )
 }

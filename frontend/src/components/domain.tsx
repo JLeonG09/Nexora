@@ -49,19 +49,9 @@ const PROPUESTA: Record<ProposalStatus, { texto: string; tono: BadgeTone; led?: 
   FALLIDO: { texto: 'Fallida', tono: 'error' },
 }
 
-export function ProposalStatusBadge({
-  status,
-  tamano,
-}: {
-  status: ProposalStatus
-  tamano?: 'normal' | 'grande'
-}) {
+export function ProposalStatusBadge({ status }: { status: ProposalStatus }) {
   const { texto, tono, led } = PROPUESTA[status] ?? { texto: status, tono: 'neutro' as BadgeTone }
-  return (
-    <Badge tone={tono} led={led} tamano={tamano ?? 'normal'}>
-      {texto}
-    </Badge>
-  )
+  return <Badge tone={tono} led={led}>{texto}</Badge>
 }
 
 /* ================================================================== */

@@ -1,73 +1,86 @@
-# Sistema de diseño - Nexora
+# Sistema de diseño — Nexora
 
-**Sencillo y grande.** Nexora es para personas mayores y para quien tiene poca
-práctica con lo digital. Le pide pagos a un asistente y quiere entender, sin
-esfuerzo, qué pasó con su dinero. Eso decide todo lo que sigue: letra grande,
-pocas pantallas, pocas palabras y casi nada que se mueva.
+Un panel de pagos se lee como un **panel de control**, no como un tablero de
+anuncios. Eso decide casi todo lo que sigue: la densidad, la jerarquía y,
+sobre todo, cuándo se usa color.
 
-> Esta versión (1 oct 2026) sustituye a la anterior, que describía un panel de
-> control denso con letra de 14 px. Ese enfoque chocaba con el público real.
-
-Tailwind CSS v4. No hay `tailwind.config.js`: los tokens viven en `@theme`
-dentro de `src/index.css`.
+Tailwind CSS v4. No hay `tailwind.config.js`: en v4 los tokens viven en
+`@theme` dentro de `src/index.css`, y cada uno genera sus utilidades
+automáticamente.
 
 ---
 
 ## Fundamento
 
-1. **Una cosa por pantalla.** El chat es el producto. Las demás pantallas son
-   vistas del mismo estado, no secciones independientes.
-2. **El color dice algo o no aparece.** Tres colores con significado y todo lo
-   demás en grises:
+**El color es un LED, no un adorno.** Un verde en la interfaz significa que
+algo está encendido: un pago confirmado, un mandato activo, una conexión con el
+backend. Nunca decora, nunca resume, nunca agrada. Si un color no responde a
+"¿qué está encendido?", no debería estar.
+
+De ahí salen tres colores con significado y todo lo demás en escala de grises:
 
 | Color | Significado |
 |---|---|
-| `led` | Estado vivo: confirmado, activo, conectado. |
+| `led` | Estado vivo: confirmó, activo, conectado. |
 | `acento` | Acción: el botón que hace algo. |
-| `oro` | Dinero y la marca del asistente. Nunca texto con degradado. |
+| `oro` | Dinero: importes, saldos, topes. |
 
-3. **Nada flota.** Superficies con borde de 1 px (`.elevada`) y, como mucho,
-   `--sombra-1`. Las sombras grandes son solo para lo que de verdad está
-   encima de la página: diálogos, cajón y toasts.
+Los estados que no son "vivo" usan `tinta-media` y una etiqueta de texto.
 
 ---
 
-## Navegación
+## Los datos son cajas, no tarjetas flotantes
 
-Seis entradas, en este orden: **Inicio, Mi billetera, Pendientes, Mis
-contactos, Mis reglas de pago, Mis movimientos.** Ni una más.
+La pantalla se construye con **módulos** unidos por filetes de 1 px dentro de
+un marco, no con tarjetas suspendidas con sombra. Sin sombras debajo, sin
+gradientes, sin esquinas redondeadas por encima de 10 px.
 
-- **Accesibilidad** va en el pie de la barra lateral, junto a la cuenta.
-- `/auditoria` y `/demo` existen por URL, pero no están en el menú: la
-  auditoría es para soporte y la demo del atacante es para presentar.
-- Las palabras son del usuario, no del sistema: "Mis reglas de pago" y no
-  "Mandato"; "Pendientes" y no "Aprobaciones y alertas".
+Es la diferencia entre un panel y un tablero: un tablero invita a mirar, un
+panel invita a trabajar. La densidad es alta a propósito —interlineados de
+1.4–1.55, tipografía de 11 a 14 px— porque la persona que usa esto tiene otras
+nueve pestañas abiertas.
+
+`.modulo`, `.modulo-cabecera`, `.modulo-cuerpo`, `.valla`, `.seccion`,
+`.pagina-cabecera`, `.kpi` y `.cifras` son el vocabulario del layout. Los
+componentes de React no inventan clases: consumen estas.
 
 ---
 
 ## Tipografía
 
-Stack del sistema, sin fuentes externas: cero parpadeo y funciona sin internet.
+Stack del sistema, sin peticiones de red: cero parpadeo de fuente y funciona sin
+internet.
 
-- La escala vive en `rem`. La preferencia de letra (`data-letra` en `<html>`)
-  escala toda la interfaz: `normal` 100 %, **`grande` 112,5 % (por defecto)**,
-  `muy-grande` 125 %.
-- El texto de lectura no baja de `base`. `2xs` y `xs` son solo para datos
-  secundarios (fecha de un mensaje, detalle técnico plegado).
-- El **monoespaciado** es para lo que se copia o se alinea en columna: hashes,
-  direcciones `G...`/`C...` e importes en columna (`.mono`, `.cifras`).
+El **monoespaciado** está reservado para lo que debe alinearse en columna o
+copiarse sin error:
+
+- hashes Stellar (`txHash`, `publicKeyHex`)
+- direcciones (`G...`, `C...`)
+- importes en columna
+
+`.mono` y `.cifras` aplican esto. Un importe suelto en medio de una frase usa
+la tipografía normal; el mismo importe en una columna, monoespaciada.
+
+### Escala cerrada
+
+Ocho tamaños y ni uno más. Un panel denso no necesita nueve:
+
+`2xs` (11) · `xs` (12) · `sm` (13) · `base` (14) · `lg` (16) · `xl` (20) ·
+`2xl` (28) · `3xl` (36)
+
+`base` es 14 px: más grande se siente como una landing, más pequeño ilegible en
+un portátil de 13".
 
 ---
 
-## Tamaños y espaciado
+## Espaciado
 
-- Objetivo: botones y controles táctiles de **48 px de alto como mínimo**
-  (44 px en la barra superior del celular). Todo lo nuevo debe cumplirlo; lo
-  que ya existe se revisa pantalla por pantalla.
-- Escala de 4 px. `--radius-control` (6 px) para controles y `--radius-card`
-  (10 px) para contenedores; nada pasa de 10 px salvo los avatares redondos.
-- Aire generoso dentro de cada bloque. Mejor una pantalla más larga que una
-  pantalla apretada.
+Escala de 4 px. Los módulos usan `--radius-control` (6 px) para controles y
+`--radius-card` (10 px) para contenedores. Por encima de 10 px las esquinas
+empiezan a gritar "aplicación móvil".
+
+El espaciado vertical entre secciones se marca con filetes, no con aire: aire
+solo cuando el contenido respira dentro de un módulo.
 
 ---
 
@@ -110,20 +123,20 @@ El error de la demo tiene caso propio: si el ataque no se puede lanzar porque
 
 ## Movimiento
 
-Poco y corto. Todo respeta `prefers-reduced-motion` y la opción "Sin
-animaciones" de Accesibilidad (`data-movimiento='reducido'`).
+Solo hay tres animaciones y todas son cortas:
 
 | | |
 |---|---|
-| `emerger` | Entrada de mensajes y pasos: 240 ms, 6 px, sin desenfoque. |
-| `.orbe.pensando` | La marca del asistente parpadea suave **solo mientras piensa**. Quieta el resto del tiempo. |
-| `latido` | El LED de conexión. |
-| `aparecer` | Diálogos y notificaciones. |
+| `latido` | El LED de conexión. Único elemento que se mueve sin interacción. |
+| `entrar-izq` / `entrar-abajo` / `subir` | Entrada de mensajes y paneles. |
+| `aparecer` | Modales y notificaciones. |
 
-`--ease-salida: cubic-bezier(0.16, 1, 0.3, 1)`. Nada pasa de 260 ms: una
-animación larga se lee como lentitud del sistema.
+`--ease-salida: cubic-bezier(0.16, 1, 0.3, 1)` y duraciones de 150–260 ms.
+Nada dura más de medio segundo: en un panel de pagos, una animación larga se
+lee como lentitud del sistema.
 
-La landing tiene su propio revelado al bajar y es la única excepción.
+Todo pasa por `prefers-reduced-motion`: si el sistema lo pide, las animaciones
+se desactivan. No es cortesía, es que el usuario ya lo dijo.
 
 ---
 
@@ -150,11 +163,15 @@ define el marco exterior y `--color-texto-cierre` el texto sobre él.
 
 | Ancho | Qué cambia |
 |---|---|
-| `< 64rem` | Una columna. La barra lateral pasa a cajón y hay barra superior. |
-| `≥ 64rem` | Barra lateral fija. |
+| `< 40rem` | Una columna. Barra lateral como cajón. Tabla → lista. |
+| `≥ 40rem` | Los KPI pasan a rejilla de 2. |
+| `≥ 48rem` | Rejilla de KPI a 4. Las acciones del chat se alinean a la derecha. |
+| `≥ 64rem` | Sidebar fija, 3 columnas de KPI, ancho de contenido acotado. |
+| `≥ 80rem` | Contenido más ancho para el historial y la auditoría. |
 
-El chat ocupa la pantalla y la caja de escribir queda abajo; con el chat
-vacío va centrada.
+El chat es el caso especial: en móvil el hilo ocupa la pantalla y el campo de
+escritura se pega abajo; en escritorio, hilo a la izquierda y barra de topes a
+la derecha.
 
 ---
 
@@ -174,15 +191,12 @@ vacío va centrada.
 
 Y por qué, para que no vuelva a aparecer:
 
-- **Texto con degradado, fondos con grano o con "luz ambiental".** Decoran y
-  restan contraste.
-- **Sombras grandes y superficies que flotan** fuera de diálogos y toasts.
-- **Animaciones en bucle** que no comuniquen un estado.
-- **Escalar botones al pasar el ratón.** El cambio de color basta.
+- **Sombras** salvo en popovers, que sí flotan sobre la página.
+- **Gradientes** en nada que no sea un LED encendido.
 - **Colores de estado sin etiqueta.**
 - **Iconos sin texto** en acciones que no sean obvias.
+- **Transiciones largas.** Si tarda más de 260 ms, parece un fallo.
 - **`alert()` y `confirm()` nativos.** Hay `useConfirm` y `Toast`.
-- **Más de seis entradas en el menú.**
 
 ---
 
