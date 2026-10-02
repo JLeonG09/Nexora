@@ -67,7 +67,7 @@ de verdad o está en modo simulado.
 | Campo | Tipo | Notas |
 |---|---|---|
 | `status` | `string` | |
-| `aiMode` | `"mock" \| "http"` | |
+| `aiMode` | `"mock" \| "http" \| "local" \| "hybrid"` | |
 | `signerMode` | `"mock" \| "http"` | Si es `mock`, ninguna firma es real. |
 | `network` | `string` | El backend solo admite `TESTNET` por ahora. |
 
@@ -195,6 +195,13 @@ un `ProposalSummaryDto` (12 campos, sin los internos) o `null`.
 
 → `ChatMessage[]`. `role` es `USUARIO` | `AGENTE`; `type` es `MESSAGE` |
 `PROPOSAL` (los mensajes de tipo `PROPOSAL` llevan `proposalId`).
+
+### `GET /api/chat/conversations?limit=30`
+
+→ `Page<ConversationSummary>`, la más reciente primero:
+`{ conversationId, title, startedAt, lastMessageAt, messageCount }`. `title` es
+el primer mensaje del usuario recortado a 60 caracteres. El panel abre un chat
+nuevo en cada inicio de sesión y usa esta lista para volver a los anteriores.
 
 ---
 

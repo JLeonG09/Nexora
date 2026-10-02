@@ -18,7 +18,7 @@
 
 export interface Health {
   status: string
-  aiMode: 'mock' | 'http' | 'local'
+  aiMode: 'mock' | 'http' | 'local' | 'hybrid'
   signerMode: 'mock' | 'http'
   network: string
 }
@@ -168,6 +168,15 @@ export interface ChatMessage {
   text: string
   proposalId: string | null
   createdAt: string
+}
+
+/** Elemento de `GET /chat/conversations`. `title` es el primer mensaje del usuario. */
+export interface ConversationSummary {
+  conversationId: string
+  title: string
+  startedAt: string
+  lastMessageAt: string
+  messageCount: number
 }
 
 export interface ChatReply {
