@@ -1,10 +1,13 @@
 package com.nexora.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.springframework.core.env.Environment;
 
 class StartupSecretsCheckTest {
 
@@ -106,6 +109,38 @@ class StartupSecretsCheckTest {
 
         assertThat(StartupSecretsCheck.problems(sinPrivy, LOCAL_DB, "nexora_dev"))
                 .singleElement().asString().contains("PRIVY_APP_ID");
+    }
+
+    @Test
+    void signerModeHttpEnMayusculasConDemoBloqueaElArranque() {
+        AppProperties props = new AppProperties(List.of("http://localhost:5173"),
+                "https://stellar.expert/explorer/testnet",
+                "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA", "TESTNET", 24,
+                new AppProperties.RateLimit(20, 5), true, STRONG,
+                new AppProperties.Ai("MOCK", "http://localhost:8000", STRONG_AI, 2000, 15000, new BigDecimal("0.7")),
+                new AppProperties.Signer("HTTP", "http://localhost:3001", STRONG_SIGNER, 2000, 45000,
+                        new AppProperties.SignerMock(new BigDecimal("50"))),
+                new AppProperties.StellarEvents("RPC", "https://soroban-testnet.stellar.org"),
+                new AppProperties.Reconciliation(true, 60000), "privy-app-de-prueba");
+        assertThat(props.signer().mode()).isEqualTo("http");
+        assertThat(props.ai().mode()).isEqualTo("mock");
+        assertThat(props.stellarEvents().mode()).isEqualTo("rpc");
+
+        Environment environment = Mockito.mock(Environment.class);
+        Mockito.when(environment.getProperty("spring.datasource.url")).thenReturn(LOCAL_DB);
+        Mockito.when(environment.getProperty("spring.datasource.password")).thenReturn("nexora_dev");
+
+        assertThatThrownBy(() -> new StartupSecretsCheck(props, environment).verify())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("DEMO_ATTACK_ENABLED")
+                .hasMessageContaining("SIGNER_MODE=http");
+    }
+
+    @Test
+    void aiModeEnMayusculasNoSeSaltaLaClave() {
+        assertThat(StartupSecretsCheck.problems(props("HTTP", "corta", "mock", STRONG_SIGNER, STRONG),
+                LOCAL_DB, "nexora_dev"))
+                .singleElement().asString().contains("AI_SERVICE_KEY");
     }
 
     @Test

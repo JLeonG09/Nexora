@@ -78,7 +78,7 @@ auditoría. También vigila la red: si sale de la smart account un pago que no h
 | `APPROVAL_TTL_HOURS` | `24` | Vida de una solicitud de aprobación |
 | `RATE_LIMIT_CHAT_PER_MINUTE` | `20` | Mensajes de chat por minuto y usuario (429 si se pasa) |
 | `RATE_LIMIT_PROPOSALS_PER_10_MIN` | `5` | Propuestas de pago por 10 minutos (regla 8) |
-| `DEMO_ATTACK_ENABLED` | `false` | Habilita `POST /api/demo/attack` (404 si está apagado). No arranca con `SIGNER_MODE=http` |
+| `DEMO_ATTACK_ENABLED` | `false` | Habilita `POST /api/demo/attack` solo con firmante `mock` (404 si está apagado o el firmante no es mock). No arranca con `SIGNER_MODE=http`, tampoco en mayúsculas |
 | `PRIVY_APP_ID` | — | App ID de Privy. Obligatorio si el firmante o la IA no están en modo mock |
 
 Nunca subas `.env`: está en `.gitignore`. Las claves reales se comparten por fuera del repo.
@@ -89,9 +89,9 @@ La misma regla aplica a `AI_SERVICE_KEY` con `AI_MODE=http` y a `SIGNER_SERVICE_
 Además rechaza la contraseña de desarrollo (`nexora_dev` y similares) cuando la base no es local:
 
 - `AGENT_TOOLS_KEY` siempre.
-- `AI_SERVICE_KEY` con `AI_MODE=http`.
-- `SIGNER_SERVICE_KEY` con `SIGNER_MODE=http`.
-- `DEMO_ATTACK_ENABLED=true` con `SIGNER_MODE=http`.
+- `AI_SERVICE_KEY` con `AI_MODE=http` (mayúsculas o minúsculas).
+- `SIGNER_SERVICE_KEY` con `SIGNER_MODE=http` (mayúsculas o minúsculas).
+- `DEMO_ATTACK_ENABLED=true` con `SIGNER_MODE=http` (mayúsculas o minúsculas). El endpoint responde 404 si el firmante no es `mock`.
 - `PRIVY_APP_ID` vacío cuando el firmante o la IA no están en modo mock.
 - `DB_PASSWORD` cuando la base no está en `localhost`.
 
