@@ -3,9 +3,9 @@
  *
  * Privy solo sustituye el paso 1 del alta: en vez de escribir nombre y correo
  * a mano, el usuario entra con un codigo al correo o con Google, y con esos
- * datos verificados se entra o se crea la cuenta. El resto de la sesion sigue
- * igual (`X-User-Id`). No se crean wallets de Privy: los pagos salen de la
- * smart account de Stellar que el usuario registra en el paso 2.
+ * datos verificados se crea o se vincula la cuenta con el access token.
+ * No se crean wallets de Privy: los pagos salen de la smart account de
+ * Stellar que el usuario registra en el paso 2.
  */
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
@@ -13,7 +13,6 @@ import { PrivyProvider, usePrivy, type User as PrivyUser } from '@privy-io/react
 
 import { Button } from '@/components/ui'
 import { IconInfo } from '@/components/icons'
-import { ApiError } from '@/api/errors'
 import { errorMessage } from '@/api/queries'
 import { PRIVY_APP_ID, PRIVY_CLIENT_ID, PRIVY_ENABLED } from '@/config/env'
 import { SesionProvider, useSesion } from './SesionContext'
@@ -53,13 +52,12 @@ function datosDelUsuario(user: PrivyUser): { displayName: string; email: string 
 }
 
 /**
- * Acceso cuando Privy esta activo. Privy no distingue entrar de registrarse,
- * asi que con el correo verificado se intenta entrar y, si no hay cuenta, se
- * crea.
+ * Acceso cuando Privy esta activo. Privy no distingue entrar de registrarse:
+ * `POST /api/users` crea la fila o devuelve la que ya esta vinculada al `sub`.
  */
 export function AccesoPrivy({ textoBoton }: { textoBoton: string }) {
   const { ready, authenticated, user, login, logout } = usePrivy()
-  const { crearUsuario, iniciarSesion } = useSesion()
+  const { crearUsuario } = useSesion()
   const [error, setError] = useState<string | null>(null)
   const [creando, setCreando] = useState(false)
   const intentado = useRef(false)
@@ -73,14 +71,10 @@ export function AccesoPrivy({ textoBoton }: { textoBoton: string }) {
     }
     intentado.current = true
     setCreando(true)
-    iniciarSesion(datos.email)
-      .catch((err: unknown) => {
-        if (err instanceof ApiError && err.isNotFound) return crearUsuario(datos)
-        throw err
-      })
+    crearUsuario(datos)
       .catch((err: unknown) => setError(errorMessage(err)))
       .finally(() => setCreando(false))
-  }, [ready, authenticated, user, crearUsuario, iniciarSesion])
+  }, [ready, authenticated, user, crearUsuario])
 
   async function salir() {
     await logout()

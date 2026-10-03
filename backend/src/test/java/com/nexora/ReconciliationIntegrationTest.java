@@ -61,7 +61,7 @@ class ReconciliationIntegrationTest extends IntegrationTestBase {
     @Test
     void demoAttackCreatesOnePendingAlert() throws Exception {
         String userId = readyUser();
-        AttackDemoIntegrationTest.attack(mockMvc, userId, UNKNOWN_ADDRESS, "10");
+        AttackDemoIntegrationTest.attack(mockMvc, bearer(userId), UNKNOWN_ADDRESS, "10");
 
         reconciliationJob.reconcileAll();
 

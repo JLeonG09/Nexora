@@ -59,7 +59,7 @@ class ApprovalFlowIntegrationTest extends IntegrationTestBase {
         String userId = readyUser();
         String approvalId = pendingApproval(userId, "Págale 18 USDC a Ana por la web");
 
-        mockMvc.perform(post("/api/approvals/" + approvalId + "/reject").header("X-User-Id", userId)
+        mockMvc.perform(post("/api/approvals/" + approvalId + "/reject").header("Authorization", bearer(userId))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"No reconozco este pago\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("RECHAZADA"))
@@ -79,7 +79,7 @@ class ApprovalFlowIntegrationTest extends IntegrationTestBase {
         String userId = readyUser();
         String approvalId = pendingApproval(userId, "Págale 18 USDC a Ana por la web");
 
-        mockMvc.perform(post("/api/approvals/" + approvalId + "/reject").header("X-User-Id", userId))
+        mockMvc.perform(post("/api/approvals/" + approvalId + "/reject").header("Authorization", bearer(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("RECHAZADA"));
     }
@@ -89,7 +89,7 @@ class ApprovalFlowIntegrationTest extends IntegrationTestBase {
         String userId = readyUser();
         String approvalId = pendingApproval(userId, "Págale 18 USDC a Ana por la web");
 
-        mockMvc.perform(post("/api/approvals/" + approvalId + "/reject").header("X-User-Id", userId)
+        mockMvc.perform(post("/api/approvals/" + approvalId + "/reject").header("Authorization", bearer(userId))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"" + "x".repeat(201) + "\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDACION_FALLIDA"));
@@ -199,7 +199,7 @@ class ApprovalFlowIntegrationTest extends IntegrationTestBase {
     }
 
     private ResultActions approve(String userId, String approvalId) throws Exception {
-        return mockMvc.perform(post("/api/approvals/" + approvalId + "/approve").header("X-User-Id", userId)
+        return mockMvc.perform(post("/api/approvals/" + approvalId + "/approve").header("Authorization", bearer(userId))
                 .contentType(MediaType.APPLICATION_JSON).content("{}"));
     }
 

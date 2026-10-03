@@ -58,6 +58,10 @@ public class StartupSecretsCheck {
         if (remoteDb && isWeak(dbPassword)) {
             problems.add("DB_PASSWORD sigue con el valor de desarrollo y la base no es local.");
         }
+        boolean mockStack = "mock".equals(properties.signer().mode()) && !"http".equals(properties.ai().mode());
+        if (!mockStack && (properties.privyAppId() == null || properties.privyAppId().isBlank())) {
+            problems.add("PRIVY_APP_ID es obligatorio cuando el firmante o la IA no están en modo mock.");
+        }
         return problems;
     }
 

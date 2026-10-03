@@ -25,7 +25,7 @@ class UserAccountIntegrationTest extends IntegrationTestBase {
     void createsUserAndReadsMe() throws Exception {
         String userId = createUser("Josué", "Josue@Example.com");
 
-        mockMvc.perform(get("/api/users/me").header("X-User-Id", userId))
+        mockMvc.perform(get("/api/users/me").header("Authorization", bearer(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(userId))
                 .andExpect(jsonPath("$.displayName").value("Josué"))
@@ -35,53 +35,55 @@ class UserAccountIntegrationTest extends IntegrationTestBase {
     @Test
     void duplicateEmailIsRejected() throws Exception {
         createUser("Josué", "josue@example.com");
-        mockMvc.perform(post("/api/users").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"displayName\":\"Otro\",\"email\":\"JOSUE@example.com\"}"))
+        mockMvc.perform(post("/api/users").header("Authorization", "Bearer " + token("did:privy:otro", "JOSUE@example.com"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"displayName\":\"Otro\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.details[0].field").value("email"));
     }
 
     @Test
-    void logsInWithEmailWithoutUserHeader() throws Exception {
+    void samePrivySubjectLinksTheExistingUser() throws Exception {
         String userId = createUser("Josué", "josue@example.com");
 
-        mockMvc.perform(post("/api/users/login").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"email\":\"JOSUE@Example.com\"}"))
+        mockMvc.perform(post("/api/users").header("Authorization", bearer(userId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"displayName\":\"Otro nombre\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(userId))
-                .andExpect(jsonPath("$.displayName").value("Josué"));
+                .andExpect(jsonPath("$.displayName").value("Josué"))
+                .andExpect(jsonPath("$.email").value("josue@example.com"));
     }
 
     @Test
-    void loginWithUnknownEmailIsNotFound() throws Exception {
+    void loginByEmailIsGone() throws Exception {
         mockMvc.perform(post("/api/users/login").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"email\":\"nadie@example.com\"}"))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("RECURSO_NO_ENCONTRADO"))
-                .andExpect(jsonPath("$.details[0].field").value("email"));
+                        .content("{\"email\":\"josue@example.com\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("USUARIO_NO_IDENTIFICADO"));
     }
 
     @Test
     void registersAccountOncePerUser() throws Exception {
         String userId = createUser("Josué", null);
 
-        mockMvc.perform(get("/api/accounts/me").header("X-User-Id", userId))
+        mockMvc.perform(get("/api/accounts/me").header("Authorization", bearer(userId)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("RECURSO_NO_ENCONTRADO"));
 
-        mockMvc.perform(post("/api/accounts").header("X-User-Id", userId).contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/api/accounts").header("Authorization", bearer(userId)).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"smartAccountAddress\":\"" + VALID_C_ADDRESS + "\",\"credentialId\":\"cred-demo\",\"network\":\"TESTNET\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.userId").value(userId))
                 .andExpect(jsonPath("$.smartAccountAddress").value(VALID_C_ADDRESS))
                 .andExpect(jsonPath("$.explorerUrl").value("https://stellar.expert/explorer/testnet/contract/" + VALID_C_ADDRESS));
 
-        mockMvc.perform(post("/api/accounts").header("X-User-Id", userId).contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/api/accounts").header("Authorization", bearer(userId)).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"smartAccountAddress\":\"" + OTHER_C_ADDRESS + "\"}"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CUENTA_YA_REGISTRADA"));
 
-        mockMvc.perform(get("/api/accounts/me").header("X-User-Id", userId))
+        mockMvc.perform(get("/api/accounts/me").header("Authorization", bearer(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.network").value("TESTNET"));
 
@@ -99,7 +101,7 @@ class UserAccountIntegrationTest extends IntegrationTestBase {
         String second = createUser("Juan", null);
         registerAccount(first, VALID_C_ADDRESS);
 
-        mockMvc.perform(post("/api/accounts").header("X-User-Id", second).contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/api/accounts").header("Authorization", bearer(second)).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"smartAccountAddress\":\"" + VALID_C_ADDRESS + "\"}"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CUENTA_YA_REGISTRADA"));
@@ -108,7 +110,7 @@ class UserAccountIntegrationTest extends IntegrationTestBase {
     @Test
     void invalidAddressIsRejected() throws Exception {
         String userId = createUser("Josué", null);
-        mockMvc.perform(post("/api/accounts").header("X-User-Id", userId).contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/api/accounts").header("Authorization", bearer(userId)).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"smartAccountAddress\":\"GABC\",\"network\":\"MAINNET\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDACION_FALLIDA"));

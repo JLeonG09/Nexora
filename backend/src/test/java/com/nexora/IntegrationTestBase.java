@@ -7,8 +7,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.jayway.jsonpath.JsonPath;
 import com.nexora.clients.MockLedger;
 import com.nexora.clients.MockSignerClient;
+import com.nexora.config.AppProperties;
+import com.nexora.config.TestProfileJwtDecoder;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -43,8 +48,14 @@ public abstract class IntegrationTestBase {
     @Autowired
     protected MockLedger mockLedger;
 
+    @Autowired
+    private AppProperties appProperties;
+
+    private final Map<String, String> tokens = new HashMap<>();
+
     @BeforeEach
     void cleanDatabase() {
+        tokens.clear();
         // TRUNCATE no dispara el trigger de solo inserción de audit_events.
         jdbcTemplate.execute("TRUNCATE TABLE audit_events, alerts, approvals, chat_messages, payment_proposals, "
                 + "contacts, mandates, accounts, users CASCADE");
@@ -54,16 +65,39 @@ public abstract class IntegrationTestBase {
     }
 
     protected String createUser(String name, String email) throws Exception {
-        String emailJson = email == null ? "" : ",\"email\":\"" + email + "\"";
-        String body = mockMvc.perform(post("/api/users").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"displayName\":\"" + name + "\"" + emailJson + "}"))
+        String did = "did:privy:" + UUID.randomUUID().toString().replace("-", "");
+        String token = TestProfileJwtDecoder.token(did, appProperties.privyAppId(), email);
+        String body = mockMvc.perform(post("/api/users").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"displayName\":\"" + name + "\"}"))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
-        return JsonPath.read(body, "$.id");
+        String userId = JsonPath.read(body, "$.id");
+        tokens.put(userId, token);
+        return userId;
+    }
+
+    /** Authorization del usuario creado con {@link #createUser}. */
+    protected String bearer(String userId) {
+        String token = tokens.get(userId);
+        if (token == null) {
+            throw new IllegalStateException("No hay access token para " + userId);
+        }
+        return "Bearer " + token;
+    }
+
+    /** Token válido de un DID que todavía no tiene fila. Sirve para probar el alta. */
+    protected String freshBearer() {
+        return "Bearer " + token("did:privy:" + UUID.randomUUID().toString().replace("-", ""), null);
+    }
+
+    protected String token(String did, String email) {
+        return TestProfileJwtDecoder.token(did, appProperties.privyAppId(), email);
     }
 
     protected void registerAccount(String userId, String address) throws Exception {
-        mockMvc.perform(post("/api/accounts").header("X-User-Id", userId).contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/api/accounts").header("Authorization", bearer(userId))
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"smartAccountAddress\":\"" + address + "\"}"))
                 .andExpect(status().isCreated());
     }
@@ -76,7 +110,7 @@ public abstract class IntegrationTestBase {
     }
 
     protected String createContact(String userId, String name, String address) throws Exception {
-        String body = mockMvc.perform(post("/api/contacts").header("X-User-Id", userId)
+        String body = mockMvc.perform(post("/api/contacts").header("Authorization", bearer(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"" + name + "\",\"stellarAddress\":\"" + address + "\"}"))
                 .andExpect(status().isCreated())
@@ -85,7 +119,7 @@ public abstract class IntegrationTestBase {
     }
 
     protected String currentPublicKeyHex(String userId) throws Exception {
-        String body = mockMvc.perform(get("/api/agent/public-key").header("X-User-Id", userId))
+        String body = mockMvc.perform(get("/api/agent/public-key").header("Authorization", bearer(userId)))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         return JsonPath.read(body, "$.publicKeyHex");
@@ -97,7 +131,7 @@ public abstract class IntegrationTestBase {
                 + threshold + "\",\"asset\":\"USDC\",\"expiresAt\":\"" + expiresAt + "\",\"contextRuleId\":1,"
                 + "\"validUntilLedger\":1234567,\"createTxHash\":\"" + CREATE_TX_HASH + "\",\"keyVersion\":"
                 + keyVersion + ",\"agentPublicKeyHex\":\"" + publicKeyHex + "\"}";
-        return mockMvc.perform(post("/api/mandates").header("X-User-Id", userId)
+        return mockMvc.perform(post("/api/mandates").header("Authorization", bearer(userId))
                 .contentType(MediaType.APPLICATION_JSON).content(body));
     }
 
@@ -112,7 +146,8 @@ public abstract class IntegrationTestBase {
 
     protected ResultActions chat(String userId, String message, String conversationId) throws Exception {
         String conversation = conversationId == null ? "" : ",\"conversationId\":\"" + conversationId + "\"";
-        return mockMvc.perform(post("/api/chat").header("X-User-Id", userId).contentType(MediaType.APPLICATION_JSON)
+        return mockMvc.perform(post("/api/chat").header("Authorization", bearer(userId))
+                .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"message\":\"" + message + "\"" + conversation + "}"));
     }
 

@@ -5,6 +5,7 @@ spring:
     password: nexora_dev
 
 app:
+  privy-app-id: test-privy-app
   ai:
     mode: mock
   signer:

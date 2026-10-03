@@ -12,7 +12,7 @@ class AttackDemoDisabledIntegrationTest extends IntegrationTestBase {
         String userId = userWithAccount();
         createMandate(userId, 1);
 
-        AttackDemoIntegrationTest.attack(mockMvc, userId, AttackDemoIntegrationTest.UNKNOWN_ADDRESS, "60")
+        AttackDemoIntegrationTest.attack(mockMvc, bearer(userId), AttackDemoIntegrationTest.UNKNOWN_ADDRESS, "60")
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("RECURSO_NO_ENCONTRADO"));
     }

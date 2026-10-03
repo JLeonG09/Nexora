@@ -98,15 +98,15 @@ class AttackDemoIntegrationTest extends IntegrationTestBase {
         return userId;
     }
 
-    static ResultActions attack(org.springframework.test.web.servlet.MockMvc mockMvc, String userId, String destination,
-                                String amount) throws Exception {
-        return mockMvc.perform(post("/api/demo/attack").header("X-User-Id", userId)
+    static ResultActions attack(org.springframework.test.web.servlet.MockMvc mockMvc, String authorization,
+                                String destination, String amount) throws Exception {
+        return mockMvc.perform(post("/api/demo/attack").header("Authorization", authorization)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"destinationAddress\":\"" + destination + "\",\"amount\":\"" + amount + "\"}"));
     }
 
     private ResultActions attack(String userId, String destination, String amount) throws Exception {
-        return attack(mockMvc, userId, destination, amount);
+        return attack(mockMvc, bearer(userId), destination, amount);
     }
 
     private int auditCount(UUID proposalId, String type) {

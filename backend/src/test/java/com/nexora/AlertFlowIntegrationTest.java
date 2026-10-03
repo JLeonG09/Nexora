@@ -28,7 +28,7 @@ class AlertFlowIntegrationTest extends IntegrationTestBase {
         String userId = readyUser();
         String alertId = stolenKeyAlert(userId);
 
-        mockMvc.perform(get("/api/alerts?status=PENDIENTE").header("X-User-Id", userId))
+        mockMvc.perform(get("/api/alerts?status=PENDIENTE").header("Authorization", bearer(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items", hasSize(1)))
                 .andExpect(jsonPath("$.items[0].id").value(alertId))
@@ -42,7 +42,7 @@ class AlertFlowIntegrationTest extends IntegrationTestBase {
                         .value("Detectamos un pago de 10.00 USDC a GCCCC…CCCCC que no hizo el agente. ¿Fuiste tú?"))
                 .andExpect(jsonPath("$.items[0].decidedAt").doesNotExist())
                 .andExpect(jsonPath("$.totalItems").value(1));
-        mockMvc.perform(get("/api/alerts?status=REPORTADA").header("X-User-Id", userId))
+        mockMvc.perform(get("/api/alerts?status=REPORTADA").header("Authorization", bearer(userId)))
                 .andExpect(jsonPath("$.items", hasSize(0)));
     }
 
@@ -138,7 +138,7 @@ class AlertFlowIntegrationTest extends IntegrationTestBase {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("RECURSO_NO_ENCONTRADO"));
         decide(other, alertId, "report").andExpect(status().isNotFound());
-        mockMvc.perform(get("/api/alerts").header("X-User-Id", other))
+        mockMvc.perform(get("/api/alerts").header("Authorization", bearer(other)))
                 .andExpect(jsonPath("$.items", hasSize(0)));
     }
 
@@ -151,14 +151,14 @@ class AlertFlowIntegrationTest extends IntegrationTestBase {
 
     /** Demo "llave robada": ataque de 10 USDC (bajo el tope on-chain) y conciliación. */
     private String stolenKeyAlert(String userId) throws Exception {
-        AttackDemoIntegrationTest.attack(mockMvc, userId, UNKNOWN_ADDRESS, "10")
+        AttackDemoIntegrationTest.attack(mockMvc, bearer(userId), UNKNOWN_ADDRESS, "10")
                 .andExpect(jsonPath("$.status").value("CONFIRMADO"));
         reconciliationJob.reconcileAll();
         return jdbcTemplate.queryForObject("SELECT id FROM alerts", UUID.class).toString();
     }
 
     private ResultActions decide(String userId, String alertId, String action) throws Exception {
-        return mockMvc.perform(post("/api/alerts/" + alertId + "/" + action).header("X-User-Id", userId)
+        return mockMvc.perform(post("/api/alerts/" + alertId + "/" + action).header("Authorization", bearer(userId))
                 .contentType(MediaType.APPLICATION_JSON).content("{}"));
     }
 

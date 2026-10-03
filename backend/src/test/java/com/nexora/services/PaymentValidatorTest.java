@@ -43,7 +43,7 @@ class PaymentValidatorTest {
         contactRepository = mock(ContactRepository.class);
         AppProperties properties = new AppProperties(List.of(), "", "", "TESTNET", 24,
                 new AppProperties.RateLimit(20, 5), true, "",
-                new AppProperties.Ai("mock", "", "", 2000, 15000, new BigDecimal("0.7")), null, null, null);
+                new AppProperties.Ai("mock", "", "", 2000, 15000, new BigDecimal("0.7")), null, null, null, "");
         validator = new PaymentValidator(contactRepository, properties);
 
         ana = new Contact();

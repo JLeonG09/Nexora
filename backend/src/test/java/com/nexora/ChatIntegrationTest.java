@@ -101,7 +101,7 @@ class ChatIntegrationTest extends IntegrationTestBase {
         String approvalId = JsonPath.read(body, "$.proposal.approvalId");
         String proposalId = JsonPath.read(body, "$.proposal.id");
 
-        mockMvc.perform(get("/api/approvals").header("X-User-Id", userId))
+        mockMvc.perform(get("/api/approvals").header("Authorization", bearer(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalItems").value(1))
                 .andExpect(jsonPath("$.items[0].id").value(approvalId))
@@ -290,7 +290,7 @@ class ChatIntegrationTest extends IntegrationTestBase {
         chat(userId, "¿Cuánto me queda?", conversationId).andExpect(jsonPath("$.conversationId").value(conversationId));
         chat(userId, "Otra conversación", null);
 
-        mockMvc.perform(get("/api/chat/messages").header("X-User-Id", userId).param("conversationId", conversationId))
+        mockMvc.perform(get("/api/chat/messages").header("Authorization", bearer(userId)).param("conversationId", conversationId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalItems").value(4))
                 .andExpect(jsonPath("$.items[0].role").value("USUARIO"))

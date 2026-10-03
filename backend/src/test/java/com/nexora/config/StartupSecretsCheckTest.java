@@ -67,10 +67,26 @@ class StartupSecretsCheckTest {
                 new AppProperties.Signer("http", "http://localhost:3001", "k2-1c2d3e", 2000, 45000,
                         new AppProperties.SignerMock(new BigDecimal("50"))),
                 new AppProperties.StellarEvents("mock", "https://soroban-testnet.stellar.org"),
-                new AppProperties.Reconciliation(true, 60000));
+                new AppProperties.Reconciliation(true, 60000), "privy-app-de-prueba");
 
         assertThat(StartupSecretsCheck.problems(enabled, LOCAL_DB, "nexora_dev"))
                 .singleElement().asString().contains("DEMO_ATTACK_ENABLED").contains("SIGNER_MODE=http");
+    }
+
+    @Test
+    void realSignerWithoutPrivyAppIdIsBlocked() {
+        AppProperties sinPrivy = new AppProperties(List.of("http://localhost:5173"),
+                "https://stellar.expert/explorer/testnet",
+                "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA", "TESTNET", 24,
+                new AppProperties.RateLimit(20, 5), false, "k3-4f5a6b",
+                new AppProperties.Ai("mock", "http://localhost:8000", "k1-9f8a7b", 2000, 15000, new BigDecimal("0.7")),
+                new AppProperties.Signer("http", "http://localhost:3001", "k2-1c2d3e", 2000, 45000,
+                        new AppProperties.SignerMock(new BigDecimal("50"))),
+                new AppProperties.StellarEvents("mock", "https://soroban-testnet.stellar.org"),
+                new AppProperties.Reconciliation(true, 60000), "  ");
+
+        assertThat(StartupSecretsCheck.problems(sinPrivy, LOCAL_DB, "nexora_dev"))
+                .singleElement().asString().contains("PRIVY_APP_ID");
     }
 
     @Test
@@ -89,6 +105,6 @@ class StartupSecretsCheckTest {
                 new AppProperties.Signer(signerMode, "http://localhost:3001", signerKey, 2000, 45000,
                         new AppProperties.SignerMock(new BigDecimal("50"))),
                 new AppProperties.StellarEvents("mock", "https://soroban-testnet.stellar.org"),
-                new AppProperties.Reconciliation(true, 60000));
+                new AppProperties.Reconciliation(true, 60000), "privy-app-de-prueba");
     }
 }

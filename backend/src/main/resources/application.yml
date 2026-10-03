@@ -38,6 +38,10 @@ app:
     chat-per-minute: ${RATE_LIMIT_CHAT_PER_MINUTE:20}
     proposals-per-10-min: ${RATE_LIMIT_PROPOSALS_PER_10_MIN:5}
   demo-attack-enabled: ${DEMO_ATTACK_ENABLED:false}
+  # App ID de Privy. El access token (ES256) se valida contra
+  # https://auth.privy.io/api/v1/apps/${PRIVY_APP_ID}/jwks.json
+  # iss = privy.io y aud = este id. Vacío solo se admite con firmante e IA en mock.
+  privy-app-id: ${PRIVY_APP_ID:}
   agent-tools-key: ${AGENT_TOOLS_KEY:cambia-esto}
   ai:
     mode: ${AI_MODE:mock}

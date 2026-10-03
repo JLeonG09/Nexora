@@ -17,7 +17,8 @@ public record AppProperties(
         Ai ai,
         Signer signer,
         StellarEvents stellarEvents,
-        Reconciliation reconciliation) {
+        Reconciliation reconciliation,
+        String privyAppId) {
 
     public record RateLimit(int chatPerMinute, int proposalsPer10Min) {
     }

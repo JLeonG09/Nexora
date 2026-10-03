@@ -1,6 +1,5 @@
 package com.nexora.services;
 
-import com.nexora.dtos.requests.CreateUserRequest;
 import com.nexora.entities.User;
 import com.nexora.entities.enums.AuditActor;
 import com.nexora.entities.enums.AuditEventType;
@@ -8,6 +7,7 @@ import com.nexora.exceptions.ApiException;
 import com.nexora.exceptions.ErrorCode;
 import com.nexora.repositories.UserRepository;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,27 +23,31 @@ public class UserService {
         this.auditService = auditService;
     }
 
+    /**
+     * Crea el usuario con el {@code sub} del token, o devuelve el que ya está vinculado a ese DID.
+     * El correo sale del token si viene; el cuerpo no identifica a nadie.
+     */
     @Transactional
-    public User create(CreateUserRequest request) {
-        String email = normalizeEmail(request.email());
+    public User createOrLink(String privyDid, String emailFromToken, String displayName) {
+        if (privyDid == null || privyDid.isBlank() || privyDid.length() > 64) {
+            throw new ApiException(ErrorCode.USUARIO_NO_IDENTIFICADO);
+        }
+        Optional<User> existing = userRepository.findByPrivyDid(privyDid);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+        String email = normalizeEmail(emailFromToken);
         if (email != null && userRepository.existsByEmail(email)) {
             throw ApiException.field(ErrorCode.VALIDACION_FALLIDA, "email", "Ese correo ya está registrado.");
         }
         User user = new User();
-        user.setDisplayName(request.displayName().trim());
+        user.setPrivyDid(privyDid);
+        user.setDisplayName(displayName.trim());
         user.setEmail(email);
         User saved = userRepository.save(user);
         auditService.record(AuditEventType.USUARIO_CREADO, AuditActor.USUARIO, saved.getId(),
                 "Usuario creado: " + saved.getDisplayName() + ".");
         return saved;
-    }
-
-    // TODO(auth real): login simulado del MVP; cualquiera que conozca el correo entra.
-    @Transactional(readOnly = true)
-    public User login(String rawEmail) {
-        return userRepository.findByEmail(normalizeEmail(rawEmail))
-                .orElseThrow(() -> ApiException.field(ErrorCode.RECURSO_NO_ENCONTRADO, "email",
-                        "No hay ninguna cuenta con ese correo."));
     }
 
     @Transactional(readOnly = true)

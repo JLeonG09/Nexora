@@ -46,11 +46,9 @@ export const AGENT_TOOLS_ENABLED =
   (import.meta.env.VITE_AGENT_TOOLS ?? 'false') === 'true'
 
 /**
- * Login con Privy (correo con codigo o Google). Solo se activa si hay App ID:
- * sin el, el alta sigue pidiendo nombre y correo a mano.
- *
- * Privy solo verifica el correo en el navegador. El backend sigue
- * identificando al usuario por `X-User-Id` y no valida el token de Privy.
+ * Login con Privy (correo con codigo o Google). Solo se activa si hay App ID.
+ * El backend valida el access token: sin Privy, el alta a mano solo sirve
+ * con datos de prueba (`VITE_MOCK`).
  */
 export const PRIVY_APP_ID = (import.meta.env.VITE_PRIVY_APP_ID ?? '').trim()
 export const PRIVY_CLIENT_ID = (import.meta.env.VITE_PRIVY_CLIENT_ID ?? '').trim() || undefined

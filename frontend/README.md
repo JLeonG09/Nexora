@@ -83,8 +83,8 @@ NEXORA_BACKEND="C:/ruta/al/backend" pnpm check:contrato
 | `/auditoria` | Todos los eventos, filtrables por propuesta. |
 | `/demo` | El atacante con la llave robada. |
 
-Sin login: `POST /api/users` **crea** la sesión y su id viaja en `X-User-Id`.
-Si borras `localStorage`, empiezas de cero con otro usuario.
+Con Privy, cada llamada lleva `Authorization: Bearer` (access token). `POST /api/users`
+vincula la cuenta al `sub`. Sin `VITE_PRIVY_APP_ID` el panel usa datos de prueba.
 
 ---
 

@@ -17,7 +17,7 @@ class KeyRotationIntegrationTest extends IntegrationTestBase {
         String userId = userWithAccount();
         createContact(userId, "Ana", ANA_ADDRESS);
         String firstMandate = createMandate(userId, 1);
-        mockMvc.perform(post("/api/mandates/" + firstMandate + "/revoke").header("X-User-Id", userId)
+        mockMvc.perform(post("/api/mandates/" + firstMandate + "/revoke").header("Authorization", bearer(userId))
                         .contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(status().isOk());
         String keyV2 = currentPublicKeyHex(userId);

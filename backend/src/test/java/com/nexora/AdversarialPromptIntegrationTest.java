@@ -88,7 +88,7 @@ class AdversarialPromptIntegrationTest extends IntegrationTestBase {
 
     @Test
     void archivedContactCannotBePaid() throws Exception {
-        mockMvc.perform(delete("/api/contacts/" + anaId).header("X-User-Id", userId))
+        mockMvc.perform(delete("/api/contacts/" + anaId).header("Authorization", bearer(userId)))
                 .andExpect(status().isNoContent());
         answer(Map.of("contactId", anaId, "contactName", "Ana", "amount", "5", "asset", "USDC"));
 

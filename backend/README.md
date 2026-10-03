@@ -40,11 +40,14 @@ auditoría. También vigila la red: si sale de la smart account un pago que no h
    ./mvnw test
    ```
 
-## Autenticación del MVP
+## Autenticación
 
-- Todas las rutas `/api/**` (menos `/api/health`) piden el header `X-User-Id` con el id que devuelve
-  `POST /api/users`. No hay contraseñas: es un MVP de hackathon.
-- `/api/agent-tools/**` es solo para el servicio de IA y además pide `X-Service-Key` = `AGENT_TOOLS_KEY`.
+- Las rutas de usuario piden `Authorization: Bearer` con el access token de Privy (ES256).
+  El backend valida `iss = privy.io` y `aud = PRIVY_APP_ID` contra el JWKS de la app.
+  `POST /api/users` crea o vincula al usuario con el `sub` de ese token.
+- `/api/health`, la documentación OpenAPI y `/api/agent-tools/**` no piden ese token.
+- `/api/agent-tools/**` es solo para el servicio de IA y pide `X-Service-Key` = `AGENT_TOOLS_KEY`
+  más `X-User-Id` con el id interno del usuario. La API de usuario no lee esa cabecera.
 - Los errores siempre tienen el mismo formato: `{ timestamp, status, code, message, path, details, traceId }`.
 
 ## Variables de entorno
@@ -76,6 +79,7 @@ auditoría. También vigila la red: si sale de la smart account un pago que no h
 | `RATE_LIMIT_CHAT_PER_MINUTE` | `20` | Mensajes de chat por minuto y usuario (429 si se pasa) |
 | `RATE_LIMIT_PROPOSALS_PER_10_MIN` | `5` | Propuestas de pago por 10 minutos (regla 8) |
 | `DEMO_ATTACK_ENABLED` | `false` | Habilita `POST /api/demo/attack` (404 si está apagado). No arranca con `SIGNER_MODE=http` |
+| `PRIVY_APP_ID` | — | App ID de Privy. Obligatorio si el firmante o la IA no están en modo mock |
 
 Nunca subas `.env`: está en `.gitignore`. Las claves reales se comparten por fuera del repo.
 
@@ -85,6 +89,7 @@ pueden quedar expuestos:
 - `AI_SERVICE_KEY` y `AGENT_TOOLS_KEY` con `AI_MODE=http`.
 - `SIGNER_SERVICE_KEY` con `SIGNER_MODE=http`.
 - `DEMO_ATTACK_ENABLED=true` con `SIGNER_MODE=http`.
+- `PRIVY_APP_ID` vacío cuando el firmante o la IA no están en modo mock.
 - `AGENT_TOOLS_KEY` y `DB_PASSWORD` cuando la base no está en `localhost`.
 
 En desarrollo local con los mocks arranca sin `.env`. El error nombra la variable, nunca su valor.

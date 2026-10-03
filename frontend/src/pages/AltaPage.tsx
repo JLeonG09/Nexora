@@ -1,9 +1,9 @@
 /**
  * Acceso: entrar o crear cuenta, y despues registrar la smart account.
  *
- *  1. Identidad. `POST /api/users/login` recupera un usuario por su correo
- *     (simulado en el MVP: sin contrasena ni verificacion) y `POST /api/users`
- *     crea uno nuevo. Ambos devuelven el id que viaja en `X-User-Id`.
+ *  1. Identidad. Con Privy, `POST /api/users` crea o vincula la cuenta al
+ *     `sub` del access token. Sin Privy, el alta a mano solo existe en la
+ *     demo con datos de prueba: el backend ya no entra por correo.
  *  2. `POST /api/accounts` REGISTRA una smart account que el usuario ya
  *     desplego por fuera. El panel no genera claves, no pide seed phrase y
  *     no firma nada. Si se perdiera la clave privada, el dinero tampoco
@@ -14,7 +14,7 @@
  */
 
 import { useState, type FormEvent, type ReactNode } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 
 import { Button, Exito, Field, Input, Spinner } from '@/components/ui'
 import {
@@ -202,86 +202,18 @@ function Acceso({ modo }: { modo: ModoAcceso }) {
 }
 
 function FormEntrar() {
-  const { iniciarSesion } = useSesion()
-  const navigate = useNavigate()
-  const [correo, setCorreo] = useState('')
-  const [tocado, setTocado] = useState(false)
-  const [enCurso, setEnCurso] = useState(false)
-  const [errorCorreo, setErrorCorreo] = useState<string | null>(null)
-  const [noExiste, setNoExiste] = useState(false)
-  const [errorGeneral, setErrorGeneral] = useState<string | null>(null)
-
-  const limpio = correo.trim()
-  const invalido = !CORREO_VALIDO.test(limpio)
-  const errorVisible =
-    errorCorreo ?? (tocado && invalido ? (limpio ? 'Ese correo no parece válido.' : 'Escribe tu correo.') : null)
-
-  async function enviar(e: FormEvent) {
-    e.preventDefault()
-    setTocado(true)
-    if (invalido) return
-    setErrorCorreo(null)
-    setNoExiste(false)
-    setErrorGeneral(null)
-    setEnCurso(true)
-    try {
-      await iniciarSesion(limpio)
-    } catch (err) {
-      const delCampo = errorDelCampo(err, 'email')
-      if (delCampo) setErrorCorreo(delCampo)
-      else setErrorGeneral(errorMessage(err))
-      setNoExiste(err instanceof ApiError && err.isNotFound)
-    } finally {
-      setEnCurso(false)
-    }
-  }
-
   return (
-    <form onSubmit={enviar} className="flex flex-col gap-5" noValidate>
-      <Field label="Correo" error={errorVisible}>
-        {(props) => (
-          <Input
-            {...props}
-            type="email"
-            value={correo}
-            autoFocus
-            autoComplete="email"
-            placeholder="ana@ejemplo.com"
-            onChange={(e) => {
-              setCorreo(e.target.value)
-              setErrorCorreo(null)
-              setNoExiste(false)
-            }}
-          />
-        )}
-      </Field>
-
-      {noExiste && (
-        <Button
-          type="button"
-          variante="secundario"
-          tamano="sm"
-          onClick={() => navigate('/empezar', { replace: true, state: { correo: limpio } })}
-        >
-          Crear una cuenta con este correo
-        </Button>
-      )}
-
-      {errorGeneral && (
-        <p role="alert" className="text-[1rem] text-error">
-          {errorGeneral}
-        </p>
-      )}
-
-      <Button type="submit" variante="primario" bloque cargando={enCurso}>
-        {enCurso ? 'Entrando' : 'Entrar'}
-      </Button>
-
+    <div className="flex flex-col gap-5">
+      <p role="status" className="text-[1.0625rem] leading-relaxed text-tinta-media">
+        {MOCK_ENABLED
+          ? 'En la demo con datos de prueba no se puede volver a entrar por correo. Crea una cuenta nueva para recorrer el flujo.'
+          : 'Para entrar hace falta Privy. Configura VITE_PRIVY_APP_ID: el acceso por correo ya no existe.'}
+      </p>
       <p className="flex items-start gap-2 text-[1rem] text-tinta-media">
         <IconInfo className="mt-1 h-4 w-4 shrink-0" />
-        <span>Por ahora basta con tu correo. No tienes que recordar ninguna contraseña.</span>
+        <span>La cuenta queda vinculada al access token, no a un correo escrito a mano.</span>
       </p>
-    </form>
+    </div>
   )
 }
 
