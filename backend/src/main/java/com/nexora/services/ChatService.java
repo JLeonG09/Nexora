@@ -36,6 +36,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -87,6 +88,12 @@ public class ChatService {
     }
 
     public ChatResponse chat(UUID userId, ChatRequest request) {
+        if (request.clientMessageId() != null) {
+            Optional<PaymentProposal> prior = proposalService.findByClientMessage(userId, request.clientMessageId());
+            if (prior.isPresent()) {
+                return respuestaDe(prior.get());
+            }
+        }
         Account account = accountRepository.findByUserId(userId).orElseThrow(() -> new ApiException(ErrorCode.SIN_CUENTA));
         UUID conversationId = request.conversationId() != null ? request.conversationId() : UUID.randomUUID();
         String text = request.message().trim();
@@ -122,8 +129,12 @@ public class ChatService {
 
         // (3) Propuesta validada con la cuenta bloqueada
         PaymentProposalService.Outcome outcome = proposalService.createFromAi(userId, account.getId(), conversationId,
-                text, response);
+                text, response, request.clientMessageId());
         PaymentProposal proposal = outcome.proposal();
+
+        if (outcome.replay()) {
+            return respuestaDe(proposal);
+        }
 
         // (4) Firmante, fuera de transacción
         if (outcome.signRequest() != null) {
@@ -167,6 +178,31 @@ public class ChatService {
                     .toList();
             return new PageResponse<>(items, 0, limit, chatMessageRepository.countConversations(userId));
         });
+    }
+
+    /** La misma propuesta y, si ya se guardó, la misma respuesta del agente. */
+    private ChatResponse respuestaDe(PaymentProposal proposal) {
+        PaymentProposalService.Outcome outcome = proposalService.outcomeOf(proposal);
+        ChatMessage reply = chatMessageRepository
+                .findFirstByUserIdAndProposalIdOrderByCreatedAtDesc(proposal.getUserId(), proposal.getId())
+                .orElseGet(() -> respuestaSinGuardar(proposal, replyFor(proposal, outcome.contactName())));
+        UUID conversationId = proposal.getConversationId() != null ? proposal.getConversationId() : reply.getConversationId();
+        return new ChatResponse(conversationId, ChatReplyDto.from(reply),
+                ProposalSummaryDto.from(proposal, outcome.contactName(), outcome.approvalId(),
+                        properties.explorerBaseUrl()));
+    }
+
+    private static ChatMessage respuestaSinGuardar(PaymentProposal proposal, String text) {
+        ChatMessage reply = new ChatMessage();
+        reply.setId(proposal.getId());
+        reply.setUserId(proposal.getUserId());
+        reply.setConversationId(proposal.getConversationId());
+        reply.setRole(ChatRole.AGENTE);
+        reply.setType(ChatMessageType.PROPOSAL);
+        reply.setText(text == null ? "" : text);
+        reply.setProposalId(proposal.getId());
+        reply.setCreatedAt(Instant.now());
+        return reply;
     }
 
     private static String title(String text) {

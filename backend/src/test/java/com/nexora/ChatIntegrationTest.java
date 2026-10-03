@@ -208,7 +208,7 @@ class ChatIntegrationTest extends IntegrationTestBase {
         chat(userId, "Págale 5 USDC a Ana por el logo #firmante-lento", null)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.proposal.status").value("ENVIADO"))
-                .andExpect(jsonPath("$.proposal.txHash").doesNotExist())
+                .andExpect(jsonPath("$.proposal.txHash").exists())
                 .andExpect(jsonPath("$.reply.text")
                         .value("Envié el pago de 5.00 USDC a Ana. Estoy esperando la confirmación de la red."));
     }

@@ -130,10 +130,14 @@ export const chat = {
    * La respuesta trae la frase del agente Y, si hubo propuesta de pago, el
    * `proposal` resumido con su estado.
    */
-  send: (message: string, conversationId?: string | null) =>
+  send: (message: string, conversationId?: string | null, clientMessageId?: string) =>
     http.post<ChatResponse>(
       endpoints.sendChat(),
-      { message, conversationId: conversationId ?? null },
+      {
+        message,
+        conversationId: conversationId ?? null,
+        clientMessageId: clientMessageId ?? crypto.randomUUID(),
+      },
       // Un modelo local en CPU tarda; el backend espera a la IA hasta 90 s.
       { timeoutMs: 120_000 },
     ),

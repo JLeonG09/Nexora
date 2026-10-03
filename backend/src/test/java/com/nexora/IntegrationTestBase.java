@@ -145,10 +145,16 @@ public abstract class IntegrationTestBase {
     }
 
     protected ResultActions chat(String userId, String message, String conversationId) throws Exception {
+        return chat(userId, message, conversationId, null);
+    }
+
+    protected ResultActions chat(String userId, String message, String conversationId, String clientMessageId)
+            throws Exception {
         String conversation = conversationId == null ? "" : ",\"conversationId\":\"" + conversationId + "\"";
+        String client = clientMessageId == null ? "" : ",\"clientMessageId\":\"" + clientMessageId + "\"";
         return mockMvc.perform(post("/api/chat").header("Authorization", bearer(userId))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"message\":\"" + message + "\"" + conversation + "}"));
+                .content("{\"message\":\"" + message + "\"" + conversation + client + "}"));
     }
 
     /** Envía un pedido de pago por el chat y devuelve el id de la propuesta creada. */
