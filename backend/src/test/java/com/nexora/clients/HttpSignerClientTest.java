@@ -108,6 +108,17 @@ class HttpSignerClientTest {
     }
 
     @Test
+    void signerCapIsRejectedWithoutRetry() throws Exception {
+        HttpSignerClient client = clientFor(exchange -> respond(exchange, 422,
+                "{\"code\":\"TOPE_FIRMANTE_TX\",\"message\":\"El monto supera el tope por transacción del firmante.\"}"));
+
+        assertThatThrownBy(() -> client.signAndSubmit(request()))
+                .isInstanceOf(SignerRejectedException.class)
+                .satisfies(e -> assertThat(((SignerRejectedException) e).code()).isEqualTo("TOPE_FIRMANTE_TX"))
+                .hasMessageContaining("tope por transacción");
+    }
+
+    @Test
     void badRequestWithoutBodyIsRejectedAsInvalidRequest() throws Exception {
         HttpSignerClient client = clientFor(exchange -> respond(exchange, 400, "no json"));
 

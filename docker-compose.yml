@@ -93,6 +93,8 @@ services:
     env_file:
       - path: ./signer/.env
         required: false
+    # MAX_AMOUNT_PER_TX, MAX_AMOUNT_PER_PERIOD y PERIOD_HOURS viven en signer/.env.
+    # No van en environment: ese bloque pisa env_file.
     environment:
       HOST: 0.0.0.0
       PORT: 3001

@@ -31,3 +31,33 @@ describe("SIGNER_SERVICE_KEY", () => {
     expect(loadConfig(envWith(STRONG)).serviceKey).toBe(STRONG);
   });
 });
+
+describe("topes del firmante", () => {
+  it("usa 100 USDC por transacción, 500 por período y 24 horas si no hay variables", () => {
+    const config = loadConfig(envWith(STRONG));
+    expect(config.maxAmountPerTx).toBe(1_000_000_000n);
+    expect(config.maxAmountPerPeriod).toBe(5_000_000_000n);
+    expect(config.periodHours).toBe(24);
+  });
+
+  it("rechaza un tope por transacción mayor que el del período", () => {
+    expect(() =>
+      loadConfig({ ...envWith(STRONG), MAX_AMOUNT_PER_TX: "600", MAX_AMOUNT_PER_PERIOD: "500" }),
+    ).toThrow(/MAX_AMOUNT_PER_TX/);
+  });
+
+  it("rechaza cero, negativo y más de 7 decimales", () => {
+    expect(() => loadConfig({ ...envWith(STRONG), MAX_AMOUNT_PER_TX: "0" })).toThrow(/MAX_AMOUNT_PER_TX/);
+    expect(() => loadConfig({ ...envWith(STRONG), MAX_AMOUNT_PER_PERIOD: "-1" })).toThrow(
+      /MAX_AMOUNT_PER_PERIOD/,
+    );
+    expect(() => loadConfig({ ...envWith(STRONG), MAX_AMOUNT_PER_TX: "1.00000001" })).toThrow(
+      /MAX_AMOUNT_PER_TX/,
+    );
+  });
+
+  it("rechaza PERIOD_HOURS en cero o con decimales", () => {
+    expect(() => loadConfig({ ...envWith(STRONG), PERIOD_HOURS: "0" })).toThrow(/PERIOD_HOURS/);
+    expect(() => loadConfig({ ...envWith(STRONG), PERIOD_HOURS: "24.5" })).toThrow(/PERIOD_HOURS/);
+  });
+});
