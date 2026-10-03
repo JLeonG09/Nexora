@@ -29,7 +29,7 @@ class ErrorHandlingTest extends IntegrationTestBase {
     }
 
     @Test
-    void malformedOrUnknownUserReturns401() throws Exception {
+    void userIdHeaderAloneIs401() throws Exception {
         mockMvc.perform(get("/api/users/me").header("X-User-Id", "no-es-un-uuid"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("USUARIO_NO_IDENTIFICADO"));
@@ -40,7 +40,8 @@ class ErrorHandlingTest extends IntegrationTestBase {
 
     @Test
     void invalidBodyReturns400WithDetails() throws Exception {
-        mockMvc.perform(post("/api/users").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/api/users").header("Authorization", freshBearer())
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"displayName\":\"\",\"email\":\"no-es-correo\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDACION_FALLIDA"))
@@ -49,15 +50,16 @@ class ErrorHandlingTest extends IntegrationTestBase {
 
     @Test
     void malformedJsonReturns400() throws Exception {
-        mockMvc.perform(post("/api/users").contentType(MediaType.APPLICATION_JSON).content("{nope"))
+        mockMvc.perform(post("/api/users").header("Authorization", freshBearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{nope"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDACION_FALLIDA"));
     }
 
     @Test
     void unknownRouteReturnsUniform404() throws Exception {
-        String userId = createUser();
-        mockMvc.perform(get("/api/no-existe").header("X-User-Id", userId))
+        String userId = createUser("Josué", null);
+        mockMvc.perform(get("/api/no-existe").header("Authorization", bearer(userId)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("RECURSO_NO_ENCONTRADO"));
     }
@@ -67,7 +69,7 @@ class ErrorHandlingTest extends IntegrationTestBase {
         mockMvc.perform(options("/api/users/me")
                         .header("Origin", "http://localhost:5173")
                         .header("Access-Control-Request-Method", "GET")
-                        .header("Access-Control-Request-Headers", "X-User-Id"))
+                        .header("Access-Control-Request-Headers", "Authorization"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"));
     }
@@ -80,11 +82,4 @@ class ErrorHandlingTest extends IntegrationTestBase {
                 .andExpect(status().isForbidden());
     }
 
-    private String createUser() throws Exception {
-        String body = mockMvc.perform(post("/api/users").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"displayName\":\"Josué\"}"))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
-        return com.jayway.jsonpath.JsonPath.read(body, "$.id");
-    }
 }

@@ -18,7 +18,7 @@ class ProposalIntegrationTest extends IntegrationTestBase {
         String pending = chatProposalId(userId, "Págale 18 USDC a Ana por el video");
         String rejected = chatProposalId(userId, "Págale 25 USDC a Ana");
 
-        mockMvc.perform(get("/api/proposals").header("X-User-Id", userId))
+        mockMvc.perform(get("/api/proposals").header("Authorization", bearer(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalItems").value(3))
                 .andExpect(jsonPath("$.page").value(0))
@@ -29,17 +29,17 @@ class ProposalIntegrationTest extends IntegrationTestBase {
                 .andExpect(jsonPath("$.items[2].id").value(confirmed))
                 .andExpect(jsonPath("$.items[2].contactName").value("Ana"));
 
-        mockMvc.perform(get("/api/proposals").header("X-User-Id", userId).param("status", "CONFIRMADO"))
+        mockMvc.perform(get("/api/proposals").header("Authorization", bearer(userId)).param("status", "CONFIRMADO"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalItems").value(1))
                 .andExpect(jsonPath("$.items[0].id").value(confirmed))
                 .andExpect(jsonPath("$.items[0].status").value("CONFIRMADO"));
 
-        mockMvc.perform(get("/api/proposals").header("X-User-Id", userId).param("status", "RECHAZADO"))
+        mockMvc.perform(get("/api/proposals").header("Authorization", bearer(userId)).param("status", "RECHAZADO"))
                 .andExpect(jsonPath("$.totalItems").value(1))
                 .andExpect(jsonPath("$.items[0].rejectionCode").value("SUPERA_TOPE_TRANSACCION"));
 
-        mockMvc.perform(get("/api/proposals").header("X-User-Id", userId).param("size", "2").param("page", "1"))
+        mockMvc.perform(get("/api/proposals").header("Authorization", bearer(userId)).param("size", "2").param("page", "1"))
                 .andExpect(jsonPath("$.totalItems").value(3))
                 .andExpect(jsonPath("$.items.length()").value(1))
                 .andExpect(jsonPath("$.items[0].id").value(confirmed));
@@ -48,12 +48,12 @@ class ProposalIntegrationTest extends IntegrationTestBase {
     @Test
     void invalidListParamsAreRejected() throws Exception {
         String userId = userWithAccount();
-        mockMvc.perform(get("/api/proposals").header("X-User-Id", userId).param("status", "INVENTADO"))
+        mockMvc.perform(get("/api/proposals").header("Authorization", bearer(userId)).param("status", "INVENTADO"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDACION_FALLIDA"));
-        mockMvc.perform(get("/api/proposals").header("X-User-Id", userId).param("size", "101"))
+        mockMvc.perform(get("/api/proposals").header("Authorization", bearer(userId)).param("size", "101"))
                 .andExpect(status().isBadRequest());
-        mockMvc.perform(get("/api/proposals").header("X-User-Id", userId).param("page", "-1"))
+        mockMvc.perform(get("/api/proposals").header("Authorization", bearer(userId)).param("page", "-1"))
                 .andExpect(status().isBadRequest());
     }
 
@@ -64,7 +64,7 @@ class ProposalIntegrationTest extends IntegrationTestBase {
         String mandateId = createMandate(userId, 1);
         String proposalId = chatProposalId(userId, "Págale 15 USDC a Ana por el logo");
 
-        mockMvc.perform(get("/api/proposals/{id}", proposalId).header("X-User-Id", userId))
+        mockMvc.perform(get("/api/proposals/{id}", proposalId).header("Authorization", bearer(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(proposalId))
                 .andExpect(jsonPath("$.status").value("CONFIRMADO"))
@@ -91,12 +91,12 @@ class ProposalIntegrationTest extends IntegrationTestBase {
 
         String otherId = createUser("Otra", null);
         registerAccount(otherId, OTHER_C_ADDRESS);
-        mockMvc.perform(get("/api/proposals/{id}", proposalId).header("X-User-Id", otherId))
+        mockMvc.perform(get("/api/proposals/{id}", proposalId).header("Authorization", bearer(otherId)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("RECURSO_NO_ENCONTRADO"));
-        mockMvc.perform(get("/api/proposals").header("X-User-Id", otherId))
+        mockMvc.perform(get("/api/proposals").header("Authorization", bearer(otherId)))
                 .andExpect(jsonPath("$.totalItems").value(0));
-        mockMvc.perform(get("/api/proposals/{id}", UUID.randomUUID()).header("X-User-Id", userId))
+        mockMvc.perform(get("/api/proposals/{id}", UUID.randomUUID()).header("Authorization", bearer(userId)))
                 .andExpect(status().isNotFound());
     }
 
@@ -109,7 +109,7 @@ class ProposalIntegrationTest extends IntegrationTestBase {
         String first = chatProposalId(userId, "Págale 16 USDC a Ana por el video");
         String second = chatProposalId(userId, "Págale 18 USDC a Ana por la foto");
 
-        mockMvc.perform(get("/api/approvals").header("X-User-Id", userId))
+        mockMvc.perform(get("/api/approvals").header("Authorization", bearer(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalItems").value(2))
                 .andExpect(jsonPath("$.items[0].proposal.id").value(second))
@@ -124,13 +124,13 @@ class ProposalIntegrationTest extends IntegrationTestBase {
                 .andExpect(jsonPath("$.items[0].proposal.originalText").value("Págale 18 USDC a Ana por la foto"))
                 .andExpect(jsonPath("$.items[1].proposal.id").value(first));
 
-        mockMvc.perform(get("/api/approvals").header("X-User-Id", userId).param("status", "PENDIENTE"))
+        mockMvc.perform(get("/api/approvals").header("Authorization", bearer(userId)).param("status", "PENDIENTE"))
                 .andExpect(jsonPath("$.totalItems").value(2));
-        mockMvc.perform(get("/api/approvals").header("X-User-Id", userId).param("status", "APROBADA"))
+        mockMvc.perform(get("/api/approvals").header("Authorization", bearer(userId)).param("status", "APROBADA"))
                 .andExpect(jsonPath("$.totalItems").value(0));
 
         String otherId = createUser("Otra", null);
-        mockMvc.perform(get("/api/approvals").header("X-User-Id", otherId))
+        mockMvc.perform(get("/api/approvals").header("Authorization", bearer(otherId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalItems").value(0));
     }

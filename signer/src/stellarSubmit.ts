@@ -4,6 +4,7 @@ import { MemoryStorage, SmartAccountKit } from "smart-account-kit";
 import type { AppConfig } from "./config.js";
 import { rpcNoDisponible } from "./errors.js";
 import { mapUnknownToSignError } from "./mapSubmitError.js";
+import { stellarLookup } from "./resolveTx.js";
 import type { SubmitJob, SubmitPayment, SignResponseBody } from "./types.js";
 
 type Connectable = {
@@ -124,6 +125,27 @@ export function createStellarSubmitter(config: AppConfig): SubmitPayment {
       const stage = pay.hash ? "CONFIRMACION" : "SIMULACION";
       const mapped = mapUnknownToSignError(pay.error, stage);
       if (pay.hash && mapped.code === "TIMEOUT_CONFIRMACION") {
+        const resolved = await stellarLookup(config.rpcUrl)(pay.hash);
+        if (resolved === "CONFIRMADO") {
+          return {
+            status: "CONFIRMADO",
+            txHash: pay.hash,
+            ledger: null,
+            submittedAt,
+            confirmedAt: isoNow(),
+            error: null,
+          };
+        }
+        if (resolved === "FALLIDO") {
+          return {
+            status: "FALLIDO",
+            txHash: pay.hash,
+            ledger: null,
+            submittedAt,
+            confirmedAt: null,
+            error: mapped,
+          };
+        }
         return {
           status: "ENVIADO",
           txHash: pay.hash,

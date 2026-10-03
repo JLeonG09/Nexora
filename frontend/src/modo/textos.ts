@@ -384,6 +384,7 @@ export const MOTIVO_RECHAZO: Readonly<Record<RejectionCode, Par>> = {
   CONTACTO_AMBIGUO: { simple: 'Hay dos contactos parecidos', avanzado: 'Contacto ambiguo' },
   MONTO_NO_EN_TEXTO: { simple: 'Falta el monto', avanzado: 'Monto inventado' },
   MONTO_AMBIGUO: { simple: 'Monto poco claro', avanzado: 'Monto ambiguo' },
+  INTENCION_NEGADA: { simple: 'No haré ese pago', avanzado: 'Pago negado' },
   SIN_MANDATO_ACTIVO: { simple: 'Sin reglas de pago', avanzado: 'Sin mandato' },
   MANDATO_EXPIRADO: { simple: 'Reglas de pago vencidas', avanzado: 'Mandato vencido' },
   SUPERA_TOPE_TRANSACCION: { simple: 'Supera el máximo por pago', avanzado: 'Supera el tope por pago' },

@@ -79,7 +79,8 @@ services:
       SIGNER_BASE_URL: http://signer:3001
       SIGNER_SERVICE_KEY: ${SIGNER_SERVICE_KEY:-cambia-esto}
       STELLAR_EVENTS_MODE: ${STELLAR_EVENTS_MODE:-mock}
-      DEMO_ATTACK_ENABLED: ${DEMO_ATTACK_ENABLED:-true}
+      DEMO_ATTACK_ENABLED: ${DEMO_ATTACK_ENABLED:-false}
+      PRIVY_APP_ID: ${PRIVY_APP_ID:-}
     ports:
       - "127.0.0.1:${BACKEND_PORT:-8080}:8080"
     restart: unless-stopped

@@ -47,7 +47,7 @@ import type {
 /* --- Salud --------------------------------------------------------- */
 
 /**
- * Unica llamada sin `X-User-Id`. Se usa en el LED de conexion de la barra
+ * Unica llamada publica. Se usa en el LED de conexion de la barra
  * lateral: `status` mas `signerMode` bastan para saber si el backend puede
  * firmar de verdad o esta en modo simulado.
  */
@@ -58,15 +58,13 @@ export const health = {
 /* --- Usuario y cuenta ---------------------------------------------- */
 
 /**
- * `POST /api/users` crea el usuario y `POST /api/users/login` lo recupera por
- * correo (simulado: sin contrasena ni verificacion). Ambos devuelven el id,
- * que es lo que pasa a ser la credencial (`X-User-Id`).
+ * `POST /api/users` crea o vincula al usuario del access token de Privy.
+ * El correo del cuerpo no identifica a nadie: el backend lee el `sub`.
  */
 export const users = {
   create: (payload: CreateUserInput) => http.post<User>(endpoints.createUser(), payload),
-  login: (email: string) => http.post<User>(endpoints.login(), { email }),
-  /** Usuario del `X-User-Id` actual. Primera llamada al montar la app. */
-  me: () => http.get<User>(endpoints.me()),
+  /** Usuario del token actual. Primera llamada al montar la app. */
+  me: (options?: { quiet401?: boolean }) => http.get<User>(endpoints.me(), options),
 }
 
 /**
@@ -132,10 +130,14 @@ export const chat = {
    * La respuesta trae la frase del agente Y, si hubo propuesta de pago, el
    * `proposal` resumido con su estado.
    */
-  send: (message: string, conversationId?: string | null) =>
+  send: (message: string, conversationId?: string | null, clientMessageId?: string) =>
     http.post<ChatResponse>(
       endpoints.sendChat(),
-      { message, conversationId: conversationId ?? null },
+      {
+        message,
+        conversationId: conversationId ?? null,
+        clientMessageId: clientMessageId ?? crypto.randomUUID(),
+      },
       // Un modelo local en CPU tarda; el backend espera a la IA hasta 90 s.
       { timeoutMs: 120_000 },
     ),

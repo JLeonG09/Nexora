@@ -41,6 +41,15 @@ class AmountExtractorTest {
     }
 
     @Test
+    void negativeSignStaysOnTheToken() {
+        List<AmountExtractor.Token> tokens = AmountExtractor.extract("págale -3");
+        assertThat(tokens).hasSize(1);
+        assertThat(tokens.get(0).ambiguous()).isFalse();
+        assertThat(tokens.get(0).value()).isEqualByComparingTo("-3");
+        assertThat(AmountExtractor.unambiguousValues("págale 0")).containsExactly(BigDecimal.ZERO);
+    }
+
+    @Test
     void wordsAreNotNumbers() {
         assertThat(AmountExtractor.extract("Págale quince a Ana")).isEmpty();
     }

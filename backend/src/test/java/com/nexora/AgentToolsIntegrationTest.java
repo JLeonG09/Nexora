@@ -51,7 +51,7 @@ class AgentToolsIntegrationTest extends IntegrationTestBase {
         String userId = userWithAccount();
         String anaId = createContact(userId, "Ana", ANA_ADDRESS);
         String juanId = createContact(userId, "Juan", JUAN_ADDRESS);
-        mockMvc.perform(delete("/api/contacts/" + juanId).header("X-User-Id", userId))
+        mockMvc.perform(delete("/api/contacts/" + juanId).header("Authorization", bearer(userId)))
                 .andExpect(status().is2xxSuccessful());
 
         tools(userId, "/api/agent-tools/contacts")

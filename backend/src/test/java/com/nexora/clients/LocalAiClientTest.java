@@ -175,7 +175,7 @@ class LocalAiClientTest {
         AppProperties properties = new AppProperties(List.of(), "", "", "TESTNET", 24,
                 new AppProperties.RateLimit(20, 5), true, "",
                 new AppProperties.Ai("local", baseUrl, "clave", 1000, 2000, new BigDecimal("0.7")),
-                null, null, null);
+                null, null, null, "");
         return new LocalAiClient(properties, RestClient.builder(), new ObjectMapper(), "modelo-test");
     }
 

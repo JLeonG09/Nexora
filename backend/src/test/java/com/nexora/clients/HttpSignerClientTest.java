@@ -220,7 +220,7 @@ class HttpSignerClientTest {
                 new AppProperties.RateLimit(20, 5), true, "", null,
                 new AppProperties.Signer("http", baseUrl, SERVICE_KEY, 1000, READ_TIMEOUT_MS,
                         new AppProperties.SignerMock(new BigDecimal("50"))),
-                null, null);
+                null, null, "");
         return new HttpSignerClient(properties, RestClient.builder(), Jackson2ObjectMapperBuilder.json().build());
     }
 

@@ -2,6 +2,7 @@ package com.nexora.clients;
 
 import com.nexora.dtos.ai.AiContactDto;
 import com.nexora.services.AmountExtractor;
+import com.nexora.services.PaymentTextGuard;
 import com.nexora.services.TextNormalizer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -18,7 +19,8 @@ public final class RuleInterpreter {
 
     /** NOT_PAY: habla de dinero que le deben, recibió o ya pagó; nunca se convierte en un pago nuevo. */
     public enum Intent {
-        PAY, NOT_PAY, BALANCE, GREETING, HOW_ARE_YOU, WHO_ARE_YOU, HELP, THANKS, FAREWELL, ACKNOWLEDGE, UNKNOWN
+        PAY, NOT_PAY, NEGATED, BALANCE, GREETING, HOW_ARE_YOU, WHO_ARE_YOU, HELP, THANKS, FAREWELL, ACKNOWLEDGE,
+        UNKNOWN
     }
 
     /**
@@ -29,7 +31,8 @@ public final class RuleInterpreter {
     public enum ContactMatch { EXACT, PARTIAL, FUZZY, AMBIGUOUS, MULTIPLE, NONE }
 
     public record Reading(Intent intent, ContactMatch match, List<AiContactDto> contacts,
-                          List<AmountExtractor.Token> amounts, String memo) {
+                          List<AmountExtractor.Token> amounts, String memo,
+                          boolean foreignCurrency, boolean multiplier) {
 
         public AiContactDto contact() {
             return contacts.isEmpty() ? null : contacts.get(0);
@@ -43,9 +46,20 @@ public final class RuleInterpreter {
             return !amounts.isEmpty() && !hasClearAmount();
         }
 
-        /** El primer número no ambiguo, tal como lo escribió el usuario. */
+        /** Números positivos y no ambiguos. Cero y negativos no se pueden pagar. */
+        public List<AmountExtractor.Token> payableAmounts() {
+            return amounts.stream()
+                    .filter(token -> !token.ambiguous() && token.value().signum() > 0)
+                    .toList();
+        }
+
+        /** El único monto pagable, o null si hay cero o más de uno. */
         public AmountExtractor.Token amount() {
-            return amounts.stream().filter(token -> !token.ambiguous()).findFirst().orElse(null);
+            List<AmountExtractor.Token> payable = payableAmounts();
+            if (payable.size() != 1 || amounts.size() != 1 || multiplier) {
+                return null;
+            }
+            return payable.get(0);
         }
 
         public boolean identifiesOneContact() {
@@ -92,10 +106,15 @@ public final class RuleInterpreter {
         List<AmountExtractor.Token> amounts = AmountExtractor.extract(message);
 
         ContactLookup lookup = findContacts(normalized, known);
-        return new Reading(intent(normalized), lookup.match(), lookup.contacts(), amounts, memo(message, lookup));
+        return new Reading(intent(normalized), lookup.match(), lookup.contacts(), amounts, memo(message, lookup),
+                PaymentTextGuard.foreignCurrency(message), PaymentTextGuard.multiplier(message));
     }
 
     private static Intent intent(String normalized) {
+        // "no le pagues" no es un pago, aunque el número que sigue sea claro.
+        if (PaymentTextGuard.negated(normalized)) {
+            return Intent.NEGATED;
+        }
         // Antes que PAY_VERB: "Ana me pagó 20" tiene verbo de pago pero el dinero va hacia el usuario.
         if (NOT_PAY.matcher(normalized).find()) {
             return Intent.NOT_PAY;

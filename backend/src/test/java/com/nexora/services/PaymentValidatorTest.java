@@ -43,7 +43,7 @@ class PaymentValidatorTest {
         contactRepository = mock(ContactRepository.class);
         AppProperties properties = new AppProperties(List.of(), "", "", "TESTNET", 24,
                 new AppProperties.RateLimit(20, 5), true, "",
-                new AppProperties.Ai("mock", "", "", 2000, 15000, new BigDecimal("0.7")), null, null, null);
+                new AppProperties.Ai("mock", "", "", 2000, 15000, new BigDecimal("0.7")), null, null, null, "");
         validator = new PaymentValidator(contactRepository, properties);
 
         ana = new Contact();
@@ -67,8 +67,8 @@ class PaymentValidatorTest {
         assertThat(result.valid()).isTrue();
         assertThat(result.contact()).isSameAs(ana);
         assertThat(result.arguments().amount()).isEqualByComparingTo("15");
-        assertThat(result.checks()).containsExactly("ESQUEMA", "CONFIANZA", "CONTACTO", "MONTO_EN_TEXTO", "MANDATO",
-                "TOPE_TRANSACCION", "TOPE_DIARIO", "FRECUENCIA");
+        assertThat(result.checks()).containsExactly("ESQUEMA", "CONFIANZA", "CONTACTO", "MONTO_EN_TEXTO", "INTENCION",
+                "MANDATO", "TOPE_TRANSACCION", "TOPE_DIARIO", "FRECUENCIA");
         assertThat(result.decision()).isEqualTo(ProposalStatus.APROBADO);
     }
 
@@ -181,6 +181,29 @@ class PaymentValidatorTest {
         PaymentValidator.Result decimal = validator.validate(action(args(ana.getId().toString(), "Ana", "2.5")),
                 context("Págale 2,5 USDC a Ana"));
         assertThat(decimal.valid()).isTrue();
+    }
+
+    @Test
+    void rule4bRejectsNegationForeignCurrencySignAndSeveralNumbers() {
+        PaymentValidator.Result negated = validator.validate(action(args(ana.getId().toString(), "Ana", "9")),
+                context("no le pagues 9"));
+        assertThat(negated.valid()).isFalse();
+        assertThat(negated.code()).isEqualTo(RejectionCode.INTENCION_NEGADA);
+
+        PaymentValidator.Result euros = validator.validate(action(args(ana.getId().toString(), "Ana", "6")),
+                context("págale 6 EUR"));
+        assertThat(euros.code()).isEqualTo(RejectionCode.ACTIVO_NO_PERMITIDO);
+
+        PaymentValidator.Result negative = validator.validate(action(args(ana.getId().toString(), "Ana", "3")),
+                context("págale -3"));
+        assertThat(negative.code()).isEqualTo(RejectionCode.MONTO_AMBIGUO);
+        assertThat(negative.message()).isEqualTo("El monto tiene que ser mayor que cero.");
+
+        PaymentValidator.Result twoNumbers = validator.validate(action(args(ana.getId().toString(), "Ana", "5")),
+                context("págale 5 a Ana, no 50"));
+        assertThat(twoNumbers.valid()).isFalse();
+        assertThat(twoNumbers.code()).isEqualTo(RejectionCode.MONTO_AMBIGUO);
+        assertThat(twoNumbers.decision()).isEqualTo(ProposalStatus.RECHAZADO);
     }
 
     @Test

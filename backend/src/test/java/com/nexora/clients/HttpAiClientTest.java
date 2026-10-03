@@ -116,7 +116,7 @@ class HttpAiClientTest {
         AppProperties properties = new AppProperties(List.of(), "", "", "TESTNET", 24,
                 new AppProperties.RateLimit(20, 5), true, "",
                 new AppProperties.Ai("http", baseUrl, SERVICE_KEY, 1000, READ_TIMEOUT_MS, new BigDecimal("0.7")),
-                null, null, null);
+                null, null, null, "");
         return new HttpAiClient(properties, RestClient.builder());
     }
 

@@ -4,30 +4,23 @@
  * Todo el acceso al backend pasa por aqui. Concentra las cinco cosas que
  * si se esparcen por los componentes se olvidan tarde o temprano:
  *
- *  1. Adjuntar la cabecera `X-User-Id` y avisar cuando ya no vale (401).
+ *  1. Adjuntar `Authorization: Bearer` con el access token de Privy y avisar si ya no vale (401).
  *  2. Convertir cualquier fallo en `ApiError` / `NetworkError` tipados.
  *  3. Cortar la peticion si se cuelga (timeout con AbortController).
  *  4. Reintentar solo lo que tiene sentido reintentar: red y 5xx.
  *  5. Enrutar al mock si `VITE_MOCK=true`, sin tocar el codigo de las paginas.
  */
 
+import { getAccessToken } from '@privy-io/react-auth'
+
 import { MOCK_ENABLED } from '@/config/env'
 import { ApiError, NetworkError } from './errors'
 import { mockRequest, MockHttpError } from './mock'
 
 /**
- * Cabecera con la que el backend identifica al usuario (`CurrentUserInterceptor`).
- *
- * Nexora no usa contrasenas ni JWT: `POST /api/users` devuelve el id y todas
- * las peticiones posteriores lo mandan en `X-User-Id`. Es un prototipo de
- * demo, asi que el id viaja en claro; en produccion esto lo sustituiria una
- * sesion firmada en servidor.
+ * Datos del usuario cacheados, para pintar la interfaz sin esperar al backend.
+ * La credencial es el access token de Privy, no este id.
  */
-export const USER_HEADER = 'X-User-Id'
-
-/** Id del usuario cacheado, para no ir a localStorage en cada fetch. */
-export const USER_ID_KEY = 'nexora.userId'
-/** Datos del usuario cacheados, para pintar la interfaz sin esperar al backend. */
 export const USER_KEY = 'nexora.user'
 
 const DEFAULT_TIMEOUT_MS = 15_000
@@ -39,29 +32,6 @@ const NO_RETRY_STATUS = new Set([400, 401, 403, 404, 409, 422, 428])
 /* ------------------------------------------------------------------ */
 /* Id de usuario                                                       */
 /* ------------------------------------------------------------------ */
-
-let cachedUserId: string | null | undefined
-
-export function getUserId(): string | null {
-  if (cachedUserId !== undefined) return cachedUserId
-  try {
-    cachedUserId = localStorage.getItem(USER_ID_KEY)
-  } catch {
-    // localStorage puede estar bloqueado (modo privado, iframe). No es fatal.
-    cachedUserId = null
-  }
-  return cachedUserId
-}
-
-export function setUserId(userId: string | null): void {
-  cachedUserId = userId
-  try {
-    if (userId) localStorage.setItem(USER_ID_KEY, userId)
-    else localStorage.removeItem(USER_ID_KEY)
-  } catch {
-    /* sin persistencia: la sesion vive solo en memoria */
-  }
-}
 
 /** Se llama cuando el backend responde 401, para que la app reaccione. */
 type UnauthorizedHandler = () => void
@@ -76,16 +46,13 @@ export function setUnauthorizedHandler(handler: UnauthorizedHandler): void {
 /* ------------------------------------------------------------------ */
 
 export interface RequestOptions {
-  /**
-   * Id de usuario explicito. Casi nunca se pasa: si se omite, se usa el de
-   * la sesion. Hace falta solo en el login, que aun no tiene sesion.
-   */
-  userId?: string | null
   signal?: AbortSignal
   timeoutMs?: number
   /** Desactiva los reintentos (util en acciones de escritura). */
   retries?: number
   headers?: Record<string, string>
+  /** No cierra la sesion si el backend responde 401. Lo usa el arranque. */
+  quiet401?: boolean
 }
 
 /* ------------------------------------------------------------------ */
@@ -145,9 +112,8 @@ async function requestHttp<T>(
     // Reintentar una escritura que expiró en el navegador la repite en el backend (p. ej. un pago duplicado).
     retries = method.toUpperCase() === 'GET' ? MAX_RETRIES : 0,
     headers: extraHeaders,
+    quiet401 = false,
   } = options
-
-  const userId = options.userId !== undefined ? options.userId : getUserId()
 
   const headers: Record<string, string> = {
     Accept: 'application/json',
@@ -156,7 +122,12 @@ async function requestHttp<T>(
   // El cuerpo solo lleva Content-Type si hay algo que enviar: en POST vacio
   // mandarlo rompe algunos filtros de Spring mal configurados.
   if (body !== undefined) headers['Content-Type'] = 'application/json'
-  if (userId) headers[USER_HEADER] = userId
+  try {
+    const token = await getAccessToken()
+    if (token) headers.Authorization = `Bearer ${token}`
+  } catch {
+    // Sin Privy montado (alta manual o mock que igual no llega aqui) no hay token.
+  }
 
   const url = path
 
@@ -188,8 +159,7 @@ async function requestHttp<T>(
 
       if (!response.ok) {
         const apiError = new ApiError(response.status, path, payload)
-        if (response.status === 401) {
-          setUserId(null)
+        if (response.status === 401 && !quiet401) {
           onUnauthorized()
         }
         // 4xx = el reintento daria el mismo error. Solo se insiste en 5xx.

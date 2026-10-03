@@ -249,7 +249,7 @@ export function useEnviarMensaje() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ message, conversationId }: { message: string; conversationId: string | null }) =>
-      chat.send(message, conversationId),
+      chat.send(message, conversationId, crypto.randomUUID()),
     onSuccess: (_data, variables) => {
       void qc.invalidateQueries({ queryKey: queryKeys.chat(variables.conversationId) })
       void qc.invalidateQueries({ queryKey: queryKeys.conversations })

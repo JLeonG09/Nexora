@@ -1,15 +1,12 @@
 /**
  * Estado de sesion y de alta.
  *
- * Nexora no tiene autenticacion real: no hay contrasenas ni JWT. Crear la
- * cuenta (`POST /api/users`) o entrar con el correo (`POST /api/users/login`,
- * simulado) devuelve un id, y a partir de ahi todas las peticiones viajan
- * con `X-User-Id`. Por eso el provider se llama `Sesion` y
- * no `Auth`: lo que se guarda no es una credencial expirable, es el id con el
- * que el backend identifica al usuario durante la demo.
+ * La credencial es el access token de Privy (`Authorization: Bearer`).
+ * `POST /api/users` crea o vincula al usuario con el `sub` de ese token.
+ * El id que se cachea aqui solo pinta la interfaz: no se manda al backend.
  *
  * El alta tiene DOS pasos porque el backend los exige en este orden:
- *   1. Usuario.   `POST /api/users`     -> id.
+ *   1. Usuario.   `POST /api/users`     -> perfil vinculado al DID.
  *   2. Smart account. `POST /api/accounts` -> un contrato `C...` de testnet
  *      que el usuario despliega por fuera. El panel solo lo REGISTRA; nunca
  *      genera claves ni firma nada.
@@ -30,7 +27,10 @@ import {
   type ReactNode,
 } from 'react'
 
-import { getUserId, setUserId, setUnauthorizedHandler, USER_KEY } from '@/api/client'
+import { getAccessToken } from '@privy-io/react-auth'
+
+import { setUnauthorizedHandler, USER_KEY } from '@/api/client'
+import { MOCK_ENABLED } from '@/config/env'
 import { accounts as accountsApi, users as usersApi } from '@/api/resources'
 import { ApiError } from '@/api/errors'
 import { olvidarConversaciones } from './conversacionGuardada'
@@ -50,8 +50,6 @@ interface SesionContextValue {
   /** Que falta para poder operar. La app enruta segun esto. */
   paso: PasoAlta
   crearUsuario: (input: CreateUserInput) => Promise<User>
-  /** Recupera un usuario existente por su correo. 404 si no hay ninguno. */
-  iniciarSesion: (email: string) => Promise<User>
   registrarCuenta: (input: RegisterAccountInput) => Promise<Account>
   cerrarSesion: () => void
   /** Vuelve a leer usuario y cuenta del backend. */
@@ -97,7 +95,6 @@ export function SesionProvider({
 
   const cerrarSesion = useCallback(() => {
     olvidarConversaciones()
-    setUserId(null)
     cacheUser(null)
     setUser(null)
     setAccount(null)
@@ -114,7 +111,18 @@ export function SesionProvider({
     let cancelado = false
 
     async function verificar() {
-      if (!getUserId()) {
+      // En mock no hay token: el usuario cacheado basta para pintar la demo.
+      if (MOCK_ENABLED) {
+        if (!cancelado) setCargando(false)
+        return
+      }
+      let token: string | null = null
+      try {
+        token = await getAccessToken()
+      } catch {
+        token = null
+      }
+      if (!token) {
         if (!cancelado) {
           setUser(null)
           setCargando(false)
@@ -122,15 +130,15 @@ export function SesionProvider({
         return
       }
       try {
-        const fresh = await usersApi.me()
+        const fresh = await usersApi.me({ quiet401: true })
         if (cancelado) return
         setUser(fresh)
         cacheUser(fresh)
       } catch (err) {
-        // Solo 404/401 dicen que el id ya no vale. Un fallo de red o un 502
-        // mientras el backend arranca no debe sacar al usuario: se queda con
-        // el usuario cacheado y las pantallas reintentan solas.
-        if (!cancelado && err instanceof ApiError && (err.isNotFound || err.isUnauthorized)) {
+        // 401: el token vale pero todavia no hay fila, o ya no vale.
+        // No cerramos Privy aqui: AccesoPrivy crea la cuenta si el token es bueno.
+        // Un fallo de red o un 502 mientras el backend arranca deja el cache.
+        if (!cancelado && err instanceof ApiError && err.isNotFound) {
           cerrarSesion()
         }
       } finally {
@@ -170,7 +178,6 @@ export function SesionProvider({
 
   const guardarUsuario = useCallback((fresh: User) => {
     olvidarConversaciones()
-    setUserId(fresh.id)
     cacheUser(fresh)
     setUser(fresh)
     return fresh
@@ -181,13 +188,7 @@ export function SesionProvider({
     [guardarUsuario],
   )
 
-  const iniciarSesion = useCallback(
-    async (email: string) => guardarUsuario(await usersApi.login(email)),
-    [guardarUsuario],
-  )
-
   const registrarCuenta = useCallback(async (input: RegisterAccountInput) => {
-    // Ya hay `X-User-Id` porque `crearUsuario` se ejecuto antes.
     const fresh = await accountsApi.register(input)
     setAccount(fresh)
     return fresh
@@ -213,14 +214,13 @@ export function SesionProvider({
       cargando,
       paso,
       crearUsuario,
-      iniciarSesion,
       registrarCuenta,
       cerrarSesion,
       refrescar: async () => {
         await refrescar()
       },
     }),
-    [user, account, cargando, paso, crearUsuario, iniciarSesion, registrarCuenta, cerrarSesion, refrescar],
+    [user, account, cargando, paso, crearUsuario, registrarCuenta, cerrarSesion, refrescar],
   )
 
   return <SesionContext.Provider value={value}>{children}</SesionContext.Provider>

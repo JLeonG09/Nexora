@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.cors.CorsUtils;
 import org.springframework.web.servlet.HandlerInterceptor;
 
-/** /api/agent-tools/** exige X-Service-Key = AGENT_TOOLS_KEY; después CurrentUserInterceptor valida X-User-Id. */
+/** /api/agent-tools/** exige X-Service-Key = AGENT_TOOLS_KEY; el usuario de esa llamada va en X-User-Id. */
 @Component
 public class ServiceKeyInterceptor implements HandlerInterceptor {
 

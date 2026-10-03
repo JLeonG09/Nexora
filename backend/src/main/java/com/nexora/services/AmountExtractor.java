@@ -12,7 +12,8 @@ import java.util.regex.Pattern;
  */
 public final class AmountExtractor {
 
-    private static final Pattern TOKEN = Pattern.compile("\\d+([.,]\\d+)*");
+    /** El signo menos entra en el token para no leer "-3" como 3. */
+    private static final Pattern TOKEN = Pattern.compile("-?\\d+([.,]\\d+)*");
     private static final int MAX_DECIMALS = 7;
 
     public record Token(String raw, BigDecimal value, boolean ambiguous) {
@@ -39,6 +40,10 @@ public final class AmountExtractor {
     }
 
     private static Token read(String raw) {
+        if (raw.startsWith("-")) {
+            Token magnitude = read(raw.substring(1));
+            return new Token(raw, magnitude.value().negate(), magnitude.ambiguous());
+        }
         List<String> groups = new ArrayList<>();
         List<Character> separators = new ArrayList<>();
         StringBuilder current = new StringBuilder();

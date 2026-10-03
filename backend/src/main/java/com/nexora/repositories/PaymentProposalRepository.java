@@ -38,6 +38,8 @@ public interface PaymentProposalRepository extends JpaRepository<PaymentProposal
 
     Optional<PaymentProposal> findByIdAndUserId(UUID id, UUID userId);
 
+    Optional<PaymentProposal> findByUserIdAndClientMessageId(UUID userId, UUID clientMessageId);
+
     Page<PaymentProposal> findByUserId(UUID userId, Pageable pageable);
 
     Page<PaymentProposal> findByUserIdAndStatus(UUID userId, ProposalStatus status, Pageable pageable);

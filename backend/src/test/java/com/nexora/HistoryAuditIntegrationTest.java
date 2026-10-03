@@ -19,7 +19,7 @@ class HistoryAuditIntegrationTest extends IntegrationTestBase {
         chatProposalId(userId, "Págale 25 USDC a Ana por el banner");
         String sent = chatProposalId(userId, "Págale 5 USDC a Ana por el video #firmante-lento");
 
-        mockMvc.perform(get("/api/history").header("X-User-Id", userId))
+        mockMvc.perform(get("/api/history").header("Authorization", bearer(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items", hasSize(2)))
                 .andExpect(jsonPath("$.totalItems").value(2))
@@ -46,13 +46,13 @@ class HistoryAuditIntegrationTest extends IntegrationTestBase {
         chatProposalId(userId, "Págale 2 USDC a Ana por dos");
         chatProposalId(userId, "Págale 3 USDC a Ana por tres");
 
-        mockMvc.perform(get("/api/history?page=1&size=2").header("X-User-Id", userId))
+        mockMvc.perform(get("/api/history?page=1&size=2").header("Authorization", bearer(userId)))
                 .andExpect(jsonPath("$.items", hasSize(1)))
                 .andExpect(jsonPath("$.items[0].amount").value("1.0000000"))
                 .andExpect(jsonPath("$.page").value(1))
                 .andExpect(jsonPath("$.size").value(2))
                 .andExpect(jsonPath("$.totalItems").value(3));
-        mockMvc.perform(get("/api/history").header("X-User-Id", createUser("Otra", null)))
+        mockMvc.perform(get("/api/history").header("Authorization", bearer(createUser("Otra", null))))
                 .andExpect(jsonPath("$.items", hasSize(0)));
     }
 
@@ -61,7 +61,7 @@ class HistoryAuditIntegrationTest extends IntegrationTestBase {
         String userId = readyUser();
         String proposalId = chatProposalId(userId, "Págale 15 USDC a Ana por el logo");
 
-        mockMvc.perform(get("/api/audit?proposalId=" + proposalId).header("X-User-Id", userId))
+        mockMvc.perform(get("/api/audit?proposalId=" + proposalId).header("Authorization", bearer(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.size").value(50))
                 .andExpect(jsonPath("$.totalItems").value(4))
@@ -84,12 +84,12 @@ class HistoryAuditIntegrationTest extends IntegrationTestBase {
         chatProposalId(userId, "Págale 15 USDC a Ana por el logo");
         String other = createUser("Otra", null);
 
-        mockMvc.perform(get("/api/audit").header("X-User-Id", userId))
+        mockMvc.perform(get("/api/audit").header("Authorization", bearer(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[*].eventType").value(hasItem("USUARIO_CREADO")))
                 .andExpect(jsonPath("$.items[*].eventType").value(hasItem("MANDATO_CREADO")))
                 .andExpect(jsonPath("$.items[*].eventType").value(hasItem("CHAT_RECIBIDO")));
-        mockMvc.perform(get("/api/audit").header("X-User-Id", other))
+        mockMvc.perform(get("/api/audit").header("Authorization", bearer(other)))
                 .andExpect(jsonPath("$.items[*].eventType").value(hasItem("USUARIO_CREADO")))
                 .andExpect(jsonPath("$.totalItems").value(1));
     }
@@ -97,7 +97,7 @@ class HistoryAuditIntegrationTest extends IntegrationTestBase {
     @Test
     void auditSizeIsValidated() throws Exception {
         String userId = readyUser();
-        mockMvc.perform(get("/api/audit?size=101").header("X-User-Id", userId))
+        mockMvc.perform(get("/api/audit?size=101").header("Authorization", bearer(userId)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDACION_FALLIDA"));
     }

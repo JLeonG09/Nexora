@@ -4,6 +4,7 @@ import com.nexora.entities.ChatMessage;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -16,6 +17,8 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, UUID> 
     Page<ChatMessage> findByUserIdAndConversationId(UUID userId, UUID conversationId, Pageable pageable);
 
     Page<ChatMessage> findByUserId(UUID userId, Pageable pageable);
+
+    Optional<ChatMessage> findFirstByUserIdAndProposalIdOrderByCreatedAtDesc(UUID userId, UUID proposalId);
 
     interface ConversationRow {
         UUID getConversationId();

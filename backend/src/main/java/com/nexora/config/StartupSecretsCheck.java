@@ -52,8 +52,15 @@ public class StartupSecretsCheck {
         if ("http".equals(properties.signer().mode()) && isWeak(properties.signer().serviceKey())) {
             problems.add("SIGNER_SERVICE_KEY sigue con el valor de ejemplo y SIGNER_MODE=http.");
         }
+        if (properties.demoAttackEnabled() && "http".equals(properties.signer().mode())) {
+            problems.add("DEMO_ATTACK_ENABLED=true con SIGNER_MODE=http: el modo atacante no puede usar el firmante real.");
+        }
         if (remoteDb && isWeak(dbPassword)) {
             problems.add("DB_PASSWORD sigue con el valor de desarrollo y la base no es local.");
+        }
+        boolean mockStack = "mock".equals(properties.signer().mode()) && !"http".equals(properties.ai().mode());
+        if (!mockStack && (properties.privyAppId() == null || properties.privyAppId().isBlank())) {
+            problems.add("PRIVY_APP_ID es obligatorio cuando el firmante o la IA no están en modo mock.");
         }
         return problems;
     }
