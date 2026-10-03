@@ -31,22 +31,31 @@ import type {
   MandateStatus,
   Proposal,
   ProposalStatus,
-  RejectionCode,
 } from '@/api/types'
 import { compararImportes, formatAmount, porcentaje, restarImportes } from '@/lib/format'
+import {
+  ESTADO_ALERTA,
+  ESTADO_APROBACION,
+  ESTADO_MANDATO,
+  etiquetaEstadoPago,
+  motivoRechazo,
+  type Modo,
+} from '@/modo/textos'
+import { useEtiquetaActivo, useModo } from '@/modo/useModo'
 
 /* ================================================================== */
 /* Estados de propuesta                                               */
 /* ================================================================== */
 
-const PROPUESTA: Record<ProposalStatus, { texto: string; tono: BadgeTone; led?: 'pulsando' | 'encendido' }> = {
-  PROPUESTO: { texto: 'Interpretada', tono: 'neutro' },
-  RECHAZADO: { texto: 'Rechazada', tono: 'error' },
-  PENDIENTE_APROBACION: { texto: 'Esperando tu OK', tono: 'aviso', led: 'pulsando' },
-  APROBADO: { texto: 'Aprobada', tono: 'acento' },
-  ENVIADO: { texto: 'Enviando', tono: 'info', led: 'pulsando' },
-  CONFIRMADO: { texto: 'Confirmada', tono: 'ok', led: 'encendido' },
-  FALLIDO: { texto: 'Fallida', tono: 'error' },
+/** Tono y LED de cada estado. La palabra sale de `@/modo/textos` segun el modo. */
+const PROPUESTA: Record<ProposalStatus, { tono: BadgeTone; led?: 'pulsando' | 'encendido' }> = {
+  PROPUESTO: { tono: 'neutro' },
+  RECHAZADO: { tono: 'error' },
+  PENDIENTE_APROBACION: { tono: 'aviso', led: 'pulsando' },
+  APROBADO: { tono: 'acento' },
+  ENVIADO: { tono: 'info', led: 'pulsando' },
+  CONFIRMADO: { tono: 'ok', led: 'encendido' },
+  FALLIDO: { tono: 'error' },
 }
 
 export function ProposalStatusBadge({
@@ -56,7 +65,9 @@ export function ProposalStatusBadge({
   status: ProposalStatus
   tamano?: 'normal' | 'grande'
 }) {
-  const { texto, tono, led } = PROPUESTA[status] ?? { texto: status, tono: 'neutro' as BadgeTone }
+  const modo = useModo()
+  const { tono, led } = PROPUESTA[status] ?? { tono: 'neutro' as BadgeTone }
+  const texto = etiquetaEstadoPago(status, modo)
   return (
     <Badge tone={tono} led={led} tamano={tamano ?? 'normal'}>
       {texto}
@@ -68,15 +79,17 @@ export function ProposalStatusBadge({
 /* Estados de aprobacion                                              */
 /* ================================================================== */
 
-const APROBACION: Record<ApprovalStatus, { texto: string; tono: BadgeTone }> = {
-  PENDIENTE: { texto: 'Esperando tu OK', tono: 'aviso' },
-  APROBADA: { texto: 'Aprobada', tono: 'ok' },
-  RECHAZADA: { texto: 'Rechazada', tono: 'error' },
-  EXPIRADA: { texto: 'Vencida', tono: 'neutro' },
+const APROBACION: Record<ApprovalStatus, BadgeTone> = {
+  PENDIENTE: 'aviso',
+  APROBADA: 'ok',
+  RECHAZADA: 'error',
+  EXPIRADA: 'neutro',
 }
 
 export function ApprovalStatusBadge({ status }: { status: ApprovalStatus }) {
-  const { texto, tono } = APROBACION[status] ?? { texto: status, tono: 'neutro' as BadgeTone }
+  const modo = useModo()
+  const tono = APROBACION[status] ?? 'neutro'
+  const texto = ESTADO_APROBACION[status]?.[modo] ?? status
   return <Badge tone={tono} led={status === 'PENDIENTE' ? 'pulsando' : undefined}>{texto}</Badge>
 }
 
@@ -84,15 +97,17 @@ export function ApprovalStatusBadge({ status }: { status: ApprovalStatus }) {
 /* Estados de alerta                                                  */
 /* ================================================================== */
 
-const ALERTA: Record<AlertStatus, { texto: string; tono: BadgeTone }> = {
+const ALERTA: Record<AlertStatus, BadgeTone> = {
   // PENDIENTE es lo unico que exige accion: va en el color de alarma.
-  PENDIENTE: { texto: 'Sin revisar', tono: 'error' },
-  RECONOCIDA: { texto: 'Reconocida por ti', tono: 'neutro' },
-  REPORTADA: { texto: 'Reportada', tono: 'oro' },
+  PENDIENTE: 'error',
+  RECONOCIDA: 'neutro',
+  REPORTADA: 'oro',
 }
 
 export function AlertStatusBadge({ status }: { status: AlertStatus }) {
-  const { texto, tono } = ALERTA[status] ?? { texto: status, tono: 'neutro' as BadgeTone }
+  const modo = useModo()
+  const tono = ALERTA[status] ?? 'neutro'
+  const texto = ESTADO_ALERTA[status]?.[modo] ?? status
   return <Badge tone={tono} led={status === 'PENDIENTE' ? 'pulsando' : undefined}>{texto}</Badge>
 }
 
@@ -100,14 +115,16 @@ export function AlertStatusBadge({ status }: { status: AlertStatus }) {
 /* Estado del mandato                                                 */
 /* ================================================================== */
 
-const MANDATO: Record<MandateStatus, { texto: string; tono: BadgeTone }> = {
-  ACTIVO: { texto: 'Activo', tono: 'ok' },
-  REVOCADO: { texto: 'Revocado', tono: 'error' },
-  EXPIRADO: { texto: 'Vencido', tono: 'neutro' },
+const MANDATO: Record<MandateStatus, BadgeTone> = {
+  ACTIVO: 'ok',
+  REVOCADO: 'error',
+  EXPIRADO: 'neutro',
 }
 
 export function MandateStatusBadge({ status }: { status: MandateStatus }) {
-  const { texto, tono } = MANDATO[status] ?? { texto: status, tono: 'neutro' as BadgeTone }
+  const modo = useModo()
+  const tono = MANDATO[status] ?? 'neutro'
+  const texto = ESTADO_MANDATO[status]?.[modo] ?? status
   return <Badge tone={tono} led={status === 'ACTIVO' ? 'encendido' : undefined}>{texto}</Badge>
 }
 
@@ -117,36 +134,16 @@ export function MandateStatusBadge({ status }: { status: MandateStatus }) {
 
 /**
  * Version corta del motivo, para insignias y filtros. El texto largo lo
- * escribe el backend en `rejectionMessage` y ese es el que se muestra.
+ * escribe el backend en `rejectionMessage` y ese es el que se muestra. Las
+ * palabras de cada modo estan en `MOTIVO_RECHAZO` (`@/modo/textos`).
  */
-const RECHAZO: Record<RejectionCode, string> = {
-  ESQUEMA_INVALIDO: 'No entendido',
-  ACTIVO_NO_PERMITIDO: 'Activo no permitido',
-  CONFIANZA_BAJA: 'Confianza baja',
-  CAMPO_NO_FUNDAMENTADO: 'Datos incompletos',
-  CONTACTO_NO_ENCONTRADO: 'No es un contacto',
-  CONTACTO_AMBIGUO: 'Contacto ambiguo',
-  MONTO_NO_EN_TEXTO: 'Monto inventado',
-  MONTO_AMBIGUO: 'Monto ambiguo',
-  SIN_MANDATO_ACTIVO: 'Sin mandato',
-  MANDATO_EXPIRADO: 'Mandato vencido',
-  SUPERA_TOPE_TRANSACCION: 'Supera el tope por pago',
-  SUPERA_TOPE_DIARIO: 'Supera el tope diario',
-  LIMITE_FRECUENCIA: 'Demasiadas solicitudes',
-  RECHAZADO_POR_USUARIO: 'Rechazada por ti',
-  APROBACION_EXPIRADA: 'Aprobación vencida',
-  MANDATO_REVOCADO: 'Mandato revocado',
-}
-
-/** Etiqueta corta del motivo, o el propio codigo si no esta en el mapa. */
-export function rechazoLabel(code: string | null | undefined): string | null {
-  if (!code) return null
-  return RECHAZO[code as RejectionCode] ?? code
+export function rechazoLabel(code: string | null | undefined, modo: Modo = 'avanzado'): string | null {
+  return motivoRechazo(code, modo)
 }
 
 /** Insignia con el motivo del rechazo. `null` si no hubo rechazo. */
 export function RejectionBadge({ code }: { code: string | null | undefined }) {
-  const etiqueta = rechazoLabel(code)
+  const etiqueta = rechazoLabel(code, useModo())
   if (!etiqueta) return null
   return <Badge tone="error">{etiqueta}</Badge>
 }
@@ -219,13 +216,15 @@ export interface MontoProps {
  * es quien decide los separadores del locale.
  */
 export function Monto({ amount, asset = 'USDC', className, compacto }: MontoProps) {
+  // En Simple, "USDC" se dice "dólares". Solo cambia la etiqueta, no el monto.
+  const etiqueta = useEtiquetaActivo()(asset)
   if (amount === null || amount === undefined) {
     return <span className={className}>—</span>
   }
   return (
     <span className={className}>
-      {formatAmount(amount, compacto ? undefined : asset)}
-      {compacto && <span className="ml-1 text-tinta-media">{asset}</span>}
+      {formatAmount(amount, compacto ? undefined : etiqueta)}
+      {compacto && <span className="ml-1 text-tinta-media">{etiqueta}</span>}
     </span>
   )
 }
@@ -252,6 +251,7 @@ export function GastoBar({ gastado, diario, umbral }: GastoBarProps) {
   // El ancho de la barra es una proporcion (puede ser `number`), pero lo que
   // lee el usuario se calcula en string: "te quedan 17.0000000", no
   // "16.999999999999998".
+  const activo = useEtiquetaActivo()('USDC')
   const relleno = porcentaje(gastado, diario)
   const restante = restarImportes(diario, gastado)
   const sinNada = restante === '0.0000000'
@@ -271,7 +271,7 @@ export function GastoBar({ gastado, diario, umbral }: GastoBarProps) {
       <div
         className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-superficie-2"
         role="img"
-        aria-label={`Gastado ${formatAmount(gastado)} de ${formatAmount(diario)} USDC en las últimas 24 horas`}
+        aria-label={`Gastado ${formatAmount(gastado)} de ${formatAmount(diario)} ${activo} en las últimas 24 horas`}
       >
         <div
           className={`h-full rounded-full ${casiAgotado ? 'bg-error' : 'bg-acento'}`}
@@ -471,7 +471,7 @@ export function BloqueRechazo({
   /** Que puede hacer el usuario para desbloquearlo. */
   accion?: ReactNode
 }) {
-  const etiqueta = rechazoLabel(code)
+  const etiqueta = rechazoLabel(code, useModo())
   if (!etiqueta && !message) return null
 
   return (

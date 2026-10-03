@@ -296,7 +296,7 @@ export function ChatPage() {
     return (
       <div className="flex h-dvh flex-col items-center justify-center px-4">
         <div className="flex w-full max-w-2xl flex-col items-center gap-8">
-          <span className="orbe orbe-luz" aria-hidden="true" />
+          <span className="orbe" aria-hidden="true" />
           <h1
             className="emerger text-center text-3xl font-semibold tracking-tight text-tinta sm:text-4xl"
             style={{ '--orden': 1 } as React.CSSProperties}

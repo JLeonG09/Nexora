@@ -38,10 +38,55 @@ Seis entradas, en este orden: **Inicio, Mi billetera, Pendientes, Mis
 contactos, Mis reglas de pago, Mis movimientos.** Ni una más.
 
 - **Accesibilidad** va en el pie de la barra lateral, junto a la cuenta.
-- `/auditoria` y `/demo` existen por URL, pero no están en el menú: la
-  auditoría es para soporte y la demo del atacante es para presentar.
+- `/auditoria` y `/demo` no están en el menú y solo existen en modo
+  Avanzado (en Simple redirigen al inicio): la auditoría es para soporte y la
+  demo del atacante es para presentar.
 - Las palabras son del usuario, no del sistema: "Mis reglas de pago" y no
-  "Mandato"; "Pendientes" y no "Aprobaciones y alertas".
+  "Mandato"; "Pendientes" y no "Aprobaciones y alertas". El menú es el mismo
+  en los dos modos; lo que cambia por modo está en "Modos".
+
+---
+
+## Modos
+
+Dos maneras de ver la misma aplicación. Se eligen en Accesibilidad ("Cuánto
+detalle ver"), en Primeros pasos y en Opciones; se guardan con el resto de
+preferencias y se reflejan en `data-modo` en `<html>`.
+
+- **Simple, por defecto** ("Sencillo (recomendado)"). Quien ya tenía
+  preferencias guardadas sin modo recibe Simple. Palabras de todos los días,
+  texto de 1rem como mínimo y botones de 48 px de alto
+  (`:root[data-modo='simple']` en `index.css`).
+- **Avanzado** ("Con detalles técnicos"). Añade lo técnico: direcciones
+  `G…`/`C…`, hash y explorador, "las 8 comprobaciones", la confianza de la IA,
+  la transferencia simulada, versión de llave y regla de contexto, y las
+  herramientas de auditoría y demo.
+- El código: `src/modo/textos.ts` (diccionario), `useModo()`, `useTexto()` y
+  `useEtiquetaActivo()` en `src/modo/useModo.ts`, y `<SoloAvanzado>` /
+  `<SoloSimple>` en `src/modo/index.tsx`.
+- **No mezclar.** Una pantalla habla en un solo modo. Ningún texto se escribe
+  a mano en el componente si tiene par en el diccionario, y un dato técnico
+  no aparece en Simple "solo esta vez". Si un campo técnico es obligatorio
+  (la dirección `C…` del alta, los datos de autorización del mandato), se
+  queda visible en Simple y solo cambia su etiqueta.
+
+| Simple | Avanzado |
+|---|---|
+| Mis reglas de pago | Mandato |
+| Pago (la tarjeta del chat) | Propuesta |
+| Te pregunta a partir de | Umbral |
+| Máximo por pago / máximo del día | Tope por pago / tope diario |
+| dólares (solo la etiqueta; el monto no cambia) | USDC |
+| Tu cuenta de pagos | Smart account |
+| Permiso de tu asistente | Llave / firmante |
+| Pausar los pagos / cambiar el permiso | Revocar / rotar |
+| Pagos por confirmar | Aprobaciones |
+| Avisos de seguridad | Alertas |
+| De prueba, con dinero de práctica | Testnet |
+| Tu asistente | El agente |
+| Pagado, Espera tu permiso, Fuiste tú… | Confirmado, Esperando tu OK, Reconocida… |
+
+Los títulos de página repiten la palabra del menú o de la pestaña.
 
 ---
 

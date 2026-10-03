@@ -3,8 +3,12 @@
  *
  * Se guardan en el navegador: el backend no tiene donde guardarlas y no
  * afectan a ningun pago. Cada preferencia se aplica como atributo del
- * `<html>` (`data-letra`, `data-contraste`, `data-movimiento`) y el CSS hace
- * el resto, asi ningun componente tiene que saber que existen.
+ * `<html>` (`data-letra`, `data-contraste`, `data-movimiento`, `data-modo`)
+ * y el CSS hace el resto, asi ningun componente tiene que saber que existen.
+ *
+ * `modo` elige el vocabulario y el detalle de la interfaz: `simple` (por
+ * defecto, para quien tiene poca practica digital) o `avanzado` (con los
+ * detalles tecnicos). Los textos por modo estan en `@/modo`.
  */
 
 import {
@@ -19,6 +23,8 @@ import {
 
 import { useTheme } from '@/hooks'
 import { cn } from '@/lib/cn'
+import { IconCheck } from '@/components/icons'
+import { MODOS, type Modo } from '@/modo/textos'
 
 export type TamanoLetra = 'normal' | 'grande' | 'muy-grande'
 
@@ -26,12 +32,19 @@ export interface Preferencias {
   letra: TamanoLetra
   contrasteAlto: boolean
   menosMovimiento: boolean
+  /** Vocabulario y detalle de la interfaz. Ver `@/modo`. */
+  modo: Modo
 }
 
 const PREFERENCIAS_KEY = 'nexora.accesibilidad'
 const PRIMEROS_PASOS_KEY = 'nexora.primeros-pasos'
 
-const POR_DEFECTO: Preferencias = { letra: 'grande', contrasteAlto: false, menosMovimiento: false }
+const POR_DEFECTO: Preferencias = {
+  letra: 'grande',
+  contrasteAlto: false,
+  menosMovimiento: false,
+  modo: 'simple',
+}
 
 function leerJson<T>(clave: string, porDefecto: T): T {
   try {
@@ -50,11 +63,21 @@ function guardar(clave: string, valor: unknown) {
   }
 }
 
+/**
+ * Lo guardado antes de que existiera `modo` no lo trae: `leerJson` rellena
+ * con el valor por defecto (Simple). Un valor desconocido tambien cae a Simple.
+ */
+function leerPreferencias(): Preferencias {
+  const p = leerJson(PREFERENCIAS_KEY, POR_DEFECTO)
+  return MODOS.includes(p.modo) ? p : { ...p, modo: POR_DEFECTO.modo }
+}
+
 function aplicar(p: Preferencias) {
   const raiz = document.documentElement
   raiz.dataset.letra = p.letra
   raiz.dataset.contraste = p.contrasteAlto ? 'alto' : 'normal'
   raiz.dataset.movimiento = p.menosMovimiento ? 'reducido' : 'normal'
+  raiz.dataset.modo = p.modo
 }
 
 interface AccesibilidadValue {
@@ -69,7 +92,7 @@ const AccesibilidadContext = createContext<AccesibilidadValue | null>(null)
 
 export function AccesibilidadProvider({ children }: { children: ReactNode }) {
   const [preferencias, setPreferencias] = useState<Preferencias>(() => {
-    const p = leerJson(PREFERENCIAS_KEY, POR_DEFECTO)
+    const p = leerPreferencias()
     aplicar(p)
     return p
   })
@@ -134,13 +157,15 @@ function Opcion({
       aria-pressed={activa}
       onClick={onClick}
       className={cn(
-        'flex min-h-14 flex-1 items-center justify-center rounded-card border-2 px-4 py-3 text-center transition-colors',
+        'flex min-h-14 flex-1 items-center justify-center gap-2 rounded-card border-2 px-4 py-3 text-center transition-colors',
         activa
-          ? 'border-oro-claro bg-superficie font-semibold text-tinta shadow-[0_0_0_4px_rgb(224_166_58/0.15),var(--sombra-2)]'
-          : 'border-filete bg-superficie text-tinta-media shadow-[var(--sombra-1)] hover:-translate-y-px hover:border-filete-fuerte hover:shadow-[var(--sombra-2)]',
+          ? 'border-oro-claro bg-superficie-2 font-semibold text-tinta'
+          : 'border-filete bg-superficie text-tinta-media hover:border-filete-fuerte',
         className,
       )}
     >
+      {/* La opcion elegida lleva marca y negrita, no solo color. */}
+      {activa && <IconCheck className="h-5 w-5 shrink-0 text-oro-claro" />}
       {children}
     </button>
   )
@@ -163,6 +188,33 @@ export function PanelAccesibilidad() {
 
   return (
     <div className="space-y-7">
+      <Grupo titulo="Cuánto detalle ver" ayuda="Puedes cambiarlo cuando quieras.">
+        <Opcion
+          activa={preferencias.modo === 'simple'}
+          onClick={() => cambiar({ modo: 'simple' })}
+          className="min-w-[15rem] justify-start"
+        >
+          <span className="flex flex-col items-start text-left">
+            <span className="font-semibold text-tinta">Sencillo (recomendado)</span>
+            <span className="text-base font-normal text-tinta-media">
+              Letra grande y palabras de todos los días.
+            </span>
+          </span>
+        </Opcion>
+        <Opcion
+          activa={preferencias.modo === 'avanzado'}
+          onClick={() => cambiar({ modo: 'avanzado' })}
+          className="min-w-[15rem] justify-start"
+        >
+          <span className="flex flex-col items-start text-left">
+            <span className="font-semibold text-tinta">Con detalles técnicos</span>
+            <span className="text-base font-normal text-tinta-media">
+              Muestra direcciones, comprobantes y términos de Stellar.
+            </span>
+          </span>
+        </Opcion>
+      </Grupo>
+
       <Grupo titulo="Tamaño de la letra" ayuda="Elige el que leas sin esfuerzo.">
         <Opcion activa={preferencias.letra === 'normal'} onClick={() => cambiar({ letra: 'normal' })}>
           <span style={{ fontSize: '1rem' }}>Normal</span>

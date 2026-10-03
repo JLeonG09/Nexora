@@ -40,6 +40,8 @@ import { useSesion } from '@/sesion/SesionContext'
 import { cn } from '@/lib/cn'
 import { formatAmount, formatDate, formatDateTime, formatFechaAmigable } from '@/lib/format'
 import { explorerAddress, explorerTx, shortKey } from '@/lib/stellar'
+import { SoloAvanzado } from '@/modo'
+import { useEtiquetaActivo, useTexto } from '@/modo/useModo'
 import type { Account, HistoryItem, MandateStatus, ProposalStatus } from '@/api/types'
 
 /** Cuantos movimientos se enseñan aqui. El resto, en "Mis movimientos". */
@@ -193,6 +195,7 @@ function nombreCuenta(account: Account | null): string {
 }
 
 function BloqueTarjeta({ account, topes }: { account: Account | null; topes: EstadoTopes }) {
+  const t = useTexto()
   return (
     <section aria-labelledby="billetera-tarjeta" className="flex flex-col gap-4">
       <h2 id="billetera-tarjeta" className="text-xl font-semibold text-tinta">
@@ -220,18 +223,19 @@ function BloqueTarjeta({ account, topes }: { account: Account | null; topes: Est
 
       <div className="space-y-1 text-base text-tinta-media">
         <p>
-          <span className="font-medium text-tinta">Saldo: próximamente.</span> Todavía no lo
-          leemos de Stellar.
+          <span className="font-medium text-tinta">Saldo: próximamente.</span>{' '}
+          {t('billeteraSaldo')}
         </p>
         <p>La tarjeta es solo una muestra: no sirve para pagar en tiendas.</p>
       </div>
 
+      {/* La dirección y el registro público son detalles técnicos: solo en Avanzado. */}
       {account ? (
-        <DatosCuenta account={account} />
+        <SoloAvanzado>
+          <DatosCuenta account={account} />
+        </SoloAvanzado>
       ) : (
-        <p className="text-base text-tinta-media">
-          No hay ninguna cuenta de Stellar registrada todavía.
-        </p>
+        <p className="text-base text-tinta-media">{t('billeteraSinCuenta')}</p>
       )}
     </section>
   )
@@ -239,6 +243,9 @@ function BloqueTarjeta({ account, topes }: { account: Account | null; topes: Est
 
 /** La cifra principal de la tarjeta, o lo que impide mostrarla. */
 function DisponibleHoy({ topes }: { topes: EstadoTopes }) {
+  const t = useTexto()
+  const activo = useEtiquetaActivo()
+
   if (topes.tipo === 'cargando') {
     return (
       <p className="flex items-center gap-2 text-base text-tinta-media">
@@ -264,7 +271,7 @@ function DisponibleHoy({ topes }: { topes: EstadoTopes }) {
       topes.status === 'EXPIRADO'
         ? 'Tus reglas de pago vencieron'
         : topes.status === 'REVOCADO'
-          ? 'Tus reglas de pago están revocadas'
+          ? t('billeteraRevocadas')
           : 'No tienes reglas de pago activas'
     return (
       <div className="flex flex-col items-start gap-3">
@@ -284,11 +291,11 @@ function DisponibleHoy({ topes }: { topes: EstadoTopes }) {
     <div className="flex flex-col gap-1">
       <p className="text-lg text-tinta-media">Disponible hoy</p>
       <p className="cifras text-3xl font-semibold text-oro">
-        {formatAmount(availableLast24h, asset)}
+        {formatAmount(availableLast24h, activo(asset))}
       </p>
       <p className="text-lg text-tinta">
-        de un tope diario de{' '}
-        <span className="cifras font-medium">{formatAmount(dailyLimit, asset)}</span>
+        {t('billeteraTopeDiario')}{' '}
+        <span className="cifras font-medium">{formatAmount(dailyLimit, activo(asset))}</span>
       </p>
       <p className="mt-1 text-base text-tinta-media">
         Cuenta las últimas 24 horas
@@ -445,7 +452,10 @@ function ResumenCifras({
   total: number
 }) {
   const activos = topes.tipo === 'activo' ? topes.topes : null
-  const asset = activos?.asset ?? 'USDC'
+  const t = useTexto()
+  const activo = useEtiquetaActivo()
+  // Solo cambia la etiqueta del activo en pantalla; el monto es el mismo.
+  const asset = activo(activos?.asset ?? 'USDC')
   const sinReglas = 'Sin reglas de pago activas'
 
   // "Pagos de hoy" usa la misma ventana que el tope diario: 24 h moviles.
@@ -473,7 +483,7 @@ function ResumenCifras({
         }
       />
       <Cifra
-        etiqueta="Tope por pago"
+        etiqueta={t('billeteraTopePorPago')}
         valor={activos?.perTxLimit ? formatAmount(activos.perTxLimit, asset) : '—'}
         nota={activos ? 'Ningún pago puede pasar de aquí' : sinReglas}
       />
@@ -605,20 +615,22 @@ function FilaMovimiento({ item }: { item: HistoryItem }) {
       </div>
 
       {item.txHash && (
-        <a
-          href={item.explorerUrl ?? explorerTx(item.txHash)}
-          target="_blank"
-          rel="noreferrer noopener"
-          title={AVISO_REGISTRO}
-          className="-my-2 inline-flex min-h-12 items-center gap-1.5 justify-self-start text-base text-tinta-media underline underline-offset-2 hover:text-tinta sm:col-start-1"
-        >
-          Comprobante
-          <IconExterno className="h-4 w-4" />
-          <span className="solo-lector">
-            {' '}
-            del pago a {nombre} ({AVISO_REGISTRO.toLowerCase()})
-          </span>
-        </a>
+        <SoloAvanzado>
+          <a
+            href={item.explorerUrl ?? explorerTx(item.txHash)}
+            target="_blank"
+            rel="noreferrer noopener"
+            title={AVISO_REGISTRO}
+            className="-my-2 inline-flex min-h-12 items-center gap-1.5 justify-self-start text-base text-tinta-media underline underline-offset-2 hover:text-tinta sm:col-start-1"
+          >
+            Comprobante
+            <IconExterno className="h-4 w-4" />
+            <span className="solo-lector">
+              {' '}
+              del pago a {nombre} ({AVISO_REGISTRO.toLowerCase()})
+            </span>
+          </a>
+        </SoloAvanzado>
       )}
     </li>
   )

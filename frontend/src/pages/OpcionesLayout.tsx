@@ -9,6 +9,7 @@
 import { NavLink, Outlet } from 'react-router-dom'
 
 import { cn } from '@/lib/cn'
+import { useTexto } from '@/modo/useModo'
 
 function Pestana({ to, texto }: { to: string; texto: string }) {
   return (
@@ -16,7 +17,7 @@ function Pestana({ to, texto }: { to: string; texto: string }) {
       to={to}
       className={({ isActive }) =>
         cn(
-          'flex min-h-12 flex-1 items-center justify-center rounded-control px-4 text-base font-medium transition-colors sm:flex-none',
+          'flex min-h-12 flex-1 items-center justify-center rounded-control px-4 text-base font-medium whitespace-nowrap transition-colors sm:flex-none',
           isActive
             ? 'bg-superficie text-tinta shadow-sm ring-1 ring-filete'
             : 'text-tinta-media hover:text-tinta',
@@ -29,15 +30,16 @@ function Pestana({ to, texto }: { to: string; texto: string }) {
 }
 
 export function OpcionesLayout() {
+  const t = useTexto()
   return (
     <>
       <div className="contenedor pt-6">
         <h1 className="mb-3 text-lg font-semibold tracking-tight text-tinta">Opciones</h1>
         <nav
           aria-label="Secciones de opciones"
-          className="flex gap-1 rounded-card border border-filete bg-superficie-2 p-1 sm:inline-flex"
+          className="flex flex-wrap gap-1 rounded-card border border-filete bg-superficie-2 p-1 sm:inline-flex"
         >
-          <Pestana to="/opciones/mandato" texto="Reglas de pago" />
+          <Pestana to="/opciones/mandato" texto={t('tituloReglas')} />
           <Pestana to="/opciones/accesibilidad" texto="Accesibilidad" />
           <Pestana to="/opciones/cuenta" texto="Cuenta" />
         </nav>

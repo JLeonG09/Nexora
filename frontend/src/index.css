@@ -221,6 +221,14 @@
       grid-template-columns: 16.5rem minmax(0, 1fr);
     }
   }
+  /* En móvil hay dos filas (barra superior y contenido). Sin esto, cuando la
+     página es más corta que la pantalla, el espacio sobrante se reparte
+     entre las dos y queda una franja vacía bajo la barra superior. */
+  @media (max-width: 63.999rem) {
+    .panel-app {
+      grid-template-rows: auto minmax(0, 1fr);
+    }
+  }
 
   .contenedor {
     width: 100%;
@@ -330,6 +338,9 @@
 
   .modulo-cabecera {
     display: flex;
+    /* En pantallas angostas (y con los botones de 48 px del modo Simple)
+       las acciones bajan a otra linea en vez de aplastar el titulo. */
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
@@ -1396,8 +1407,9 @@
   box-shadow: var(--sombra-1);
 }
 
-/* El asistente es un circulo dorado con un brillo propio. La version grande
-   (`orbe-luz`, chat vacio) respira y suelta ondas; en las burbujas solo brilla. */
+/* El asistente es un circulo dorado con un brillo propio. Esta quieto: solo
+   parpadea (`.orbe.pensando`) mientras el asistente piensa. Sin halos ni
+   ondas en bucle (DESIGN.md, "Lo que no se usa"). */
 .orbe {
   position: relative;
   flex-shrink: 0;
@@ -1408,117 +1420,6 @@
   box-shadow:
     0 0 calc(var(--orbe, 3rem) * 0.35) rgb(224 166 58 / 0.45),
     inset 0 -2px 6px rgb(120 70 10 / 0.35);
-}
-/* z-index negativo sin isolation: el halo queda detras del circulo pero
-   encima del fondo de `main`, que es el contexto de apilamiento. */
-.orbe-luz::before,
-.orbe-luz::after {
-  content: '';
-  position: absolute;
-  z-index: -1;
-  border-radius: 999px;
-  pointer-events: none;
-}
-.orbe-luz::before {
-  inset: -160%;
-  background: radial-gradient(
-    circle,
-    rgb(246 216 145 / 0.32) 0%,
-    rgb(224 166 58 / 0.14) 30%,
-    rgb(224 166 58 / 0.04) 50%,
-    transparent 68%
-  );
-  animation: orbe-respirar 4.5s ease-in-out infinite;
-}
-.orbe-luz::after {
-  inset: 0;
-  border: 1px solid rgb(246 216 145 / 0.55);
-  box-shadow: 0 0 12px rgb(224 166 58 / 0.4);
-  animation: orbe-onda 3.6s var(--ease-salida) infinite;
-}
-@keyframes orbe-respirar {
-  0%,
-  100% {
-    transform: scale(0.92);
-    opacity: 0.75;
-  }
-  50% {
-    transform: scale(1.08);
-    opacity: 1;
-  }
-}
-@keyframes orbe-onda {
-  0% {
-    transform: scale(1);
-    opacity: 0.8;
-  }
-  100% {
-    transform: scale(3.2);
-    opacity: 0;
-  }
-}
-
-/*
- * Fondo del area de contenido: halos tipo nebulosa y estrellas tenues, fijos
- * a la ventana para que no se desplacen con el scroll. Con el lateral
- * escondido aparece en la esquina la misma luz dorada que tiene el lateral.
- */
-.fondo-galaxia {
-  position: relative;
-  isolation: isolate;
-  --galaxia-oro: rgb(224 166 58 / 0.11);
-  --galaxia-violeta: rgb(124 92 255 / 0.11);
-  --galaxia-azul: rgb(64 140 255 / 0.08);
-  --galaxia-estrella: rgb(255 255 255 / 0.4);
-}
-:root:not([data-tema='oscuro']) .fondo-galaxia {
-  --galaxia-oro: rgb(224 166 58 / 0.1);
-  --galaxia-violeta: rgb(124 92 255 / 0.05);
-  --galaxia-azul: rgb(64 140 255 / 0.04);
-  --galaxia-estrella: rgb(0 0 0 / 0);
-}
-.fondo-galaxia::before,
-.fondo-galaxia::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-}
-.fondo-galaxia::before {
-  background:
-    radial-gradient(40rem 28rem at 70% 18%, var(--galaxia-violeta), transparent 70%),
-    radial-gradient(34rem 26rem at 85% 85%, var(--galaxia-azul), transparent 70%),
-    radial-gradient(30rem 22rem at 50% 45%, var(--galaxia-oro), transparent 70%);
-  animation: galaxia-derivar 28s ease-in-out infinite alternate;
-}
-.fondo-galaxia::after {
-  background-image:
-    radial-gradient(1px 1px at 12% 22%, var(--galaxia-estrella), transparent),
-    radial-gradient(1px 1px at 34% 68%, var(--galaxia-estrella), transparent),
-    radial-gradient(1.5px 1.5px at 58% 12%, var(--galaxia-estrella), transparent),
-    radial-gradient(1px 1px at 76% 44%, var(--galaxia-estrella), transparent),
-    radial-gradient(1px 1px at 88% 78%, var(--galaxia-estrella), transparent),
-    radial-gradient(1.5px 1.5px at 22% 88%, var(--galaxia-estrella), transparent),
-    radial-gradient(1px 1px at 64% 92%, var(--galaxia-estrella), transparent),
-    radial-gradient(1px 1px at 46% 36%, var(--galaxia-estrella), transparent);
-  background-size: 520px 520px;
-  opacity: 0.7;
-}
-.lateral-oculto .fondo-galaxia::before {
-  background:
-    radial-gradient(18rem 14rem at 0% 0%, rgb(224 166 58 / 0.14), transparent 70%),
-    radial-gradient(40rem 28rem at 70% 18%, var(--galaxia-violeta), transparent 70%),
-    radial-gradient(34rem 26rem at 85% 85%, var(--galaxia-azul), transparent 70%),
-    radial-gradient(30rem 22rem at 50% 45%, var(--galaxia-oro), transparent 70%);
-}
-@keyframes galaxia-derivar {
-  from {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  to {
-    transform: translate3d(-2%, 1.5%, 0) scale(1.06);
-  }
 }
 .orbe-pequeno {
   --orbe: 1.75rem;
@@ -1578,6 +1479,58 @@
   animation-iteration-count: 1 !important;
   transition-duration: 0.01ms !important;
   scroll-behavior: auto !important;
+}
+
+/* ---------------------------------------------------------------------
+   Modo Simple (preferencia `modo` de Accesibilidad, `data-modo` en <html>).
+   Es el modo por defecto. Ningun texto baja de 1rem y los controles miden
+   3rem de alto como minimo (48 px con la letra normal, mas con la grande).
+   Se redefinen las variables de `@theme`: `text-2xs`, `text-xs`, `text-sm`
+   y las clases que las leen (insignias, ayudas, botones, barra lateral)
+   crecen solas, sin tocar los componentes. El modo Avanzado no cambia.
+   Va en la capa `components` para que las utilidades de Tailwind (por
+   ejemplo `min-h-20` de un textarea) sigan mandando sobre estos minimos.
+   --------------------------------------------------------------------- */
+@layer components {
+  :root[data-modo='simple'] {
+    --text-2xs: 1rem;
+    --text-2xs--line-height: 1.5;
+    --text-xs: 1rem;
+    --text-xs--line-height: 1.5;
+    --text-sm: 1rem;
+    --text-sm--line-height: 1.5;
+    --text-base: 1rem;
+    --text-base--line-height: 1.55;
+    /* Los titulos suben un escalon para no quedar al nivel del texto. */
+    --text-lg: 1.25rem;
+    --text-lg--line-height: 1.35;
+    --text-xl: 1.375rem;
+  }
+  :root[data-modo='simple'] .btn,
+  :root[data-modo='simple'] .btn-sm,
+  :root[data-modo='simple'] .entrada,
+  :root[data-modo='simple'] .nav-lateral__enlace,
+  :root[data-modo='simple'] .nav-lateral__chat {
+    min-height: 3rem;
+  }
+  :root[data-modo='simple'] .btn-sm {
+    padding: 0.5rem 0.875rem;
+  }
+  :root[data-modo='simple'] .btn svg {
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+  :root[data-modo='simple'] .btn-icono,
+  :root[data-modo='simple'] .abrir-lateral {
+    min-height: 3rem;
+    width: 3rem;
+    height: 3rem;
+  }
+  /* Barra superior del celular: 44 px como minimo (DESIGN.md). */
+  :root[data-modo='simple'] .barra-superior button {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+  }
 }
 
 @media print {

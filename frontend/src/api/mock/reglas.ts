@@ -230,12 +230,14 @@ function detectarContacto(texto: string): string | null {
  * nombre porque exige mayúscula detrás, así que "por para luego" no inventa
  * destinatario.
  *
- * El modificador `(?i:...)` es solo para la palabra clave; el nombre se exige
- * en mayúscula porque así se escribe un nombre en español.
+ * La palabra clave acepta mayúsculas y minúsculas letra por letra
+ * (`[aA]`, `[pP][aA][rR][aA]`) en vez de con el modificador `(?i:...)`, que
+ * Node 20/22 no entienden. El nombre se sigue exigiendo con mayúscula inicial
+ * porque así se escribe un nombre en español.
  */
 function nombreEnTexto(texto: string): string | null {
   const m = texto.match(
-    /\b(?i:a|para)\s+([A-ZÁÉÍÓÚÑÜ][\p{L}'’-]{1,20}(?:\s+[A-ZÁÉÍÓÚÑÜ][\p{L}'’-]{1,20}){0,2})/u,
+    /\b(?:[aA]|[pP][aA][rR][aA])\s+([A-ZÁÉÍÓÚÑÜ][\p{L}'’-]{1,20}(?:\s+[A-ZÁÉÍÓÚÑÜ][\p{L}'’-]{1,20}){0,2})/u,
   )
   if (!m) return null
   return m[1].trim()

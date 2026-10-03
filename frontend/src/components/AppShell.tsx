@@ -22,6 +22,7 @@ import { cn } from '@/lib/cn'
 import { formatRelative, initials } from '@/lib/format'
 import { Button, Spinner } from './ui'
 import { LogoNexora } from './icons'
+import { useModo } from '@/modo/useModo'
 import {
   IconAprobaciones,
   IconBilletera,
@@ -266,13 +267,27 @@ function ContenidoLateral({ onNavegar, onEsconder }: { onNavegar?: () => void; o
 function BarraEstado() {
   const { data: salud, isError } = useHealth()
   const funciona = !!salud && !isError
+  const modo = useModo()
+
+  const estado = (
+    <>
+      <span className={cn('led', funciona && 'encendido')} aria-hidden="true" />
+      {isError ? 'Sin conexión con el servicio' : funciona ? 'Todo funciona bien' : 'Conectando…'}
+    </>
+  )
+
+  // En Simple solo se dice si funciona: el detalle (IA, firmante, red) es técnico.
+  if (modo === 'simple') {
+    return (
+      <p className="flex items-center gap-2 border-t border-blanco/10 px-4 py-2.5 text-xs text-texto-cierre">
+        {estado}
+      </p>
+    )
+  }
 
   return (
     <details className="border-t border-blanco/10 px-4 py-2.5 text-xs text-texto-cierre">
-      <summary className="flex cursor-pointer list-none items-center gap-2">
-        <span className={cn('led', funciona && 'encendido')} aria-hidden="true" />
-        {isError ? 'Sin conexión con el servicio' : funciona ? 'Todo funciona bien' : 'Conectando…'}
-      </summary>
+      <summary className="flex cursor-pointer list-none items-center gap-2">{estado}</summary>
       {salud && (
         <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-2xs opacity-80">
           <span>Servicio: {salud.status}</span>
@@ -383,7 +398,7 @@ function Marco() {
         </div>
       </header>
 
-      <main className="fondo-galaxia min-w-0 bg-fondo">
+      <main className="min-w-0 bg-fondo">
         {/* Cada pantalla llega por separado: mientras tanto el marco se queda. */}
         <Suspense
           fallback={
