@@ -1,3 +1,7 @@
 # pnpm 11 no ejecuta scripts de instalación sin permiso explícito.
 allowBuilds:
   esbuild: true
+
+# pnpm 11 ignora `pnpm.overrides` de package.json; el override vive aquí.
+overrides:
+  axios: ">=1.20.0"
