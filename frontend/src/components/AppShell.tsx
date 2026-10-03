@@ -31,10 +31,9 @@ import {
   IconHistorial,
   IconInicio,
   IconLuna,
-  IconMandato,
   IconMenu,
   IconNuevoChat,
-  IconOjo,
+  IconOpciones,
   IconPanel,
   IconSalir,
   IconSol,
@@ -57,17 +56,17 @@ interface Enlace {
 }
 
 /**
- * Seis entradas y ninguna mas, sin tecnicismos: quien la usa no sabe que es
+ * Cinco entradas y ninguna mas, sin tecnicismos: quien la usa no sabe que es
  * un "mandato" ni una "auditoria". Aprobaciones y alertas van juntas en
  * "Pendientes" porque para el usuario son lo mismo: algo que espera su
  * respuesta. "Mi billetera" va justo despues de Inicio: es la pregunta
  * que mas se repite ("cuanto puedo gastar hoy").
  *
  * Fuera del menu, a proposito:
- *  - Accesibilidad va en el pie, junto a la cuenta: se ajusta una vez.
- *  - `/auditoria` y `/demo` siguen existiendo por URL. La auditoria es para
- *    soporte y la demo del atacante es para presentar el proyecto, no para
- *    quien paga.
+ *  - "Opciones" va en el pie, junto a la cuenta: reglas de pago,
+ *    accesibilidad y cuenta se ajustan de vez en cuando, no a diario.
+ *  - `/auditoria` y `/demo` se enlazan desde Opciones > Cuenta. La auditoria
+ *    es para soporte y la demo del atacante es para presentar el proyecto.
  */
 function useEnlaces(): Enlace[] {
   const { data: aprobaciones } = useAprobaciones('PENDIENTE', 0, 1)
@@ -88,7 +87,6 @@ function useEnlaces(): Enlace[] {
       urgente: sinRevisar > 0,
     },
     { to: '/contactos', texto: 'Mis contactos', Icono: IconContactos },
-    { to: '/mandato', texto: 'Mis reglas de pago', Icono: IconMandato },
     { to: '/historial', texto: 'Mis movimientos', Icono: IconHistorial },
   ]
 }
@@ -230,12 +228,12 @@ function ContenidoLateral({ onNavegar, onEsconder }: { onNavegar?: () => void; o
             </div>
           </div>
           <NavLink
-            to="/accesibilidad"
+            to="/opciones"
             onClick={onNavegar}
             className={({ isActive }) => cn('nav-lateral__enlace w-full', isActive && 'activo')}
           >
-            <IconOjo />
-            <span>Accesibilidad</span>
+            <IconOpciones />
+            <span>Opciones</span>
           </NavLink>
           <button
             type="button"

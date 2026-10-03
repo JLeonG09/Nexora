@@ -26,10 +26,16 @@ public record ProposalResponse(
         String rejectionCode,
         String rejectionMessage,
         Instant createdAt,
-        Instant updatedAt) {
+        Instant updatedAt,
+        SimulatedTransferDto simulatedTransfer) {
 
     public static ProposalResponse from(PaymentProposal proposal, String contactName, UUID approvalId,
                                         String explorerBaseUrl) {
+        return from(proposal, contactName, approvalId, explorerBaseUrl, null);
+    }
+
+    public static ProposalResponse from(PaymentProposal proposal, String contactName, UUID approvalId,
+                                        String explorerBaseUrl, SimulatedTransferDto simulatedTransfer) {
         return new ProposalResponse(
                 proposal.getId(),
                 proposal.getStatus(),
@@ -48,7 +54,8 @@ public record ProposalResponse(
                 proposal.getRejectionCode(),
                 proposal.getRejectionMessage(),
                 proposal.getCreatedAt(),
-                proposal.getUpdatedAt());
+                proposal.getUpdatedAt(),
+                simulatedTransfer);
     }
 
     public static String explorerTxUrl(String explorerBaseUrl, String txHash) {

@@ -11,6 +11,7 @@
  */
 
 import { http } from './client'
+import { ApiError } from './errors'
 import { endpoints } from './endpoints'
 import type { PageParams } from './endpoints'
 import type {
@@ -106,7 +107,12 @@ export const contacts = {
 export const mandates = {
   /** Crea el mandato a partir de una transaccion ya ejecutada en la cadena. */
   create: (payload: CreateMandateInput) => http.post<Mandate>(endpoints.createMandate(), payload),
-  active: () => http.get<Mandate | null>(endpoints.activeMandate()),
+  /** El backend responde 404 cuando no hay mandato activo: eso es "ninguno", no un fallo. */
+  active: () =>
+    http.get<Mandate>(endpoints.activeMandate()).catch((err: unknown) => {
+      if (err instanceof ApiError && err.isNotFound) return null
+      throw err
+    }),
   /** Topes vigentes, para pintar la barra de gasto del dia. */
   limits: () => http.get<Limits>(endpoints.activeLimits()),
   list: (params?: PageParams) => http.get<Page<Mandate>>(endpoints.mandates(params)),

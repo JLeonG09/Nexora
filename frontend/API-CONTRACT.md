@@ -212,8 +212,15 @@ nuevo en cada inicio de sesión y usa esta lista para volver a los anteriores.
 | `GET` | `/api/proposals?status=&page=&size=` | → `Page<Proposal>` |
 | `GET` | `/api/proposals/{id}` | → `Proposal` |
 
-`ProposalResponse` tiene **18 campos** y coincide exactamente con el tipo
+`ProposalResponse` tiene **19 campos** y coincide exactamente con el tipo
 `Proposal` de `src/api/types.ts`.
+
+`simulatedTransfer` solo viene relleno en `GET /api/proposals/{id}`, con
+`SIGNER_MODE=mock` y estado `CONFIRMADO` (en la lista siempre es `null`).
+Lleva los saldos ficticios de las dos cuentas: `asset`, `fromAddress`,
+`fromBefore`, `fromAfter`, `toName`, `toAddress`, `toBefore`, `toAfter`. La
+cuenta del usuario empieza con 100 y cada contacto con 0; cada pago
+confirmado anterior resta de una y suma a la otra. No existe en Stellar.
 
 ### Los 16 `RejectionCode`
 
