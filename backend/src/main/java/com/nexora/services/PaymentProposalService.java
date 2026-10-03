@@ -8,6 +8,7 @@ import com.nexora.dtos.ai.AiInterpretResponse;
 import com.nexora.dtos.ai.ProposePaymentArguments;
 import com.nexora.dtos.responses.PageResponse;
 import com.nexora.dtos.responses.ProposalResponse;
+import com.nexora.dtos.responses.SimulatedTransferDto;
 import com.nexora.dtos.signer.SignRequest;
 import com.nexora.dtos.signer.SignResponse;
 import com.nexora.dtos.signer.SignerErrorDto;
@@ -68,6 +69,7 @@ public class PaymentProposalService {
     private static final int MAX_MODEL = 60;
     private static final int MAX_REJECTION_MESSAGE = 300;
     private static final int MAX_REJECTION_CODE = 60;
+    static final BigDecimal SIMULATED_INITIAL_BALANCE = new BigDecimal("100");
 
     /** Resultado de crear una propuesta. {@code signRequest} viene solo si quedó ENVIADO y falta llamar al firmante. */
     public record Outcome(PaymentProposal proposal, String contactName, UUID approvalId, SignRequest signRequest) {
@@ -400,8 +402,31 @@ public class PaymentProposalService {
             String contactName = proposal.getContactId() == null ? null
                     : contactRepository.findById(proposal.getContactId()).map(Contact::getName).orElse(null);
             UUID approvalId = approvalRepository.findByProposalId(proposalId).map(Approval::getId).orElse(null);
-            return ProposalResponse.from(proposal, contactName, approvalId, properties.explorerBaseUrl());
+            return ProposalResponse.from(proposal, contactName, approvalId, properties.explorerBaseUrl(),
+                    simulatedTransfer(proposal, contactName));
         });
+    }
+
+    /**
+     * Con el firmante simulado no hay saldos reales: la cuenta empieza con {@link #SIMULATED_INITIAL_BALANCE},
+     * cada contacto con 0, y cada pago confirmado mueve el dinero de una a otra.
+     */
+    private SimulatedTransferDto simulatedTransfer(PaymentProposal proposal, String contactName) {
+        if (!"mock".equalsIgnoreCase(properties.signer().mode()) || proposal.getStatus() != ProposalStatus.CONFIRMADO
+                || proposal.getConfirmedAt() == null || proposal.getContactId() == null || proposal.getAmount() == null) {
+            return null;
+        }
+        BigDecimal amount = proposal.getAmount();
+        BigDecimal fromBefore = SIMULATED_INITIAL_BALANCE.subtract(
+                proposalRepository.sumConfirmedFromAccountBefore(proposal.getAccountId(), proposal.getConfirmedAt()));
+        BigDecimal toBefore = proposalRepository.sumConfirmedToContactBefore(proposal.getContactId(),
+                proposal.getConfirmedAt());
+        String fromAddress = accountRepository.findById(proposal.getAccountId())
+                .map(Account::getSmartAccountAddress).orElse(null);
+        return new SimulatedTransferDto(proposal.getAssetCode(), fromAddress,
+                Money.format(fromBefore), Money.format(fromBefore.subtract(amount)),
+                contactName, proposal.getDestinationAddress(),
+                Money.format(toBefore), Money.format(toBefore.add(amount)));
     }
 
     public PageResponse<ProposalResponse> list(UUID userId, ProposalStatus statusFilter, int page, int size) {

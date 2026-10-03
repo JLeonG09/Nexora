@@ -5,6 +5,7 @@ import com.nexora.config.CurrentUser;
 import com.nexora.dtos.requests.ChatRequest;
 import com.nexora.dtos.responses.ChatMessageResponse;
 import com.nexora.dtos.responses.ChatResponse;
+import com.nexora.dtos.responses.ConversationSummaryResponse;
 import com.nexora.dtos.responses.PageResponse;
 import com.nexora.exceptions.ApiException;
 import com.nexora.exceptions.ErrorCode;
@@ -60,5 +61,13 @@ public class ChatController {
             @RequestParam(defaultValue = "50") @Min(value = 1, message = "El límite mínimo es 1.")
             @Max(value = 100, message = "El límite máximo es 100.") int limit) {
         return chatService.messages(currentUser.id(), conversationId, limit);
+    }
+
+    @GetMapping("/conversations")
+    @Operation(summary = "Conversaciones del usuario (la más reciente primero)")
+    public PageResponse<ConversationSummaryResponse> conversations(
+            @RequestParam(defaultValue = "30") @Min(value = 1, message = "El límite mínimo es 1.")
+            @Max(value = 100, message = "El límite máximo es 100.") int limit) {
+        return chatService.conversations(currentUser.id(), limit);
     }
 }

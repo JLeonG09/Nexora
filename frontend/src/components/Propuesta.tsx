@@ -29,7 +29,7 @@ import {
 import { useCopy } from '@/hooks'
 import { formatDateTime, formatRelative } from '@/lib/format'
 import { explorerTx } from '@/lib/stellar'
-import type { Limits, Proposal } from '@/api/types'
+import type { Limits, Proposal, SimulatedTransfer } from '@/api/types'
 
 /* ------------------------------------------------------------------ */
 /* Enlace al explorador                                               */
@@ -76,6 +76,76 @@ function CopiarHash({ hash }: { hash: string }) {
       {hash.slice(0, 10)}…{hash.slice(-6)}
       {copiado ? <IconCheck className="h-3 w-3 text-ok" /> : <IconCopiar className="h-3 w-3" />}
     </button>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Transferencia simulada                                              */
+/* ------------------------------------------------------------------ */
+
+function FilaCuenta({
+  titulo,
+  direccion,
+  antes,
+  despues,
+  asset,
+  entra,
+}: {
+  titulo: string
+  direccion: string | null
+  antes: string
+  despues: string
+  asset: string
+  entra: boolean
+}) {
+  return (
+    <li className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5">
+      <span className="min-w-0">
+        <span className="block text-xs font-medium text-tinta">{titulo}</span>
+        {direccion && (
+          <StellarAddress publicKey={direccion} enlazar={false} className="text-2xs text-tinta-media" />
+        )}
+      </span>
+      <span className="cifras flex items-center gap-1.5 text-xs">
+        <Monto amount={antes} asset={asset} className="text-tinta-media line-through decoration-tinta-media/50" />
+        <span aria-hidden="true" className="text-tinta-media">→</span>
+        <span className="sr-only">pasa a</span>
+        <Monto amount={despues} asset={asset} className={`font-semibold ${entra ? 'text-ok' : 'text-tinta'}`} />
+      </span>
+    </li>
+  )
+}
+
+/** Con el firmante simulado no hay transacción real: se enseñan los saldos ficticios de ambas cuentas. */
+function TransferenciaSimulada({ transferencia }: { transferencia: SimulatedTransfer }) {
+  return (
+    <section className="mt-2.5 rounded-control border border-linea bg-superficie-2 p-2" aria-label="Transferencia simulada">
+      <p className="mb-1.5 flex items-center justify-between gap-2 text-2xs text-tinta-media">
+        <span className="font-medium uppercase tracking-wide">Transferencia simulada</span>
+        <Badge tone="neutro">Demo</Badge>
+      </p>
+      <ul className="space-y-1.5">
+        <FilaCuenta
+          titulo="Tu cuenta"
+          direccion={transferencia.fromAddress}
+          antes={transferencia.fromBefore}
+          despues={transferencia.fromAfter}
+          asset={transferencia.asset}
+          entra={false}
+        />
+        <FilaCuenta
+          titulo={`Cuenta de ${transferencia.toName ?? 'destino'}`}
+          direccion={transferencia.toAddress}
+          antes={transferencia.toBefore}
+          despues={transferencia.toAfter}
+          asset={transferencia.asset}
+          entra
+        />
+      </ul>
+      <p className="mt-1.5 text-2xs text-tinta-media">
+        Saldos ficticios: tu cuenta empezó con 100 y cada contacto con 0. No hay transacción en Stellar.
+      </p>
+    </section>
   )
 }
 
@@ -198,11 +268,15 @@ export function TarjetaPropuesta({
         </div>
       )}
 
-      {propuesta.txHash && (
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-          <EnlaceTx txHash={propuesta.txHash} explorerUrl={propuesta.explorerUrl} />
-          <CopiarHash hash={propuesta.txHash} />
-        </div>
+      {propuesta.simulatedTransfer ? (
+        <TransferenciaSimulada transferencia={propuesta.simulatedTransfer} />
+      ) : (
+        propuesta.txHash && (
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <EnlaceTx txHash={propuesta.txHash} explorerUrl={propuesta.explorerUrl} />
+            <CopiarHash hash={propuesta.txHash} />
+          </div>
+        )
       )}
 
       {/* --- Por que no salio --------------------------------------- */}

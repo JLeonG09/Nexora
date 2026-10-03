@@ -62,7 +62,8 @@ export const queryKeys = {
   contactList: (page: number) => ['contacts', 'lista', page] as const,
   mandateActive: ['mandates', 'active'] as const,
   limits: ['mandates', 'limits'] as const,
-  chat: (conversationId: string | null) => ['chat', conversationId ?? 'ultima'] as const,
+  chat: (conversationId: string | null) => ['chat', conversationId ?? 'nueva'] as const,
+  conversations: ['chat', 'conversaciones'] as const,
   proposals: (status: ProposalStatus | null, page: number) =>
     ['proposals', status ?? 'todos', page] as const,
   proposal: (id: string) => ['proposals', 'detalle', id] as const,
@@ -221,11 +222,22 @@ export function useRevocarMandato() {
 export function useChat(conversationId: string | null) {
   return useQuery({
     queryKey: queryKeys.chat(conversationId),
-    queryFn: () => chat.messages(conversationId),
+    // Sin id es un chat nuevo: no se pide nada. Sin conversationId el backend
+    // devolveria los ultimos mensajes de todas las conversaciones mezclados.
+    queryFn: () => (conversationId ? chat.messages(conversationId) : Promise.resolve([])),
     staleTime: 30_000,
-    // Al mandar el primer mensaje la clave pasa de "ultima" al id nuevo. Sin
+    // Al mandar el primer mensaje la clave pasa de "nueva" al id nuevo. Sin
     // esto el hilo desaparece un instante y sale "Cargando la conversacion".
     placeholderData: keepPreviousData,
+  })
+}
+
+/** Conversaciones anteriores para la barra lateral, la mas reciente primero. */
+export function useConversaciones() {
+  return useQuery({
+    queryKey: queryKeys.conversations,
+    queryFn: () => chat.conversations(),
+    staleTime: 30_000,
   })
 }
 
@@ -240,6 +252,7 @@ export function useEnviarMensaje() {
       chat.send(message, conversationId),
     onSuccess: (_data, variables) => {
       void qc.invalidateQueries({ queryKey: queryKeys.chat(variables.conversationId) })
+      void qc.invalidateQueries({ queryKey: queryKeys.conversations })
       void qc.invalidateQueries({ queryKey: ['proposals'] })
       void qc.invalidateQueries({ queryKey: queryKeys.mandateActive })
       void qc.invalidateQueries({ queryKey: queryKeys.limits })

@@ -36,6 +36,7 @@ import {
   usePropuesta,
 } from '@/api/queries'
 import { useSesion } from '@/sesion/SesionContext'
+import { useConversacion } from '@/sesion/ConversacionContext'
 import { cn } from '@/lib/cn'
 import { formatDateTime, formatRelative } from '@/lib/format'
 import type { ChatMessage } from '@/api/types'
@@ -230,38 +231,11 @@ function Compositor({
 /* Pagina                                                            */
 /* ------------------------------------------------------------------ */
 
-/**
- * La conversacion abierta sobrevive a cambiar de pantalla. Si viviera solo
- * en el estado del componente, al volver de Pendientes el siguiente mensaje
- * abriria una conversacion nueva y el hilo anterior desapareceria.
- */
-function useConversacionGuardada(userId: string | undefined) {
-  const clave = userId ? `nexora.conversacion.${userId}` : null
-  const [id, setId] = useState<string | null>(() => {
-    if (!clave) return null
-    try {
-      return sessionStorage.getItem(clave)
-    } catch {
-      return null
-    }
-  })
-
-  function guardar(nuevo: string) {
-    setId(nuevo)
-    if (!clave) return
-    try {
-      sessionStorage.setItem(clave, nuevo)
-    } catch {
-      /* sin almacenamiento: dura lo que dura la pantalla */
-    }
-  }
-
-  return [id, guardar] as const
-}
-
 export function ChatPage() {
   const { user } = useSesion()
-  const [conversationId, setConversationId] = useConversacionGuardada(user?.id)
+  // La conversacion abierta vive fuera de la pantalla: sobrevive a ir a
+  // Pendientes y volver, y la barra lateral puede abrir otra o una nueva.
+  const { conversationId, abrir: setConversationId } = useConversacion()
   const [texto, setTexto] = useState('')
   const enviar = useEnviarMensaje()
   const navegar = useNavigate()
@@ -279,7 +253,7 @@ export function ChatPage() {
 
   useEffect(() => {
     areaRef.current?.focus()
-  }, [])
+  }, [conversationId])
 
   const limpio = texto.trim()
 
@@ -322,7 +296,7 @@ export function ChatPage() {
     return (
       <div className="flex h-dvh flex-col items-center justify-center px-4">
         <div className="flex w-full max-w-2xl flex-col items-center gap-8">
-          <span className="orbe" aria-hidden="true" />
+          <span className="orbe orbe-luz" aria-hidden="true" />
           <h1
             className="emerger text-center text-3xl font-semibold tracking-tight text-tinta sm:text-4xl"
             style={{ '--orden': 1 } as React.CSSProperties}

@@ -11,6 +11,7 @@ import com.nexora.dtos.requests.ChatRequest;
 import com.nexora.dtos.responses.ChatMessageResponse;
 import com.nexora.dtos.responses.ChatReplyDto;
 import com.nexora.dtos.responses.ChatResponse;
+import com.nexora.dtos.responses.ConversationSummaryResponse;
 import com.nexora.dtos.responses.LimitsResponse;
 import com.nexora.dtos.responses.PageResponse;
 import com.nexora.dtos.responses.ProposalSummaryDto;
@@ -54,6 +55,7 @@ public class ChatService {
     static final String DEFAULT_REPLY = "Puedo pagar a tus contactos. Ejemplo: \"Págale 15 USDC a Ana por el logo\".";
     private static final int HISTORY_SIZE = 6;
     private static final int MAX_MESSAGE_TEXT = 1000;
+    private static final int MAX_TITLE = 60;
     private static final Sort NEWEST_FIRST = Sort.by("createdAt").descending();
 
     private final AccountRepository accountRepository;
@@ -146,6 +148,30 @@ public class ChatService {
         List<ChatMessageResponse> items = new ArrayList<>(page.getContent().stream().map(ChatMessageResponse::from).toList());
         Collections.reverse(items);
         return new PageResponse<>(items, 0, limit, page.getTotalElements());
+    }
+
+    public PageResponse<ConversationSummaryResponse> conversations(UUID userId, int limit) {
+        return tx.execute(status -> {
+            List<ChatMessageRepository.ConversationRow> rows =
+                    chatMessageRepository.findConversations(userId, PageRequest.of(0, limit));
+            Map<UUID, String> titles = new HashMap<>();
+            if (!rows.isEmpty()) {
+                List<UUID> ids = rows.stream().map(ChatMessageRepository.ConversationRow::getConversationId).toList();
+                chatMessageRepository.findFirstUserMessages(userId, ids)
+                        .forEach(message -> titles.putIfAbsent(message.getConversationId(), title(message.getText())));
+            }
+            List<ConversationSummaryResponse> items = rows.stream()
+                    .map(row -> new ConversationSummaryResponse(row.getConversationId(),
+                            titles.getOrDefault(row.getConversationId(), "Conversación"), row.getStartedAt(),
+                            row.getLastMessageAt(), row.getMessageCount()))
+                    .toList();
+            return new PageResponse<>(items, 0, limit, chatMessageRepository.countConversations(userId));
+        });
+    }
+
+    private static String title(String text) {
+        String oneLine = text.strip().replaceAll("\\s+", " ");
+        return oneLine.length() <= MAX_TITLE ? oneLine : oneLine.substring(0, MAX_TITLE - 1).stripTrailing() + "…";
     }
 
     private String replyFor(PaymentProposal proposal, String contactName) {
