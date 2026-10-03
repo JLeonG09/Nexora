@@ -152,7 +152,7 @@ recalcularlos.
 | Método | Ruta | |
 |---|---|---|
 | `POST` | `/api/mandates` | Crea el mandato. |
-| `GET` | `/api/mandates/active` | → `Mandate \| null` |
+| `GET` | `/api/mandates/active` | → `Mandate`. Sin mandato activo: `404 RECURSO_NO_ENCONTRADO`. |
 | `GET` | `/api/mandates/active/limits` | → `Limits` |
 | `GET` | `/api/mandates?page=&size=` | → `Page<Mandate>` |
 | `POST` | `/api/mandates/{id}/revoke` | Cuerpo opcional: `{ revokeTxHash }`. |
@@ -171,8 +171,10 @@ el panel envía `createTxHash`, `keyVersion`, `agentPublicKeyHex`,
 `mandateId`, `asset`, `dailyLimit`, `spentLast24h`, `availableLast24h`,
 `perTxLimit`, `approvalThreshold`, `expiresAt`, `status`.
 
-Cuando no hay mandato, `GET /api/mandates/active` devuelve `null` y
-`/limits` devuelve los campos a `null`.
+Cuando no hay mandato, `GET /api/mandates/active` responde `404` con
+`RECURSO_NO_ENCONTRADO` («No tienes un mandato activo.»). El cliente del panel
+convierte ese 404 en `null` para mostrar el formulario. `/limits` devuelve los
+campos a `null`.
 
 `409 MANDATO_ACTIVO_EXISTENTE` al crear uno nuevo con otro vigente.
 
