@@ -28,6 +28,8 @@ import { MOCK_ENABLED } from '@/config/env'
 import { cn } from '@/lib/cn'
 import { isValidPublicKey, publicKeyError } from '@/lib/stellar'
 import { useSesion } from '@/sesion/SesionContext'
+import { etiquetaActivoEnTexto } from '@/modo/textos'
+import { useModo } from '@/modo/useModo'
 
 const PASOS = ['Bienvenida', 'Cómo ver la app', 'Tu contacto de confianza', 'Reglas del asistente'] as const
 
@@ -55,10 +57,8 @@ function Progreso({ actual }: { actual: number }) {
           key={nombre}
           title={nombre}
           className={cn(
-            'h-1.5 flex-1 rounded-full transition-all duration-500',
-            i <= actual
-              ? 'bg-gradient-to-r from-oro to-oro-claro shadow-[0_0_10px_rgb(224_166_58/0.45)]'
-              : 'bg-filete',
+            'h-1.5 flex-1 rounded-full',
+            i <= actual ? 'bg-oro' : 'bg-filete',
           )}
         />
       ))}
@@ -260,6 +260,7 @@ function PasoReglas({ onListo }: { onListo: () => void }) {
   const { data: salud } = useHealth()
   const { data: llave } = useLlaveAgente()
   const crear = useCrearMandato()
+  const modo = useModo()
 
   // Por debajo del tope diario on-chain del firmante simulado (50 USDC).
   const [umbral, setUmbral] = useState('10')
@@ -304,7 +305,7 @@ function PasoReglas({ onListo }: { onListo: () => void }) {
   if (mandato) {
     return (
       <Paso titulo="Tus reglas ya están listas">
-        <YaHecho>{mandato.summary}</YaHecho>
+        <YaHecho>{etiquetaActivoEnTexto(mandato.summary, modo)}</YaHecho>
         <p className="text-base text-tinta-media">Puedes cambiarlas cuando quieras en «Mis reglas de pago».</p>
       </Paso>
     )
@@ -416,7 +417,7 @@ export function PrimerosPasosPage() {
         {paso === 3 && <PasoReglas onListo={siguiente} />}
       </main>
 
-      <footer className="sticky bottom-0 border-t border-filete bg-fondo/80 shadow-[0_-12px_32px_-16px_rgb(0_0_0/0.35)] backdrop-blur-md">
+      <footer className="sticky bottom-0 border-t border-filete bg-fondo">
         <div className="contenedor flex max-w-2xl items-center justify-between gap-3 py-4">
           {paso > 0 ? (
             <Button variante="fantasma" onClick={() => setPaso((p) => p - 1)}>

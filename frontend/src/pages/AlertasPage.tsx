@@ -32,6 +32,9 @@ import {
 } from '@/api/queries'
 import { useMandatoActivo } from '@/api/queries'
 import { formatDateTime, formatRelative } from '@/lib/format'
+import { SoloAvanzado } from '@/modo'
+import { ESTADO_ALERTA, etiquetaActivoEnTexto, type Modo } from '@/modo/textos'
+import { useModo, useTexto } from '@/modo/useModo'
 import type { Alert, AlertStatus } from '@/api/types'
 
 /* ------------------------------------------------------------------ */
@@ -50,6 +53,8 @@ function Fila({
   ocupada: boolean
 }) {
   const pendiente = alerta.status === 'PENDIENTE'
+  const t = useTexto()
+  const modo = useModo()
 
   return (
     <article
@@ -63,25 +68,31 @@ function Fila({
             <Monto amount={alerta.amount} asset={alerta.asset} />
           </p>
           <p className="mt-0.5 text-xs text-tinta-media">
-            salida de tu cuenta hacia{' '}
-            <span className="font-mono text-tinta">
-              {alerta.destinationAddress
-                ? `${alerta.destinationAddress.slice(0, 6)}…${alerta.destinationAddress.slice(-4)}`
-                : 'una cuenta desconocida'}
-            </span>
+            {t('alertaHacia')}
+            {/* La direccion G… es un detalle tecnico: solo en Avanzado. */}
+            <SoloAvanzado>
+              {' '}
+              <span className="font-mono text-tinta">
+                {alerta.destinationAddress
+                  ? `${alerta.destinationAddress.slice(0, 6)}…${alerta.destinationAddress.slice(-4)}`
+                  : 'una cuenta desconocida'}
+              </span>
+            </SoloAvanzado>
           </p>
         </div>
         <AlertStatusBadge status={alerta.status} />
       </div>
 
-      <p className="mt-2 text-sm text-tinta">{alerta.message}</p>
+      <p className="mt-2 text-sm text-tinta">{etiquetaActivoEnTexto(alerta.message, modo)}</p>
 
       <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-2xs text-tinta-media">
         <span title={formatDateTime(alerta.occurredAt)}>
           Ocurrió {formatRelative(alerta.occurredAt)}
         </span>
-        {alerta.ledger !== null && <span className="cifras">ledger {alerta.ledger}</span>}
-        {alerta.txHash && <EnlaceTx txHash={alerta.txHash} explorerUrl={alerta.explorerUrl} />}
+        <SoloAvanzado>
+          {alerta.ledger !== null && <span className="cifras">ledger {alerta.ledger}</span>}
+          {alerta.txHash && <EnlaceTx txHash={alerta.txHash} explorerUrl={alerta.explorerUrl} />}
+        </SoloAvanzado>
       </p>
 
       {pendiente && (
@@ -119,6 +130,7 @@ function ModalReportar({
   ocupado: boolean
   paso: 1 | 2
 }) {
+  const t = useTexto()
   return (
     <Modal
       abierto={abierto}
@@ -141,7 +153,7 @@ function ModalReportar({
               Me he arrepentido
             </Button>
             <Button variante="peligro" onClick={onConfirmar} cargando={ocupado}>
-              Revocar y rotar la llave
+              {t('reportarBoton')}
             </Button>
           </>
         )
@@ -153,25 +165,26 @@ function ModalReportar({
             Has confirmado que no reconoces{' '}
             <span className="font-semibold">
               <Monto amount={alerta?.amount} asset={alerta?.asset ?? 'USDC'} />
-            </span>{' '}
-            hacia <span className="font-mono">{alerta?.destinationAddress ?? '—'}</span>.
+            </span>
+            <SoloAvanzado>
+              {' '}
+              hacia <span className="font-mono">{alerta?.destinationAddress ?? '—'}</span>
+            </SoloAvanzado>
+            .
           </p>
           <p className="text-tinta-media">
             Al reportarlo pasa lo siguiente, y es irreversible:
           </p>
           <ul className="ml-4 list-disc space-y-1 text-sm text-tinta-media">
-            <li>Se revoca tu mandato: el agente deja de poder pagar.</li>
-            <li>Se genera una llave nueva y la anterior queda inservible.</li>
-            <li>Habrá que rehacer la clave en tu contrato y crear otro mandato.</li>
+            <li>{t('reportar1')}</li>
+            <li>{t('reportar2')}</li>
+            <li>{t('reportar3')}</li>
           </ul>
         </div>
       ) : (
         <div className="flex flex-col gap-2 text-sm text-tinta">
-          <p>Vas a perder el mandato actual y a inutilizar la llave del agente.</p>
-          <p className="text-tinta-media">
-            Tus pagos ya confirmados siguen en pie. Lo único que se detiene es la capacidad
-            automática de gastar, que tendrás que reautorizar.
-          </p>
+          <p>{t('reportarFinal')}</p>
+          <p className="text-tinta-media">{t('reportarFinalNota')}</p>
         </div>
       )}
     </Modal>
@@ -184,10 +197,20 @@ function ModalReportar({
 
 /** Al reportar, el backend responde con lo que el usuario tiene que hacer. */
 function AvisoRotacion({ siguiente, version }: { siguiente: string; version: number }) {
+  const modo = useModo()
+  const t = useTexto()
   return (
     <p className="rounded-control border border-aviso/30 bg-aviso-50 px-3 py-2 text-xs text-aviso">
-      Llave rotada a la versión <span className="cifras font-semibold">{version}</span>.{' '}
-      {siguiente}
+      {modo === 'avanzado' ? (
+        <>
+          {t('reportarHecho')} <span className="cifras font-semibold">{version}</span>.{' '}
+          {siguiente}
+        </>
+      ) : (
+        // El siguiente paso lo redacta el backend con jerga (llave, mandato):
+        // en Simple se dice solo lo que pasó.
+        t('reportarHecho')
+      )}
     </p>
   )
 }
@@ -196,12 +219,16 @@ function AvisoRotacion({ siguiente, version }: { siguiente: string; version: num
 /* Pagina                                                            */
 /* ------------------------------------------------------------------ */
 
-const FILTROS: { valor: AlertStatus | null; texto: string }[] = [
-  { valor: 'PENDIENTE', texto: 'Sin revisar' },
-  { valor: null, texto: 'Todas' },
-  { valor: 'RECONOCIDA', texto: 'Reconocidas' },
-  { valor: 'REPORTADA', texto: 'Reportadas' },
-]
+/** Filtros de la lista. Las palabras siguen el modo (ver `@/modo/textos`). */
+function filtros(modo: Modo): { valor: AlertStatus | null; texto: string }[] {
+  const simple = modo === 'simple'
+  return [
+    { valor: 'PENDIENTE', texto: ESTADO_ALERTA.PENDIENTE[modo] },
+    { valor: null, texto: simple ? 'Todos' : 'Todas' },
+    { valor: 'RECONOCIDA', texto: simple ? 'Fuiste tú' : 'Reconocidas' },
+    { valor: 'REPORTADA', texto: simple ? 'Reportados' : 'Reportadas' },
+  ]
+}
 
 const TAMANO = 10
 
@@ -216,6 +243,8 @@ export function AlertasPage() {
   const confirmarAlerta = useConfirmarAlerta()
   const reportar = useReportarAlerta()
   const { data: mandato } = useMandatoActivo()
+  const modo = useModo()
+  const t = useTexto()
 
   const { data, isPending, isError, error, refetch } = useAlertas(filtro, pagina, TAMANO)
 
@@ -226,10 +255,7 @@ export function AlertasPage() {
   async function reconocer(alerta: Alert) {
     const ok = await confirmar.confirmar({
       titulo: '¿Reconoces este movimiento?',
-      mensaje:
-        'Si dices que sí, el mandato sigue como estaba. Úsalo solo si te suena: un pago hecho ' +
-        'desde tu cuenta sin que lo pidieras es exactamente lo que un atacante intentaría que ' +
-        'dieras por bueno.',
+      mensaje: t('alertaReconocerMsg'),
       textoConfirmar: 'Sí, fui yo',
       peligro: false,
     })
@@ -237,7 +263,7 @@ export function AlertasPage() {
     try {
       await confirmarAlerta.mutateAsync(alerta.id)
     } catch (err) {
-      confirmar.error('No se pudo cerrar la alerta', errorMessage(err))
+      confirmar.error(t('alertaCerrarError'), errorMessage(err))
     }
   }
 
@@ -268,23 +294,20 @@ export function AlertasPage() {
       <header className="pagina-cabecera">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-lg font-semibold tracking-tight text-tinta">Alertas</h1>
-            <p className="mt-0.5 max-w-2xl text-sm text-tinta-media">
-              Movimientos de USDC que salieron de tu cuenta sin que el agente los pidiera. Si no
-              reconoces alguno, tu mandato se revoca y la llave del agente se invalida.
-            </p>
+            <h1 className="text-lg font-semibold tracking-tight text-tinta">{t('tituloAlertas')}</h1>
+            <p className="mt-0.5 max-w-2xl text-sm text-tinta-media">{t('alertasDesc')}</p>
           </div>
 
           <Select
             value={filtro ?? ''}
-            aria-label="Filtrar alertas"
+            aria-label={t('alertasFiltrar')}
             onChange={(e) => {
               setFiltro(e.target.value === '' ? null : (e.target.value as AlertStatus))
               setPagina(0)
               setRotacion(null)
             }}
           >
-            {FILTROS.map((f) => (
+            {filtros(modo).map((f) => (
               <option key={f.texto} value={f.valor ?? ''}>
                 {f.texto}
               </option>
@@ -301,7 +324,7 @@ export function AlertasPage() {
 
       {mandato && total > 0 && filtro === 'PENDIENTE' && (
         <p className="mt-3 text-2xs text-tinta-media">
-          Tu mandato sigue activo mientras revisas. Si reportas una alerta, se revocará.
+          {t('alertasSigueActivo')}
         </p>
       )}
 
@@ -313,11 +336,11 @@ export function AlertasPage() {
         {!isPending && !isError && total === 0 && (
           <EmptyState
             icono={<IconAlertaMovimiento className="h-5 w-5" />}
-            titulo={filtro === 'PENDIENTE' ? 'Ningún movimiento raro' : 'Sin alertas'}
+            titulo={filtro === 'PENDIENTE' ? 'Ningún movimiento raro' : t('alertasFiltroTitulo')}
             descripcion={
               filtro === 'PENDIENTE'
                 ? 'Todo lo que ha salido de tu cuenta se ha pedido desde el chat. Aquí aparecería cualquier otra cosa.'
-                : 'No hay alertas con este filtro.'
+                : t('alertasFiltroDesc')
             }
           />
         )}
@@ -339,7 +362,7 @@ export function AlertasPage() {
             pagina={pagina}
             totalPaginas={totalPaginas}
             totalElementos={total}
-            sustantivo="alertas"
+            sustantivo={t('alertasSustantivo')}
             onChange={setPagina}
           />
         </div>

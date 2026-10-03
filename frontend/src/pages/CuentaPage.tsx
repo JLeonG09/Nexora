@@ -9,6 +9,8 @@ import { useAccesibilidad } from '@/accesibilidad'
 import { Button, Module, ModuleHeader, StellarAddress } from '@/components/ui'
 import { useTheme } from '@/hooks'
 import { useSesion } from '@/sesion/SesionContext'
+import { SoloAvanzado, SoloSimple } from '@/modo'
+import { useTexto } from '@/modo/useModo'
 
 function Dato({ etiqueta, children }: { etiqueta: string; children: React.ReactNode }) {
   return (
@@ -24,6 +26,7 @@ export function CuentaPage() {
   const { tema, alternar } = useTheme()
   const { marcarPrimerosPasos } = useAccesibilidad()
   const navegar = useNavigate()
+  const t = useTexto()
 
   return (
     <div className="contenedor flex max-w-3xl flex-col gap-4 py-6">
@@ -32,10 +35,19 @@ export function CuentaPage() {
         <dl className="modulo-cuerpo grid gap-3 sm:grid-cols-2">
           <Dato etiqueta="Nombre">{user?.displayName ?? '—'}</Dato>
           <Dato etiqueta="Correo">{user?.email ?? '—'}</Dato>
-          <Dato etiqueta="Smart account">
-            <StellarAddress publicKey={account?.smartAccountAddress ?? null} />
+          <SoloAvanzado>
+            <Dato etiqueta="Smart account">
+              <StellarAddress publicKey={account?.smartAccountAddress ?? null} />
+            </Dato>
+          </SoloAvanzado>
+          <Dato etiqueta={t('cuentaTipo')}>
+            <SoloAvanzado>{account?.network ?? '—'}</SoloAvanzado>
+            <SoloSimple>
+              {account?.network === 'TESTNET'
+                ? 'De prueba, con dinero de práctica'
+                : (account?.network ?? '—')}
+            </SoloSimple>
           </Dato>
-          <Dato etiqueta="Red">{account?.network ?? '—'}</Dato>
         </dl>
       </Module>
 
@@ -63,26 +75,29 @@ export function CuentaPage() {
         />
       </Module>
 
-      <Module>
-        <ModuleHeader
-          titulo="Herramientas avanzadas"
-          descripcion="Para soporte y para presentar el proyecto, no para el uso diario."
-        />
-        <ul className="modulo-cuerpo flex flex-col gap-2 text-sm">
-          <li>
-            <Link to="/auditoria" className="font-medium text-acento underline underline-offset-2 hover:no-underline">
-              Registro de auditoría
-            </Link>
-            <span className="text-tinta-media"> · todo lo que ha pasado en tu cuenta, en orden.</span>
-          </li>
-          <li>
-            <Link to="/demo" className="font-medium text-acento underline underline-offset-2 hover:no-underline">
-              Demo de ataque
-            </Link>
-            <span className="text-tinta-media"> · comprueba que el firmante frena un pago fuera de tus reglas.</span>
-          </li>
-        </ul>
-      </Module>
+      {/* Auditoría y demo solo existen en Avanzado (en Simple redirigen al inicio). */}
+      <SoloAvanzado>
+        <Module>
+          <ModuleHeader
+            titulo="Herramientas avanzadas"
+            descripcion="Para soporte y para presentar el proyecto, no para el uso diario."
+          />
+          <ul className="modulo-cuerpo flex flex-col gap-2 text-sm">
+            <li>
+              <Link to="/auditoria" className="font-medium text-acento underline underline-offset-2 hover:no-underline">
+                Registro de auditoría
+              </Link>
+              <span className="text-tinta-media"> · todo lo que ha pasado en tu cuenta, en orden.</span>
+            </li>
+            <li>
+              <Link to="/demo" className="font-medium text-acento underline underline-offset-2 hover:no-underline">
+                Demo de ataque
+              </Link>
+              <span className="text-tinta-media"> · comprueba que el firmante frena un pago fuera de tus reglas.</span>
+            </li>
+          </ul>
+        </Module>
+      </SoloAvanzado>
 
       <div>
         <Button

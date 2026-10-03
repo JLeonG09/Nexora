@@ -29,6 +29,8 @@ import { errorMessage, useHealth } from '@/api/queries'
 import { useSesion } from '@/sesion/SesionContext'
 import { MOCK_ENABLED, PRIVY_ENABLED } from '@/config/env'
 import { AccesoPrivy } from '@/sesion/PrivyAuth'
+import { SoloAvanzado } from '@/modo'
+import { useTexto } from '@/modo/useModo'
 
 export type ModoAcceso = 'entrar' | 'crear'
 
@@ -109,6 +111,7 @@ function PanelMarca() {
     { icono: <IconMandato />, texto: 'Topes de gasto que nadie puede saltarse.' },
     { icono: <IconAprobaciones />, texto: 'Los pagos grandes siempre te los pregunta.' },
   ]
+  const t = useTexto()
   return (
     <aside className="hidden flex-col justify-between bg-fondo-cierre p-12 text-white lg:flex">
       <Link to="/" className="flex items-center gap-2.5 self-start" aria-label="Nexora, inicio">
@@ -136,9 +139,7 @@ function PanelMarca() {
         </ul>
       </div>
 
-      <p className="text-[0.9375rem] text-texto-cierre">
-        Funciona sobre la red de pruebas de Stellar, con dinero de práctica.
-      </p>
+      <p className="text-[1rem] text-texto-cierre">{t('altaPie')}</p>
     </aside>
   )
 }
@@ -315,6 +316,7 @@ function PasoCuenta() {
   const [tocado, setTocado] = useState(false)
   const [registrando, setRegistrando] = useState(false)
   const [errorAlta, setErrorAlta] = useState<string | null>(null)
+  const t = useTexto()
 
   const limpia = direccion.trim()
   const formatoOk = /^C[A-Z2-7]{55}$/.test(limpia)
@@ -349,7 +351,7 @@ function PasoCuenta() {
   if (account) {
     return (
       <div className="acceso-entrada flex flex-col gap-4">
-        <Encabezado titulo="Todo listo">Ya puedes crear tu mandato y pagar.</Encabezado>
+        <Encabezado titulo="Todo listo">{t('altaListo')}</Encabezado>
         <Exito>Cuenta registrada.</Exito>
       </div>
     )
@@ -359,8 +361,7 @@ function PasoCuenta() {
     <div className="acceso-entrada">
       <p className="mb-3 text-[1rem] font-medium text-acento">Paso 2 de 2</p>
       <Encabezado titulo={`Hola, ${user?.displayName ?? ''}. Un último paso`}>
-        Registra tu smart account: el contrato desde el que salen los pagos. Tú lo despliegas por
-        fuera; aquí solo lo apuntamos.
+        {t('altaPaso2')}
       </Encabezado>
 
       <form onSubmit={enviar} className="flex flex-col gap-5" noValidate>
@@ -373,9 +374,9 @@ function PasoCuenta() {
         </p>
 
         <Field
-          label="Dirección del contrato (empieza por C)"
+          label={t('altaDireccion')}
           requerido
-          ayuda="Copia la dirección C… que te dio tu despliegue."
+          ayuda={t('altaDireccionAyuda')}
           error={errorDireccion}
         >
           {(props) => (
@@ -404,27 +405,32 @@ function PasoCuenta() {
           </Button>
         )}
 
-        <Field
-          label="Credential ID (opcional)"
-          ayuda="Solo si tu contrato usa credenciales separadas. Si no, déjalo vacío."
-        >
-          {(props) => (
-            <Input
-              {...props}
-              value={credentialId}
-              spellCheck={false}
-              placeholder="—"
-              className="mono"
-              onChange={(e) => setCredentialId(e.target.value.trim())}
-            />
-          )}
-        </Field>
+        {/* Opcional y de solo lectura: no hacen falta para darse de alta
+            (el envío fija la red), así que en Simple no se muestran. La
+            dirección C sí es obligatoria y se queda en los dos modos. */}
+        <SoloAvanzado>
+          <Field
+            label="Credential ID (opcional)"
+            ayuda="Solo si tu contrato usa credenciales separadas. Si no, déjalo vacío."
+          >
+            {(props) => (
+              <Input
+                {...props}
+                value={credentialId}
+                spellCheck={false}
+                placeholder="—"
+                className="mono"
+                onChange={(e) => setCredentialId(e.target.value.trim())}
+              />
+            )}
+          </Field>
 
-        <Field label="Red">
-          {(props) => (
-            <Input {...props} value="TESTNET" readOnly disabled className="bg-superficie-2" />
-          )}
-        </Field>
+          <Field label="Red">
+            {(props) => (
+              <Input {...props} value="TESTNET" readOnly disabled className="bg-superficie-2" />
+            )}
+          </Field>
+        </SoloAvanzado>
 
         {errorAlta && (
           <p role="alert" className="text-[1rem] text-error">
@@ -438,10 +444,7 @@ function PasoCuenta() {
 
         <p className="flex items-start gap-2 text-[1rem] text-tinta-media">
           <IconMandato className="mt-1 h-4 w-4 shrink-0" />
-          <span>
-            Después podrás crear tu mandato, que fija cuánto puede gastar el agente y a partir de
-            qué monto te pregunta.
-          </span>
+          <span>{t('altaDespues')}</span>
         </p>
 
         {registrando && (
