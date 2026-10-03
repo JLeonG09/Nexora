@@ -47,6 +47,8 @@ import {
 } from '@/api/queries'
 import { normalize } from '@/lib/format'
 import { isValidPublicKey, publicKeyError } from '@/lib/stellar'
+import { SoloAvanzado } from '@/modo'
+import { useTexto } from '@/modo/useModo'
 import type { Contact } from '@/api/types'
 
 /* ------------------------------------------------------------------ */
@@ -72,6 +74,7 @@ function Formulario({
   const [direccion, setDireccion] = useState(contacto?.stellarAddress ?? '')
   const [nota, setNota] = useState(contacto?.note ?? '')
   const [tocado, setTocado] = useState(false)
+  const t = useTexto()
 
   const faltaNombre = normalize(nombre) === ''
   const dirLimpia = direccion.trim()
@@ -97,7 +100,7 @@ function Formulario({
       descripcion={
         contacto
           ? 'Cambiar el nombre o la nota no afecta a pagos ya hechos.'
-          : 'Con esta dirección autorizada podrá pagar el agente. Solo USDC.'
+          : t('contactoNuevoDesc')
       }
       pie={
         <>
@@ -115,7 +118,7 @@ function Formulario({
           label="Nombre"
           requerido
           ayuda="Es el nombre que escribirás en el chat. Ponlo como lo dices."
-          error={tocado && faltaNombre ? 'El agente necesita un nombre para buscarlo.' : null}
+          error={tocado && faltaNombre ? t('contactoNombreError') : null}
         >
           {(props) => (
             <Input
@@ -129,7 +132,7 @@ function Formulario({
         </Field>
 
         <Field
-          label="Dirección Stellar (empieza por G)"
+          label={t('contactoDireccion')}
           requerido
           error={tocado && dirLimpia !== '' ? errorDir : null}
         >
@@ -147,7 +150,7 @@ function Formulario({
           )}
         </Field>
 
-        <Field label="Nota (opcional)" ayuda="Solo para ti. El agente no la lee.">
+        <Field label="Nota (opcional)" ayuda={t('contactoNotaAyuda')}>
           {(props) => (
             <Textarea
               {...props}
@@ -189,9 +192,11 @@ function Tarjeta({
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate text-sm font-medium text-tinta">{contacto.name}</p>
-          <div className="mt-1">
-            <StellarAddress publicKey={contacto.stellarAddress} />
-          </div>
+          <SoloAvanzado>
+            <div className="mt-1">
+              <StellarAddress publicKey={contacto.stellarAddress} />
+            </div>
+          </SoloAvanzado>
         </div>
         <Badge tone="neutro">
           <IconOjo className="h-3 w-3" />
@@ -227,6 +232,7 @@ export function ContactosPage() {
   const { data: contactos, isPending, isError, error, refetch } = useContactos()
   const archivar = useArchivarContacto()
   const confirmar = useConfirm()
+  const t = useTexto()
 
   // Filtro en memoria: son pocos y asi el buscador responde al instante.
   const filtro = normalize(busqueda)
@@ -237,9 +243,7 @@ export function ContactosPage() {
   async function archivarUno(contacto: Contact) {
     const ok = await confirmar.confirmar({
       titulo: `¿Archivar a ${contacto.name}?`,
-      mensaje:
-        'El agente ya no podrá pagarle. El contacto no se borra: se queda en el historial de ' +
-        'pagos para que se pueda explicar a quién se le pagó. Puedes volver a añadirlo luego.',
+      mensaje: t('contactoArchivarMsg'),
       textoConfirmar: 'Archivar',
     })
     if (!ok) return
@@ -255,11 +259,8 @@ export function ContactosPage() {
       <header className="pagina-cabecera">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-lg font-semibold tracking-tight text-tinta">Contactos</h1>
-            <p className="mt-0.5 max-w-2xl text-sm text-tinta-media">
-              A quién puede pagar el agente. Si un nombre no está aquí, el pago se rechaza aunque
-              la IA lo entienda bien.
-            </p>
+            <h1 className="text-lg font-semibold tracking-tight text-tinta">Mis contactos</h1>
+            <p className="mt-0.5 max-w-2xl text-sm text-tinta-media">{t('contactosDesc')}</p>
           </div>
 
           <div className="flex w-full gap-2 sm:w-auto">
@@ -269,7 +270,7 @@ export function ContactosPage() {
               </span>
               <Input
                 value={busqueda}
-                placeholder="Buscar por nombre o dirección"
+                placeholder={t('contactosBuscar')}
                 aria-label="Buscar contactos"
                 className="pl-8"
                 onChange={(e) => setBusqueda(e.target.value)}
@@ -292,7 +293,7 @@ export function ContactosPage() {
           <EmptyState
             icono={<IconContactos className="h-5 w-5" />}
             titulo="Aún no hay contactos"
-            descripcion="Añade al menos uno antes de pedir un pago. El agente solo paga a direcciones de esta lista."
+            descripcion={t('contactosVacioDesc')}
             accion={
               <Button variante="primario" onClick={() => setCreando(true)}>
                 <IconMas className="h-4 w-4" />

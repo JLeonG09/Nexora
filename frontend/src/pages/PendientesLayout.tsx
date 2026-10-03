@@ -10,6 +10,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 
 import { useAlertas, useAprobaciones } from '@/api/queries'
 import { cn } from '@/lib/cn'
+import { useTexto } from '@/modo/useModo'
 
 function Pestana({ to, texto, contador, urgente }: { to: string; texto: string; contador: number; urgente?: boolean }) {
   return (
@@ -17,7 +18,7 @@ function Pestana({ to, texto, contador, urgente }: { to: string; texto: string; 
       to={to}
       className={({ isActive }) =>
         cn(
-          'flex min-h-12 flex-1 items-center justify-center gap-2 rounded-control px-4 text-base font-medium transition-colors sm:flex-none',
+          'flex min-h-12 flex-1 items-center justify-center gap-2 rounded-control px-4 text-base font-medium whitespace-nowrap transition-colors sm:flex-none',
           isActive
             ? 'bg-superficie text-tinta shadow-sm ring-1 ring-filete'
             : 'text-tinta-media hover:text-tinta',
@@ -42,22 +43,23 @@ function Pestana({ to, texto, contador, urgente }: { to: string; texto: string; 
 export function PendientesLayout() {
   const { data: aprobaciones } = useAprobaciones('PENDIENTE', 0, 1)
   const { data: alertas } = useAlertas('PENDIENTE', 0, 1)
+  const t = useTexto()
 
   return (
     <>
       <div className="contenedor pt-6">
         <nav
           aria-label="Tipo de pendiente"
-          className="flex gap-1 rounded-card border border-filete bg-superficie-2 p-1 sm:inline-flex"
+          className="flex flex-wrap gap-1 rounded-card border border-filete bg-superficie-2 p-1 sm:inline-flex"
         >
           <Pestana
             to="/aprobaciones"
-            texto="Pagos por confirmar"
+            texto={t('tituloAprobaciones')}
             contador={aprobaciones?.totalItems ?? 0}
           />
           <Pestana
             to="/alertas"
-            texto="Avisos de seguridad"
+            texto={t('tituloAlertas')}
             contador={alertas?.totalItems ?? 0}
             urgente
           />

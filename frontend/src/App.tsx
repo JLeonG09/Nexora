@@ -26,6 +26,8 @@ import { ProveedorSesion } from './sesion/PrivyAuth'
 
 import { LandingPage } from './pages/LandingPage'
 import { AccesibilidadProvider, useAccesibilidad } from './accesibilidad'
+import { RutaSoloAvanzado, SoloAvanzado } from './modo'
+import { useTexto } from './modo/useModo'
 
 /* ------------------------------------------------------------------ */
 /* Carga diferida                                                     */
@@ -116,6 +118,23 @@ const queryClient = new QueryClient({
 /* ------------------------------------------------------------------ */
 
 /**
+ * Lo que dice el cortafuegos. En Simple, una frase humana; en Avanzado,
+ * ademas, el mensaje tecnico del error para quien da soporte.
+ */
+function MensajeError({ error }: { error: Error }) {
+  const t = useTexto()
+  return (
+    <div>
+      <h1 className="text-lg font-semibold text-tinta">Algo se rompió en esta pantalla</h1>
+      <p className="mt-1 max-w-md text-sm text-tinta-media">{t('errorPantalla')}</p>
+      <SoloAvanzado>
+        <p className="mt-3 font-mono text-2xs text-tinta-media">{error.message}</p>
+      </SoloAvanzado>
+    </div>
+  )
+}
+
+/**
  * Si una pantalla revienta, el usuario ve un mensaje y puede recargar.
  * Antes esto no existia y un error de render dejaba la pantalla en blanco sin
  * ninguna pista de que habia pasado.
@@ -136,14 +155,7 @@ class Cortafuegos extends Component<{ children: ReactNode }, { error: Error | nu
 
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center gap-4 p-6 text-center">
-        <div>
-          <h1 className="text-lg font-semibold text-tinta">Algo se rompió en esta pantalla</h1>
-          <p className="mt-1 max-w-md text-sm text-tinta-media">
-            No se ha perdido nada: los pagos siguen su curso en la red y el backend tiene el
-            registro de todo. Recarga para seguir.
-          </p>
-          <p className="mt-3 font-mono text-2xs text-tinta-media">{this.state.error.message}</p>
-        </div>
+        <MensajeError error={this.state.error} />
         <button type="button" className="btn-primario" onClick={() => window.location.reload()}>
           Recargar
         </button>
@@ -199,8 +211,23 @@ function Rutas() {
         <Route path="mandato" element={<Navigate to="/opciones/mandato" replace />} />
         <Route path="accesibilidad" element={<Navigate to="/opciones/accesibilidad" replace />} />
         <Route path="historial" element={<HistorialPage />} />
-        <Route path="auditoria" element={<AuditoriaPage />} />
-        <Route path="demo" element={<DemoPage />} />
+        {/* Solo en modo Avanzado: en Simple redirigen al inicio del panel. */}
+        <Route
+          path="auditoria"
+          element={
+            <RutaSoloAvanzado>
+              <AuditoriaPage />
+            </RutaSoloAvanzado>
+          }
+        />
+        <Route
+          path="demo"
+          element={
+            <RutaSoloAvanzado>
+              <DemoPage />
+            </RutaSoloAvanzado>
+          }
+        />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
