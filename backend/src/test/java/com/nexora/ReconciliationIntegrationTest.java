@@ -9,8 +9,10 @@ import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.TestPropertySource;
 
 /** En el perfil test la conciliación está apagada: se llama a mano. Ledger compartido: MockLedger. */
+@TestPropertySource(properties = "app.demo-attack-enabled=true")
 class ReconciliationIntegrationTest extends IntegrationTestBase {
 
     private static final String UNKNOWN_ADDRESS = "G" + "C".repeat(55);

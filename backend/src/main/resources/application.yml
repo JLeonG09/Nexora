@@ -37,7 +37,7 @@ app:
   rate-limit:
     chat-per-minute: ${RATE_LIMIT_CHAT_PER_MINUTE:20}
     proposals-per-10-min: ${RATE_LIMIT_PROPOSALS_PER_10_MIN:5}
-  demo-attack-enabled: ${DEMO_ATTACK_ENABLED:true}
+  demo-attack-enabled: ${DEMO_ATTACK_ENABLED:false}
   agent-tools-key: ${AGENT_TOOLS_KEY:cambia-esto}
   ai:
     mode: ${AI_MODE:mock}

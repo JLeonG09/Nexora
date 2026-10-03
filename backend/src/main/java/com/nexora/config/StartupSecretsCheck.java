@@ -52,6 +52,9 @@ public class StartupSecretsCheck {
         if ("http".equals(properties.signer().mode()) && isWeak(properties.signer().serviceKey())) {
             problems.add("SIGNER_SERVICE_KEY sigue con el valor de ejemplo y SIGNER_MODE=http.");
         }
+        if (properties.demoAttackEnabled() && "http".equals(properties.signer().mode())) {
+            problems.add("DEMO_ATTACK_ENABLED=true con SIGNER_MODE=http: el modo atacante no puede usar el firmante real.");
+        }
         if (remoteDb && isWeak(dbPassword)) {
             problems.add("DB_PASSWORD sigue con el valor de desarrollo y la base no es local.");
         }

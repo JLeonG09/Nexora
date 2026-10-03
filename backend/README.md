@@ -75,7 +75,7 @@ auditoría. También vigila la red: si sale de la smart account un pago que no h
 | `APPROVAL_TTL_HOURS` | `24` | Vida de una solicitud de aprobación |
 | `RATE_LIMIT_CHAT_PER_MINUTE` | `20` | Mensajes de chat por minuto y usuario (429 si se pasa) |
 | `RATE_LIMIT_PROPOSALS_PER_10_MIN` | `5` | Propuestas de pago por 10 minutos (regla 8) |
-| `DEMO_ATTACK_ENABLED` | `true` | Habilita `POST /api/demo/attack` (404 si está apagado) |
+| `DEMO_ATTACK_ENABLED` | `false` | Habilita `POST /api/demo/attack` (404 si está apagado). No arranca con `SIGNER_MODE=http` |
 
 Nunca subas `.env`: está en `.gitignore`. Las claves reales se comparten por fuera del repo.
 
@@ -84,6 +84,7 @@ pueden quedar expuestos:
 
 - `AI_SERVICE_KEY` y `AGENT_TOOLS_KEY` con `AI_MODE=http`.
 - `SIGNER_SERVICE_KEY` con `SIGNER_MODE=http`.
+- `DEMO_ATTACK_ENABLED=true` con `SIGNER_MODE=http`.
 - `AGENT_TOOLS_KEY` y `DB_PASSWORD` cuando la base no está en `localhost`.
 
 En desarrollo local con los mocks arranca sin `.env`. El error nombra la variable, nunca su valor.

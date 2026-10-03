@@ -10,8 +10,10 @@ import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.ResultActions;
 
+@TestPropertySource(properties = "app.demo-attack-enabled=true")
 class AttackDemoIntegrationTest extends IntegrationTestBase {
 
     static final String UNKNOWN_ADDRESS = "G" + "C".repeat(55);

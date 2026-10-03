@@ -4,9 +4,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.test.context.TestPropertySource;
 
-@TestPropertySource(properties = "app.demo-attack-enabled=false")
 class AttackDemoDisabledIntegrationTest extends IntegrationTestBase {
 
     @Test
