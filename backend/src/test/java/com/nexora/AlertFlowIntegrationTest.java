@@ -14,8 +14,10 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.ResultActions;
 
+@TestPropertySource(properties = "app.demo-attack-enabled=true")
 class AlertFlowIntegrationTest extends IntegrationTestBase {
 
     private static final String UNKNOWN_ADDRESS = "G" + "C".repeat(55);

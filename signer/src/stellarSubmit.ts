@@ -130,7 +130,7 @@ export function createStellarSubmitter(config: AppConfig): SubmitPayment {
           return {
             status: "CONFIRMADO",
             txHash: pay.hash,
-            ledger: pay.ledger ?? null,
+            ledger: null,
             submittedAt,
             confirmedAt: isoNow(),
             error: null,

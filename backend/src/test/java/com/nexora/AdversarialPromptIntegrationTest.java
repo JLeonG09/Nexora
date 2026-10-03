@@ -150,7 +150,7 @@ class AdversarialPromptIntegrationTest extends IntegrationTestBase {
     void confidentLiesStillRespectTheDailyLimit() throws Exception {
         behaveLikeTheMock();
         for (int i = 0; i < 3; i++) {
-            chat(userId, "Págale 15 USDC a Ana por la factura " + i, null)
+            chat(userId, "Págale 15 USDC a Ana por el pedido", null)
                     .andExpect(jsonPath("$.proposal.status").value("CONFIRMADO"));
         }
 
