@@ -14,7 +14,13 @@ export type AppConfig = {
   webauthnVerifierAddress: string;
   feePayerSecret: string;
   txTimeoutSeconds: number;
+  /** Contrato de la política spending-limit que tiene que estar en la regla. */
+  spendingLimitPolicy: string;
 };
+
+/** Política spending-limit de testnet que usa el spike del proyecto. */
+export const DEFAULT_SPENDING_LIMIT_POLICY =
+  "CABXBYJNZ7IUW4G3D6BND5YCAQF3ASSDMDAOKQQ63UYFSO7WUU2TIP5G";
 
 const STELLAR_C_OR_G = /^[GC][A-Z2-7]{55}$/;
 
@@ -77,6 +83,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const feePayerSecret = env.FEE_PAYER_SECRET?.trim() ?? "";
   const txTimeoutSeconds = Number(env.TX_TIMEOUT_SECONDS ?? "60");
   const port = Number(env.PORT ?? "3001");
+  const spendingLimitPolicy = env.SPENDING_LIMIT_POLICY?.trim() || DEFAULT_SPENDING_LIMIT_POLICY;
 
   if (serviceKey === undefined || isWeakServiceKey(serviceKey)) {
     throw new Error(
@@ -104,6 +111,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   if (!Number.isInteger(txTimeoutSeconds) || txTimeoutSeconds < 1) {
     throw new Error("TX_TIMEOUT_SECONDS inválido.");
   }
+  if (!STELLAR_C_OR_G.test(spendingLimitPolicy) || !spendingLimitPolicy.startsWith("C")) {
+    throw new Error("SPENDING_LIMIT_POLICY inválido o faltante.");
+  }
 
   return {
     port,
@@ -117,5 +127,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     webauthnVerifierAddress: webauthn,
     feePayerSecret: feePayerSecret.includes("<") ? "" : feePayerSecret,
     txTimeoutSeconds,
+    spendingLimitPolicy,
   };
 }

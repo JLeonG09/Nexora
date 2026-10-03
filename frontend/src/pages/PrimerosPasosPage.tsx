@@ -283,6 +283,9 @@ function PasoReglas({ onListo }: { onListo: () => void }) {
   async function guardar(e: FormEvent) {
     e.preventDefault()
     if (problema || !llave) return
+    // El hash aleatorio solo existe con el firmante simulado. Con uno real
+    // el alta va por «Mis reglas de pago», con el hash de la transacción.
+    if (!simulado) return
     const caduca = new Date()
     caduca.setDate(caduca.getDate() + 30)
     await crear.mutateAsync({

@@ -235,6 +235,7 @@ class HttpSignerClientTest {
 
     private static SignRequest request() {
         return new SignRequest(UUID.randomUUID(), C_ADDRESS, 1, 2, "ab".repeat(32), "G" + "A".repeat(55),
-                "15.0000000", "150000000", "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA", "logo");
+                "15.0000000", "150000000", "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA", "logo",
+                "500000000");
     }
 }

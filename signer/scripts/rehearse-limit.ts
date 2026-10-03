@@ -40,6 +40,8 @@ const result = await createStellarSubmitter(config)({
   assetContractId: config.usdcContractId,
   memo: "rehearse-limit",
   agentSecret: agent.keypair.secret(),
+  agentPublicKeyHex: agent.publicKeyHex,
+  dailyLimitUnits: "500000000",
 });
 
 console.log(JSON.stringify({ status: result.status, txHash: result.txHash, error: result.error }, null, 2));

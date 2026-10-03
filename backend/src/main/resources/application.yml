@@ -53,6 +53,10 @@ app:
     min-confidence: ${AI_MIN_CONFIDENCE:0.7}
     # Con AI_MODE=hybrid o local: modelo que sirve Ollama o `cactus serve`.
     model: ${AI_MODEL:qwen2.5:0.5b}
+  # Vacío: el createTxHash se verifica on-chain solo con SIGNER_MODE=http.
+  # true la fuerza también en mock; false la apaga.
+  mandate:
+    verify-create-tx: ${MANDATE_VERIFY_CREATE_TX:}
   signer:
     mode: ${SIGNER_MODE:mock}
     base-url: ${SIGNER_BASE_URL:http://localhost:3001}

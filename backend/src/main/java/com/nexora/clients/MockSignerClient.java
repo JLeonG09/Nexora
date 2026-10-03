@@ -23,6 +23,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -35,6 +37,8 @@ import org.springframework.stereotype.Component;
 @Component
 @ConditionalOnProperty(name = "app.signer.mode", havingValue = "mock", matchIfMissing = true)
 public class MockSignerClient implements SignerClient {
+
+    private static final Logger log = LoggerFactory.getLogger(MockSignerClient.class);
 
     static final String MOCK_AGENT_ADDRESS = "GMOCK...NO-USAR-ON-CHAIN";
     static final String ED25519_VERIFIER = "CAAVTMCBXEIBPR64EAASKFXERVPYFZA2JYP5A3BG6PESWEFUJX5IHKN4";
@@ -67,6 +71,7 @@ public class MockSignerClient implements SignerClient {
         if (previous != null) {
             return previous;
         }
+        log.info("Verificación on-chain de la regla omitida: firmante en modo mock.");
         BigDecimal amount = Money.parse(request.amount());
         if (!Money.toUnits(amount).equals(request.amountUnits())) {
             throw new SignerRejectedException("SOLICITUD_INVALIDA", "amountUnits no corresponde a amount × 10^7.");

@@ -13,5 +13,6 @@ public record SignRequest(
         String amount,
         String amountUnits,
         String assetContractId,
-        String memo) {
+        String memo,
+        String dailyLimitUnits) {
 }

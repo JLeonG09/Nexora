@@ -56,6 +56,12 @@ export function parseSignRequest(body: unknown, usdcContractId: string): ParsedS
     throw solicitudInvalida("assetContractId no es el USDC de testnet configurado.");
   }
   const memo = typeof raw.memo === "string" ? raw.memo : "";
+  const dailyLimitUnits = asString(raw.dailyLimitUnits, "dailyLimitUnits");
+  if (!/^[0-9]+$/.test(dailyLimitUnits) || BigInt(dailyLimitUnits) <= 0n) {
+    throw solicitudInvalida(
+      "dailyLimitUnits debe ser un entero positivo en unidades de 7 decimales.",
+    );
+  }
 
   return {
     proposalId,
@@ -68,5 +74,6 @@ export function parseSignRequest(body: unknown, usdcContractId: string): ParsedS
     amountUnits,
     assetContractId,
     memo,
+    dailyLimitUnits,
   };
 }

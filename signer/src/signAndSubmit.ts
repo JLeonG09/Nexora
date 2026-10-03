@@ -47,6 +47,8 @@ export async function handleSignAndSubmit(
       assetContractId: parsed.assetContractId,
       memo: parsed.memo,
       agentSecret: derived.keypair.secret(),
+      agentPublicKeyHex: parsed.agentPublicKeyHex,
+      dailyLimitUnits: parsed.dailyLimitUnits,
     });
     const response: SignResponseBody = { proposalId: parsed.proposalId, ...outcome };
     store.finish(parsed.proposalId, response);
