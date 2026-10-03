@@ -18,6 +18,32 @@ export type AppConfig = {
 
 const STELLAR_C_OR_G = /^[GC][A-Z2-7]{55}$/;
 
+/** Misma regla que StartupSecretsCheck del backend: largo mínimo y denylist. */
+const MIN_SERVICE_KEY_LENGTH = 32;
+const SERVICE_KEY_DENYLIST = new Set([
+  "cambia-esto",
+  "changeme",
+  "change-me",
+  "change_me",
+  "password",
+  "secret",
+  "nexora_dev",
+  "riendas_dev",
+]);
+const SERVICE_KEY_PREFIXES = ["cambia-esto", "changeme", "change-me", "change_me"];
+
+export function isWeakServiceKey(secret: string | undefined): boolean {
+  const value = secret?.trim() ?? "";
+  if (value.length < MIN_SERVICE_KEY_LENGTH || value.startsWith("<")) {
+    return true;
+  }
+  const normalized = value.toLowerCase();
+  if (SERVICE_KEY_DENYLIST.has(normalized)) {
+    return true;
+  }
+  return SERVICE_KEY_PREFIXES.some((prefix) => normalized.startsWith(prefix));
+}
+
 export function decodeMasterSecret(raw: string): Buffer {
   const trimmed = raw.trim();
   if (trimmed.length === 0) {
@@ -52,8 +78,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const txTimeoutSeconds = Number(env.TX_TIMEOUT_SECONDS ?? "60");
   const port = Number(env.PORT ?? "3001");
 
-  if (!serviceKey || serviceKey.includes("<")) {
-    throw new Error("Falta SIGNER_SERVICE_KEY en el .env");
+  if (serviceKey === undefined || isWeakServiceKey(serviceKey)) {
+    throw new Error(
+      "SIGNER_SERVICE_KEY debe tener al menos 32 caracteres y no ser un valor de ejemplo.",
+    );
   }
   if (!masterRaw || masterRaw.includes("<")) {
     throw new Error("Falta AGENT_MASTER_SECRET en el .env");

@@ -10,14 +10,20 @@ import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
 /**
- * Impide arrancar con las claves o la contraseña de ejemplo cuando pueden quedar expuestas: servicios reales
- * (modo http) o una base que no está en esta máquina. Los mensajes nombran la variable, nunca su valor.
+ * Impide arrancar con claves débiles o de ejemplo. {@code AGENT_TOOLS_KEY} se exige siempre
+ * (al menos 32 caracteres y fuera de la denylist). Las otras claves de servicio, cuando el modo
+ * es http. La contraseña de la base, si no es local. Los mensajes nombran la variable, nunca su valor.
  */
 @Component
 public class StartupSecretsCheck {
 
     static final String DEV_DB_PASSWORD = "nexora_dev";
-    private static final Set<String> PLACEHOLDERS = Set.of("cambia-esto", "changeme", DEV_DB_PASSWORD, "riendas_dev");
+    static final int MIN_SERVICE_KEY_LENGTH = 32;
+    private static final Set<String> DB_PLACEHOLDERS = Set.of("cambia-esto", "changeme", DEV_DB_PASSWORD, "riendas_dev");
+    private static final Set<String> SERVICE_KEY_DENYLIST = Set.of(
+            "cambia-esto", "changeme", "change-me", "change_me", "password", "secret", DEV_DB_PASSWORD, "riendas_dev");
+    /** Alargar un placeholder no lo vuelve válido. */
+    private static final List<String> SERVICE_KEY_PREFIXES = List.of("cambia-esto", "changeme", "change-me", "change_me");
     private static final Set<String> LOCAL_HOSTS = Set.of("localhost", "127.0.0.1", "::1", "[::1]");
 
     private final AppProperties properties;
@@ -43,14 +49,14 @@ public class StartupSecretsCheck {
         boolean realAi = "http".equals(properties.ai().mode());
         boolean remoteDb = !isLocal(dbUrl);
 
-        if (realAi && isWeak(properties.ai().serviceKey())) {
-            problems.add("AI_SERVICE_KEY sigue con el valor de ejemplo y AI_MODE=http.");
+        if (realAi && isWeakServiceKey(properties.ai().serviceKey())) {
+            problems.add("AI_SERVICE_KEY debe tener al menos 32 caracteres y no ser un valor de ejemplo, con AI_MODE=http.");
         }
-        if ((realAi || remoteDb) && isWeak(properties.agentToolsKey())) {
-            problems.add("AGENT_TOOLS_KEY sigue con el valor de ejemplo: cualquiera podría leer /api/agent-tools.");
+        if (isWeakServiceKey(properties.agentToolsKey())) {
+            problems.add("AGENT_TOOLS_KEY debe tener al menos 32 caracteres y no ser un valor de ejemplo.");
         }
-        if ("http".equals(properties.signer().mode()) && isWeak(properties.signer().serviceKey())) {
-            problems.add("SIGNER_SERVICE_KEY sigue con el valor de ejemplo y SIGNER_MODE=http.");
+        if ("http".equals(properties.signer().mode()) && isWeakServiceKey(properties.signer().serviceKey())) {
+            problems.add("SIGNER_SERVICE_KEY debe tener al menos 32 caracteres y no ser un valor de ejemplo, con SIGNER_MODE=http.");
         }
         if (properties.demoAttackEnabled() && "http".equals(properties.signer().mode())) {
             problems.add("DEMO_ATTACK_ENABLED=true con SIGNER_MODE=http: el modo atacante no puede usar el firmante real.");
@@ -65,12 +71,37 @@ public class StartupSecretsCheck {
         return problems;
     }
 
+    /** Contraseña de la base: vacío, placeholder o un valor que empieza por {@code <}. */
     static boolean isWeak(String secret) {
         if (secret == null || secret.isBlank()) {
             return true;
         }
         String value = secret.trim();
-        return PLACEHOLDERS.contains(value.toLowerCase(Locale.ROOT)) || value.startsWith("<");
+        return DB_PLACEHOLDERS.contains(value.toLowerCase(Locale.ROOT)) || value.startsWith("<");
+    }
+
+    /**
+     * Clave de servicio ({@code X-Service-Key}): vacío, menos de 32 caracteres, placeholder
+     * ({@code <…} o la denylist) o un placeholder alargado.
+     */
+    static boolean isWeakServiceKey(String secret) {
+        if (secret == null || secret.isBlank()) {
+            return true;
+        }
+        String value = secret.trim();
+        if (value.length() < MIN_SERVICE_KEY_LENGTH || value.startsWith("<")) {
+            return true;
+        }
+        String normalized = value.toLowerCase(Locale.ROOT);
+        if (SERVICE_KEY_DENYLIST.contains(normalized)) {
+            return true;
+        }
+        for (String prefix : SERVICE_KEY_PREFIXES) {
+            if (normalized.startsWith(prefix)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** jdbc:postgresql://host:puerto/base; si no se puede leer el host se trata como remoto. */

@@ -66,18 +66,18 @@ services:
       DB_URL: jdbc:postgresql://db:5432/nexora
       DB_USERNAME: nexora
       DB_PASSWORD: ${DB_PASSWORD}
-      AGENT_TOOLS_KEY: ${AGENT_TOOLS_KEY:?Define AGENT_TOOLS_KEY en .env}
+      AGENT_TOOLS_KEY: ${AGENT_TOOLS_KEY:?Define AGENT_TOOLS_KEY en .env, con al menos 32 caracteres}
       # El panel de nginx es mismo origen; 5173 es `pnpm dev` (su proxy conserva el Origin del navegador).
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:${FRONTEND_PORT:-8081},http://localhost:5173}
       AI_MODE: ${AI_MODE:-hybrid}
       AI_BASE_URL: ${AI_BASE_URL:-http://agent:11434}
       AI_MODEL: ${AI_MODEL:-qwen2.5:0.5b}
-      AI_SERVICE_KEY: ${AI_SERVICE_KEY:-cambia-esto}
+      AI_SERVICE_KEY: ${AI_SERVICE_KEY:?Define AI_SERVICE_KEY en .env; con AI_MODE=http, al menos 32 caracteres}
       # Con hybrid, si el modelo no responde a tiempo el chat sigue con las reglas.
       AI_READ_TIMEOUT_MS: ${AI_READ_TIMEOUT_MS:-30000}
       SIGNER_MODE: ${SIGNER_MODE:-mock}
       SIGNER_BASE_URL: http://signer:3001
-      SIGNER_SERVICE_KEY: ${SIGNER_SERVICE_KEY:-cambia-esto}
+      SIGNER_SERVICE_KEY: ${SIGNER_SERVICE_KEY:?Define SIGNER_SERVICE_KEY en .env; con SIGNER_MODE=http, al menos 32 caracteres}
       STELLAR_EVENTS_MODE: ${STELLAR_EVENTS_MODE:-mock}
       DEMO_ATTACK_ENABLED: ${DEMO_ATTACK_ENABLED:-false}
       PRIVY_APP_ID: ${PRIVY_APP_ID:-}
@@ -109,7 +109,7 @@ services:
     depends_on:
       - backend
     ports:
-      - "${FRONTEND_PORT:-8081}:80"
+      - "127.0.0.1:${FRONTEND_PORT:-8081}:80"
     restart: unless-stopped
 
 volumes:
