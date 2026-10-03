@@ -66,6 +66,10 @@ const DemoPage = lazy(() => import('./pages/DemoPage').then((m) => ({ default: m
 const AccesibilidadPage = lazy(() =>
   import('./pages/AccesibilidadPage').then((m) => ({ default: m.AccesibilidadPage })),
 )
+const OpcionesLayout = lazy(() =>
+  import('./pages/OpcionesLayout').then((m) => ({ default: m.OpcionesLayout })),
+)
+const CuentaPage = lazy(() => import('./pages/CuentaPage').then((m) => ({ default: m.CuentaPage })))
 
 /** Lo que se ve mientras llega una pantalla: lo mismo que el arranque. */
 function CargandoPantalla() {
@@ -186,11 +190,17 @@ function Rutas() {
           <Route path="alertas" element={<AlertasPage />} />
         </Route>
         <Route path="contactos" element={<ContactosPage />} />
-        <Route path="mandato" element={<MandatoPage />} />
+        <Route path="opciones" element={<OpcionesLayout />}>
+          <Route index element={<Navigate to="mandato" replace />} />
+          <Route path="mandato" element={<MandatoPage />} />
+          <Route path="accesibilidad" element={<AccesibilidadPage />} />
+          <Route path="cuenta" element={<CuentaPage />} />
+        </Route>
+        <Route path="mandato" element={<Navigate to="/opciones/mandato" replace />} />
+        <Route path="accesibilidad" element={<Navigate to="/opciones/accesibilidad" replace />} />
         <Route path="historial" element={<HistorialPage />} />
         <Route path="auditoria" element={<AuditoriaPage />} />
         <Route path="demo" element={<DemoPage />} />
-        <Route path="accesibilidad" element={<AccesibilidadPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

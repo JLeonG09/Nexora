@@ -33,6 +33,7 @@ import {
 import { getUserId, setUserId, setUnauthorizedHandler, USER_KEY } from '@/api/client'
 import { accounts as accountsApi, users as usersApi } from '@/api/resources'
 import { ApiError } from '@/api/errors'
+import { olvidarConversaciones } from './conversacionGuardada'
 import type { Account, CreateUserInput, RegisterAccountInput, User } from '@/api/types'
 
 /**
@@ -95,6 +96,7 @@ export function SesionProvider({
   alCerrarRef.current = alCerrarSesion
 
   const cerrarSesion = useCallback(() => {
+    olvidarConversaciones()
     setUserId(null)
     cacheUser(null)
     setUser(null)
@@ -125,8 +127,10 @@ export function SesionProvider({
         setUser(fresh)
         cacheUser(fresh)
       } catch (err) {
-        // 404/401: el id guardado ya no vale, se vuelve al alta.
-        if (!cancelado && (err instanceof ApiError ? err.isNotFound || err.isUnauthorized : true)) {
+        // Solo 404/401 dicen que el id ya no vale. Un fallo de red o un 502
+        // mientras el backend arranca no debe sacar al usuario: se queda con
+        // el usuario cacheado y las pantallas reintentan solas.
+        if (!cancelado && err instanceof ApiError && (err.isNotFound || err.isUnauthorized)) {
           cerrarSesion()
         }
       } finally {
@@ -165,6 +169,7 @@ export function SesionProvider({
   }, [user, account])
 
   const guardarUsuario = useCallback((fresh: User) => {
+    olvidarConversaciones()
     setUserId(fresh.id)
     cacheUser(fresh)
     setUser(fresh)

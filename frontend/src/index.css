@@ -808,6 +808,71 @@
     margin-top: auto;
     padding: 0.75rem;
   }
+  .nav-lateral__nuevo {
+    border: 1px solid rgb(255 255 255 / 0.12);
+    color: #fff;
+  }
+  .nav-lateral__chat {
+    min-height: 2.25rem;
+    font-weight: 400;
+  }
+
+  /*
+   * Lateral escondido (escritorio): la columna se encoge a 0 mientras el
+   * lateral, con ancho fijo, se desliza a la izquierda. Asi el contenido no
+   * se aplasta durante la animacion. `visibility` espera a que termine el
+   * deslizamiento para sacar los enlaces del orden de tabulacion.
+   */
+  @media (min-width: 64rem) {
+    .panel-app {
+      transition: grid-template-columns 300ms var(--ease-salida);
+    }
+    .panel-app.lateral-oculto {
+      grid-template-columns: 0rem minmax(0, 1fr);
+    }
+    .nav-lateral {
+      z-index: 20;
+      width: 16.5rem;
+      transition:
+        transform 300ms var(--ease-salida),
+        opacity 200ms ease,
+        visibility 0s;
+    }
+    .panel-app.lateral-oculto .nav-lateral {
+      transform: translateX(-100%);
+      opacity: 0;
+      visibility: hidden;
+      transition:
+        transform 300ms var(--ease-salida),
+        opacity 200ms ease 100ms,
+        visibility 0s 300ms;
+    }
+  }
+  .abrir-lateral {
+    display: none;
+  }
+  @media (min-width: 64rem) {
+    .abrir-lateral {
+      position: fixed;
+      top: 0.75rem;
+      left: 0.75rem;
+      z-index: 40;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: var(--radius-control);
+      background-color: var(--color-fondo-cierre);
+      color: #fff;
+      box-shadow: var(--shadow-pop);
+      transition: background-color var(--duracion) ease;
+      animation: entrar-boton-lateral 260ms var(--ease-salida) 180ms both;
+    }
+    .abrir-lateral:hover {
+      background-color: #262626;
+    }
+  }
 
   /* Barra superior (movil) */
   .barra-superior {
@@ -847,6 +912,16 @@
     background-color: var(--color-fondo-cierre);
     box-shadow: var(--shadow-pop);
     animation: entrar-izq 220ms var(--ease-salida);
+  }
+  @keyframes entrar-boton-lateral {
+    from {
+      opacity: 0;
+      transform: translateX(-0.5rem) scale(0.9);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
   }
   @keyframes entrar-izq {
     from {
@@ -1321,14 +1396,129 @@
   box-shadow: var(--sombra-1);
 }
 
-/* El asistente tiene una marca fija: un circulo dorado sin brillo ni ondas.
-   Solo se mueve cuando esta pensando, porque eso SI es un estado. */
+/* El asistente es un circulo dorado con un brillo propio. La version grande
+   (`orbe-luz`, chat vacio) respira y suelta ondas; en las burbujas solo brilla. */
 .orbe {
+  position: relative;
   flex-shrink: 0;
   width: var(--orbe, 3rem);
   height: var(--orbe, 3rem);
   border-radius: 999px;
   background: radial-gradient(circle at 35% 30%, #f6d891 0%, #e0a63a 45%, #a8741c 100%);
+  box-shadow:
+    0 0 calc(var(--orbe, 3rem) * 0.35) rgb(224 166 58 / 0.45),
+    inset 0 -2px 6px rgb(120 70 10 / 0.35);
+}
+/* z-index negativo sin isolation: el halo queda detras del circulo pero
+   encima del fondo de `main`, que es el contexto de apilamiento. */
+.orbe-luz::before,
+.orbe-luz::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  border-radius: 999px;
+  pointer-events: none;
+}
+.orbe-luz::before {
+  inset: -160%;
+  background: radial-gradient(
+    circle,
+    rgb(246 216 145 / 0.32) 0%,
+    rgb(224 166 58 / 0.14) 30%,
+    rgb(224 166 58 / 0.04) 50%,
+    transparent 68%
+  );
+  animation: orbe-respirar 4.5s ease-in-out infinite;
+}
+.orbe-luz::after {
+  inset: 0;
+  border: 1px solid rgb(246 216 145 / 0.55);
+  box-shadow: 0 0 12px rgb(224 166 58 / 0.4);
+  animation: orbe-onda 3.6s var(--ease-salida) infinite;
+}
+@keyframes orbe-respirar {
+  0%,
+  100% {
+    transform: scale(0.92);
+    opacity: 0.75;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+@keyframes orbe-onda {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(3.2);
+    opacity: 0;
+  }
+}
+
+/*
+ * Fondo del area de contenido: halos tipo nebulosa y estrellas tenues, fijos
+ * a la ventana para que no se desplacen con el scroll. Con el lateral
+ * escondido aparece en la esquina la misma luz dorada que tiene el lateral.
+ */
+.fondo-galaxia {
+  position: relative;
+  isolation: isolate;
+  --galaxia-oro: rgb(224 166 58 / 0.11);
+  --galaxia-violeta: rgb(124 92 255 / 0.11);
+  --galaxia-azul: rgb(64 140 255 / 0.08);
+  --galaxia-estrella: rgb(255 255 255 / 0.4);
+}
+:root:not([data-tema='oscuro']) .fondo-galaxia {
+  --galaxia-oro: rgb(224 166 58 / 0.1);
+  --galaxia-violeta: rgb(124 92 255 / 0.05);
+  --galaxia-azul: rgb(64 140 255 / 0.04);
+  --galaxia-estrella: rgb(0 0 0 / 0);
+}
+.fondo-galaxia::before,
+.fondo-galaxia::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+.fondo-galaxia::before {
+  background:
+    radial-gradient(40rem 28rem at 70% 18%, var(--galaxia-violeta), transparent 70%),
+    radial-gradient(34rem 26rem at 85% 85%, var(--galaxia-azul), transparent 70%),
+    radial-gradient(30rem 22rem at 50% 45%, var(--galaxia-oro), transparent 70%);
+  animation: galaxia-derivar 28s ease-in-out infinite alternate;
+}
+.fondo-galaxia::after {
+  background-image:
+    radial-gradient(1px 1px at 12% 22%, var(--galaxia-estrella), transparent),
+    radial-gradient(1px 1px at 34% 68%, var(--galaxia-estrella), transparent),
+    radial-gradient(1.5px 1.5px at 58% 12%, var(--galaxia-estrella), transparent),
+    radial-gradient(1px 1px at 76% 44%, var(--galaxia-estrella), transparent),
+    radial-gradient(1px 1px at 88% 78%, var(--galaxia-estrella), transparent),
+    radial-gradient(1.5px 1.5px at 22% 88%, var(--galaxia-estrella), transparent),
+    radial-gradient(1px 1px at 64% 92%, var(--galaxia-estrella), transparent),
+    radial-gradient(1px 1px at 46% 36%, var(--galaxia-estrella), transparent);
+  background-size: 520px 520px;
+  opacity: 0.7;
+}
+.lateral-oculto .fondo-galaxia::before {
+  background:
+    radial-gradient(18rem 14rem at 0% 0%, rgb(224 166 58 / 0.14), transparent 70%),
+    radial-gradient(40rem 28rem at 70% 18%, var(--galaxia-violeta), transparent 70%),
+    radial-gradient(34rem 26rem at 85% 85%, var(--galaxia-azul), transparent 70%),
+    radial-gradient(30rem 22rem at 50% 45%, var(--galaxia-oro), transparent 70%);
+}
+@keyframes galaxia-derivar {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(-2%, 1.5%, 0) scale(1.06);
+  }
 }
 .orbe-pequeno {
   --orbe: 1.75rem;

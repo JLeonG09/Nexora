@@ -43,6 +43,7 @@ import { MOCK_ENABLED } from '@/config/env'
 import {
   errorMessage,
   useCrearMandato,
+  useHealth,
   useLimites,
   useLlaveAgente,
   useMandatoActivo,
@@ -78,11 +79,26 @@ function BotonCopiar({ valor }: { valor: string }) {
   )
 }
 
-/** Fecha por defecto: 30 días. Ni una hora ni un año. */
-function caducidadPorDefecto(): string {
+/** `datetime-local` espera hora local; `toISOString` daría UTC y desplazaría la fecha. */
+function aFechaLocal(d: Date): string {
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60_000)
+  return local.toISOString().slice(0, 16)
+}
+
+function enDias(dias: number): Date {
   const d = new Date()
-  d.setDate(d.getDate() + 30)
-  return d.toISOString().slice(0, 16)
+  d.setDate(d.getDate() + dias)
+  return d
+}
+
+/** El backend rechaza más de 30 días: se propone 29 para no rozar el límite. */
+function caducidadPorDefecto(): string {
+  return aFechaLocal(enDias(29))
+}
+
+function hashDePrueba(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(32))
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
 }
 
 /**
@@ -104,6 +120,8 @@ function topesCoherentes(umbral: number, porPago: number, diario: number): strin
 function FormularioNuevoMandato() {
   const crear = useCrearMandato()
   const { data: llave, refetch: releerLlave, isPending: cargandoLlave } = useLlaveAgente()
+  const { data: salud } = useHealth()
+  const firmanteSimulado = MOCK_ENABLED || salud?.signerMode === 'mock'
 
   // Topes de partida. Se quedan por debajo del tope diario on-chain del
   // contrato (50 USDC en el firmante simulado, `onchain-daily-limit`): si el
@@ -215,12 +233,14 @@ function FormularioNuevoMandato() {
         </fieldset>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Hasta cuándo" ayuda="Pasado ese momento, el agente se para solo." requerido>
+          <Field label="Hasta cuándo" ayuda="Como mucho 30 días. Pasado ese momento, el agente se para solo." requerido>
             {(props) => (
               <Input
                 {...props}
                 type="datetime-local"
                 value={caduca}
+                min={aFechaLocal(new Date())}
+                max={aFechaLocal(enDias(30))}
                 onChange={(e) => setCaduca(e.target.value)}
               />
             )}
@@ -303,13 +323,25 @@ function FormularioNuevoMandato() {
                   {...props}
                   value={hash}
                   spellCheck={false}
-                  placeholder={MOCK_ENABLED ? 'hash de prueba' : 'a1b2…'}
+                  placeholder={firmanteSimulado ? 'hash de prueba' : 'a1b2…'}
                   className="mono"
                   onChange={(e) => setHash(e.target.value.trim())}
                 />
               )}
             </Field>
           </div>
+
+          {firmanteSimulado && (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-control bg-superficie-2 p-2.5">
+              <p className="min-w-0 flex-1 text-2xs text-tinta-media">
+                El firmante es simulado: no hay transacción real que autorizar. Usa un hash de
+                prueba para la demo.
+              </p>
+              <Button variante="secundario" tamano="sm" type="button" onClick={() => setHash(hashDePrueba())}>
+                Usar hash de prueba
+              </Button>
+            </div>
+          )}
         </fieldset>
 
         {crear.isError && (
@@ -428,15 +460,22 @@ function DetalleMandato({ mandato }: { mandato: Mandate }) {
             </p>
           )}
 
-          <div>
-            <Button
-              variante="peligro"
-              tamano="sm"
-              cargando={revocar.isPending}
-              onClick={() => void revocarAhora()}
-            >
-              Revocar mandato
-            </Button>
+          <div className="flex flex-col gap-1.5">
+            <p className="text-2xs text-tinta-media">
+              ¿Quieres cambiar los topes o la fecha? Revoca este mandato y crea uno nuevo aquí
+              mismo: un mandato no se edita, para que nadie pueda subirte los topes sin que lo
+              autorices otra vez.
+            </p>
+            <div>
+              <Button
+                variante="peligro"
+                tamano="sm"
+                cargando={revocar.isPending}
+                onClick={() => void revocarAhora()}
+              >
+                Revocar mandato
+              </Button>
+            </div>
           </div>
 
           {revocar.isError && (
@@ -462,8 +501,8 @@ export function MandatoPage() {
 
   return (
     <div className="contenedor flex flex-col gap-4 py-6">
-      <header className="pagina-cabecera">
-        <h1 className="text-lg font-semibold tracking-tight text-tinta">Mandato</h1>
+      <header>
+        <h2 className="text-base font-semibold tracking-tight text-tinta">Reglas de pago</h2>
         <p className="mt-0.5 max-w-2xl text-sm text-tinta-media">
           El permiso que le das al agente para gastar sin preguntarte. Vive en tu smart account y
           no en este panel: por eso puedes revisarlo y revocarlo cuando quieras.
@@ -487,8 +526,8 @@ export function MandatoPage() {
           <p className="flex items-start gap-1.5 text-sm text-tinta-media">
             <IconMandato className="mt-0.5 h-4 w-4 shrink-0 text-tinta-media" />
             <span>
-              Todavía no has dado permiso al agente. Hasta que exista un mandato, cualquier pago
-              que pidas se rechazará.
+              No tienes ningún mandato activo: nunca lo creaste, lo revocaste o caducó. Hasta que
+              crees uno, cualquier pago que pidas se rechazará.
             </span>
           </p>
           <FormularioNuevoMandato />

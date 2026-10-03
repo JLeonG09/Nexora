@@ -54,9 +54,9 @@ auditoría. También vigila la red: si sale de la smart account un pago que no h
 | `SERVER_PORT` | `8080` | Puerto HTTP |
 | `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | `jdbc:postgresql://localhost:5432/nexora`, `nexora`, `nexora_dev` | Base de datos |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | Origen del frontend |
-| `AI_MODE` | `mock` | `mock` (reglas fijas), `http` (servicio de IA propio) o `local` (modelo propio con Ollama o `cactus serve`) |
+| `AI_MODE` | `mock` | `mock` (reglas fijas), `http` (servicio de IA propio), `hybrid` (reglas + modelo pequeño) o `local` (el modelo decide todo) |
 | `AI_BASE_URL`, `AI_SERVICE_KEY` | `http://localhost:8000` | Servicio de IA y la clave que le manda el backend |
-| `AI_MODEL` | `qwen2.5:3b` | Solo con `AI_MODE=local`: modelo que sirve Ollama o Cactus |
+| `AI_MODEL` | `qwen2.5:0.5b` | Con `AI_MODE=hybrid` o `local`: modelo que sirve Ollama o Cactus |
 | `AI_CONNECT_TIMEOUT_MS`, `AI_READ_TIMEOUT_MS` | `2000`, `15000` | Tiempos de espera de la IA |
 | `AI_MIN_CONFIDENCE` | `0.7` | Confianza mínima para aceptar un pago |
 | `SIGNER_MODE` | `mock` | `mock` o `http` (firmante real) |
@@ -98,7 +98,7 @@ En desarrollo local con los mocks arranca sin `.env`. El error nombra la variabl
 | Llave del agente | `GET /api/agent/public-key` |
 | Contactos | `GET/POST /api/contacts`, `GET/PUT/DELETE /api/contacts/{id}` (borrar = archivar) |
 | Mandatos | `POST /api/mandates`, `GET /api/mandates`, `GET /api/mandates/active`, `GET /api/mandates/active/limits`, `POST /api/mandates/{id}/revoke` |
-| Chat | `POST /api/chat`, `GET /api/chat/messages` |
+| Chat | `POST /api/chat`, `GET /api/chat/messages`, `GET /api/chat/conversations` |
 | Propuestas | `GET /api/proposals`, `GET /api/proposals/{id}` |
 | Aprobaciones | `GET /api/approvals`, `POST /api/approvals/{id}/approve`, `POST /api/approvals/{id}/reject` |
 | Historial y auditoría | `GET /api/history`, `GET /api/audit?proposalId=` |
@@ -128,9 +128,28 @@ Si pasa y el monto supera el umbral de aprobación, queda `PENDIENTE_APROBACION`
 
 Encima de todo esto, el contrato on-chain aplica su propio tope de gasto (`SpendingLimitExceeded`).
 
+## Agente híbrido (por defecto en Docker)
+
+Con `AI_MODE=hybrid` las reglas leen el mensaje y un modelo pequeño (`qwen2.5:0.5b`, ~400 MB) solo clasifica la
+intención cuando no hay verbo reconocible:
+
+- Las reglas sacan contacto (exacto, por apellido, con una letra de error), monto (`AmountExtractor`, el mismo de la
+  regla 4) y memo (`por …`). Las respuestas salen de plantillas, no del modelo.
+- El modelo solo entra si el mensaje trae contacto o monto pero ningún verbo («15 a Ana por el café», «Ana me debe
+  20») y devuelve `pagar | saldo | saludo | otro` en JSON con esquema cerrado.
+- Si el modelo no está, tarda o responde otra cosa, el agente sigue con las reglas y pide aclarar.
+- Si el agente preguntó el monto, un «15» suelto completa el pago con el contacto del mensaje anterior.
+
+`src/test/resources/agente/frases.txt` tiene las frases de prueba con la decisión esperada; `HybridAiClientTest` las
+corre todas. Para medir el modelo real con el contenedor levantado:
+
+```bash
+AGENT_EVAL_URL=http://localhost:11434 ./mvnw test -Dtest=HybridAiClientTest
+```
+
 ## IA local (Ollama o Cactus)
 
-Con `AI_MODE=local` el backend habla con cualquier servidor compatible con la API de OpenAI
+Con `AI_MODE=local` (y un modelo grande, p. ej. `AI_MODEL=qwen2.5:3b`) el backend habla con cualquier servidor compatible con la API de OpenAI
 (`POST {AI_BASE_URL}/v1/chat/completions`) y un modelo con tool calling:
 
 - **Docker (por defecto):** el servicio `agent` de `docker-compose.yml` corre Ollama con `AI_MODEL`.

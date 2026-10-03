@@ -72,10 +72,12 @@ export const endpoints = {
   revokeMandate: (id: string) => `${API_PREFIX}/mandates/${id}/revoke`,
 
   /* --- Chat -------------------------------------------------------- */
-  /** `conversationId` es opcional: si falta, el backend usa la ultima. */
+  /** Sin `conversationId` el backend abre una conversacion nueva. */
   sendChat: () => `${API_PREFIX}/chat`,
   chatMessages: (conversationId?: string | null) =>
     `${API_PREFIX}/chat/messages${qs({ conversationId })}`,
+  /** Conversaciones del usuario, la mas reciente primero. */
+  chatConversations: (limit?: number) => `${API_PREFIX}/chat/conversations${qs({ limit })}`,
 
   /* --- Propuestas de pago ------------------------------------------ */
   proposals: ({ status, ...params }: PageParams & { status?: ProposalStatus | null }) =>

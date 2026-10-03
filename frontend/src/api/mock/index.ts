@@ -20,6 +20,7 @@ import type {
   ChatMessage,
   ChatResponse,
   Contact,
+  ConversationSummary,
   Health,
   HistoryItem,
   Limits,
@@ -27,6 +28,7 @@ import type {
   Page,
   Proposal,
   ProposalSummary,
+  SimulatedTransfer,
   User,
 } from '../types'
 import {
@@ -46,6 +48,30 @@ import {
   TOPE_ONCHAIN_24H,
 } from './estado'
 import { ErrorIa, interpretar, validar, type RespuestaIa } from './reglas'
+
+/** Igual que el backend con `SIGNER_MODE=mock`: la cuenta empieza con 100 y cada contacto con 0. */
+const SALDO_INICIAL_SIMULADO = 100
+
+function transferenciaSimulada(p: Proposal): SimulatedTransfer | null {
+  if (p.status !== 'CONFIRMADO' || !p.confirmedAt || !p.contactId || !p.amount) return null
+  const confirmadasAntes = estado.propuestas.filter(
+    (x) => x.status === 'CONFIRMADO' && x.confirmedAt && x.confirmedAt < p.confirmedAt!,
+  )
+  const suma = (lista: Proposal[]) => lista.reduce((total, x) => total + Number(x.amount ?? 0), 0)
+  const monto = Number(p.amount)
+  const desdeAntes = redondear(SALDO_INICIAL_SIMULADO - suma(confirmadasAntes))
+  const haciaAntes = redondear(suma(confirmadasAntes.filter((x) => x.contactId === p.contactId)))
+  return {
+    asset: p.asset,
+    fromAddress: estado.cuenta?.smartAccountAddress ?? null,
+    fromBefore: formatoMonto(desdeAntes),
+    fromAfter: formatoMonto(redondear(desdeAntes - monto)),
+    toName: p.contactName,
+    toAddress: p.destinationAddress,
+    toBefore: formatoMonto(haciaAntes),
+    toAfter: formatoMonto(redondear(haciaAntes + monto)),
+  }
+}
 
 /* ------------------------------------------------------------------ */
 /* Error del backend simulado                                         */
@@ -614,7 +640,8 @@ export async function mockRequest(
 
   if (verbo === 'GET' && ruta === '/mandates/active') {
     const m = mandatoActivo()
-    return ok(m ? aMandateResponse(m) : null)
+    if (!m) throw new MockHttpError(404, 'RECURSO_NO_ENCONTRADO', 'No tienes un mandato activo.')
+    return ok(aMandateResponse(m))
   }
 
   if (verbo === 'GET' && ruta === '/mandates/active/limits') return ok(aLimitsResponse())
@@ -695,7 +722,7 @@ export async function mockRequest(
       proposalId: null,
       createdAt: ahora(),
     }
-    estado.mensajes.push(usuarioMsg)
+    estado.mensajes.push({ ...usuarioMsg, conversationId })
     auditar('CHAT_RECIBIDO', 'USUARIO', 'Mensaje recibido en el chat', {
       data: { longitud: mensaje.length },
     })
@@ -814,7 +841,7 @@ export async function mockRequest(
         proposalId: propuesta.id,
         createdAt: ahora(),
       }
-      estado.mensajes.push(agenteMsg)
+      estado.mensajes.push({ ...agenteMsg, conversationId })
       const payload: ChatResponse = {
         conversationId,
         reply: { ...agenteMsg },
@@ -831,7 +858,7 @@ export async function mockRequest(
       proposalId: null,
       createdAt: ahora(),
     }
-    estado.mensajes.push(agenteMsg)
+    estado.mensajes.push({ ...agenteMsg, conversationId })
     const payload: ChatResponse = {
       conversationId,
       reply: { ...agenteMsg },
@@ -841,7 +868,34 @@ export async function mockRequest(
   }
 
   if (verbo === 'GET' && ruta === '/chat/messages') {
-    return ok(pagina(estado.mensajes, 0, Math.max(estado.mensajes.length, 1)))
+    const conversacion = queryParams(search).get('conversationId')
+    const items = estado.mensajes
+      .filter((m) => !conversacion || m.conversationId === conversacion)
+      .map(({ conversationId: _conversacion, ...m }) => m)
+    return ok(pagina(items, 0, Math.max(items.length, 1)))
+  }
+
+  if (verbo === 'GET' && ruta === '/chat/conversations') {
+    const porConversacion = new Map<string, ConversationSummary>()
+    for (const m of estado.mensajes) {
+      const id = m.conversationId ?? 'demo'
+      const actual = porConversacion.get(id)
+      if (!actual) {
+        porConversacion.set(id, {
+          conversationId: id,
+          title: m.role === 'USUARIO' ? m.text.slice(0, 60) : 'Conversación',
+          startedAt: m.createdAt,
+          lastMessageAt: m.createdAt,
+          messageCount: 1,
+        })
+        continue
+      }
+      if (actual.title === 'Conversación' && m.role === 'USUARIO') actual.title = m.text.slice(0, 60)
+      actual.lastMessageAt = m.createdAt
+      actual.messageCount += 1
+    }
+    const items = [...porConversacion.values()].sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt))
+    return ok(pagina(items, 0, Math.max(items.length, 1)))
   }
 
   /* --- Propuestas --------------------------------------------------- */
@@ -858,7 +912,7 @@ export async function mockRequest(
     resolverEnvios()
     const p = estado.propuestas.find((x) => x.id === propuestaId[1])
     if (!p) noEncontrado('La propuesta')
-    return ok(p)
+    return ok({ ...p, simulatedTransfer: transferenciaSimulada(p) })
   }
 
   /* --- Aprobaciones -------------------------------------------------- */

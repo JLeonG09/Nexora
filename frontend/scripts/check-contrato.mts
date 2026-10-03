@@ -54,6 +54,8 @@ const TRADUCIONES: Record<string, string> = {
   ChatReplyDto: 'ChatReply',
   ProposalSummaryDto: 'ProposalSummary',
   ProposalResponse: 'Proposal',
+  SimulatedTransferDto: 'SimulatedTransfer',
+  ConversationSummaryResponse: 'ConversationSummary',
   ApprovalResponse: 'Approval',
   ApprovalDecisionResponse: 'ApprovalDecision',
   AlertResponse: 'Alert',

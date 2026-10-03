@@ -340,8 +340,15 @@ console.log('\n== Ataque que si sale: dispara la conciliacion ==')
   comprobar('reportar rota la llave', typeof rb.newKeyVersion === 'number' && rb.newKeyVersion > 0, `v${rb.newKeyVersion}`)
   comprobar('reportar explica el siguiente paso', typeof rb.nextStep === 'string' && rb.nextStep.length > 0)
 
+  // Igual que el backend: sin mandato activo es 404, no un cuerpo null.
+  // El cliente del panel convierte ese 404 en null para la pantalla.
   const m = await llamar('GET', endpoints.activeMandate())
-  comprobar('el mandato ya no esta activo', m.body === null, JSON.stringify(m.body))
+  const cuerpo = m.body as { code?: string; message?: string }
+  comprobar(
+    'el mandato ya no esta activo',
+    m.status === 404 && cuerpo.code === 'RECURSO_NO_ENCONTRADO' && cuerpo.message === 'No tienes un mandato activo.',
+    `status ${m.status} ${JSON.stringify(m.body)}`,
+  )
 }
 
 console.log('\n== Un movimiento ajeno genera su propia alerta ==')

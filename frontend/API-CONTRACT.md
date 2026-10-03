@@ -67,7 +67,7 @@ de verdad o está en modo simulado.
 | Campo | Tipo | Notas |
 |---|---|---|
 | `status` | `string` | |
-| `aiMode` | `"mock" \| "http"` | |
+| `aiMode` | `"mock" \| "http" \| "local" \| "hybrid"` | |
 | `signerMode` | `"mock" \| "http"` | Si es `mock`, ninguna firma es real. |
 | `network` | `string` | El backend solo admite `TESTNET` por ahora. |
 
@@ -152,7 +152,7 @@ recalcularlos.
 | Método | Ruta | |
 |---|---|---|
 | `POST` | `/api/mandates` | Crea el mandato. |
-| `GET` | `/api/mandates/active` | → `Mandate \| null` |
+| `GET` | `/api/mandates/active` | → `Mandate`. Sin mandato activo: `404 RECURSO_NO_ENCONTRADO`. |
 | `GET` | `/api/mandates/active/limits` | → `Limits` |
 | `GET` | `/api/mandates?page=&size=` | → `Page<Mandate>` |
 | `POST` | `/api/mandates/{id}/revoke` | Cuerpo opcional: `{ revokeTxHash }`. |
@@ -171,8 +171,10 @@ el panel envía `createTxHash`, `keyVersion`, `agentPublicKeyHex`,
 `mandateId`, `asset`, `dailyLimit`, `spentLast24h`, `availableLast24h`,
 `perTxLimit`, `approvalThreshold`, `expiresAt`, `status`.
 
-Cuando no hay mandato, `GET /api/mandates/active` devuelve `null` y
-`/limits` devuelve los campos a `null`.
+Cuando no hay mandato, `GET /api/mandates/active` responde `404` con
+`RECURSO_NO_ENCONTRADO` («No tienes un mandato activo.»). El cliente del panel
+convierte ese 404 en `null` para mostrar el formulario. `/limits` devuelve los
+campos a `null`.
 
 `409 MANDATO_ACTIVO_EXISTENTE` al crear uno nuevo con otro vigente.
 
@@ -196,6 +198,13 @@ un `ProposalSummaryDto` (12 campos, sin los internos) o `null`.
 → `ChatMessage[]`. `role` es `USUARIO` | `AGENTE`; `type` es `MESSAGE` |
 `PROPOSAL` (los mensajes de tipo `PROPOSAL` llevan `proposalId`).
 
+### `GET /api/chat/conversations?limit=30`
+
+→ `Page<ConversationSummary>`, la más reciente primero:
+`{ conversationId, title, startedAt, lastMessageAt, messageCount }`. `title` es
+el primer mensaje del usuario recortado a 60 caracteres. El panel abre un chat
+nuevo en cada inicio de sesión y usa esta lista para volver a los anteriores.
+
 ---
 
 ## Propuestas de pago
@@ -205,8 +214,15 @@ un `ProposalSummaryDto` (12 campos, sin los internos) o `null`.
 | `GET` | `/api/proposals?status=&page=&size=` | → `Page<Proposal>` |
 | `GET` | `/api/proposals/{id}` | → `Proposal` |
 
-`ProposalResponse` tiene **18 campos** y coincide exactamente con el tipo
+`ProposalResponse` tiene **19 campos** y coincide exactamente con el tipo
 `Proposal` de `src/api/types.ts`.
+
+`simulatedTransfer` solo viene relleno en `GET /api/proposals/{id}`, con
+`SIGNER_MODE=mock` y estado `CONFIRMADO` (en la lista siempre es `null`).
+Lleva los saldos ficticios de las dos cuentas: `asset`, `fromAddress`,
+`fromBefore`, `fromAfter`, `toName`, `toAddress`, `toBefore`, `toAfter`. La
+cuenta del usuario empieza con 100 y cada contacto con 0; cada pago
+confirmado anterior resta de una y suma a la otra. No existe en Stellar.
 
 ### Los 16 `RejectionCode`
 

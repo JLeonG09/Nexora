@@ -272,7 +272,7 @@ function DisponibleHoy({ topes }: { topes: EstadoTopes }) {
         <p className="text-base text-tinta-media">
           Sin reglas activas, Nexora no puede pagar por ti.
         </p>
-        <Link to="/mandato" className={`btn btn-primario ${CONTROL_GRANDE}`}>
+        <Link to="/opciones/mandato" className={`btn btn-primario ${CONTROL_GRANDE}`}>
           Ir a Mis reglas de pago
         </Link>
       </div>

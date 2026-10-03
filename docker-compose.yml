@@ -3,8 +3,8 @@
 #   cp .env.example .env          # y cambia DB_PASSWORD y AGENT_TOOLS_KEY
 #   docker compose up -d --build  # panel en http://localhost:8081
 #
-# La primera vez el agente descarga el modelo (AI_MODEL, ~2 GB); `docker compose logs -f agent` muestra el avance.
-# Hasta que termine, el chat responde que la IA no está disponible.
+# La primera vez el agente descarga el modelo (AI_MODEL, ~400 MB); `docker compose logs -f agent` muestra el avance.
+# Con AI_MODE=hybrid el chat funciona desde el principio: las reglas no necesitan el modelo.
 #
 # El firmante real va aparte porque necesita signer/.env con secretos de testnet:
 #   docker compose --profile signer up -d --build   (con SIGNER_MODE=http en .env)
@@ -35,9 +35,14 @@ services:
       - -c
       - ollama serve & until ollama list >/dev/null 2>&1; do sleep 1; done; ollama pull "$$AI_MODEL" && wait
     environment:
-      AI_MODEL: ${AI_MODEL:-qwen2.5:3b}
+      AI_MODEL: ${AI_MODEL:-qwen2.5:0.5b}
       OLLAMA_HOST: 0.0.0.0:11434
-      OLLAMA_KEEP_ALIVE: "-1"
+      # Libera la RAM si nadie escribe en 5 minutos; el siguiente mensaje lo vuelve a cargar (~1 s).
+      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-5m}
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_CONTEXT_LENGTH: "2048"
+    cpus: ${AGENT_CPUS:-4}
+    mem_limit: ${AGENT_MEMORY:-2g}
     volumes:
       - agent-models:/root/.ollama
     healthcheck:
@@ -46,8 +51,8 @@ services:
       timeout: 5s
       retries: 6
       start_period: 15m
-    expose:
-      - "11434"
+    ports:
+      - "127.0.0.1:${AGENT_PORT:-11434}:11434"
     restart: unless-stopped
 
   backend:
@@ -64,12 +69,12 @@ services:
       AGENT_TOOLS_KEY: ${AGENT_TOOLS_KEY:?Define AGENT_TOOLS_KEY en .env}
       # El panel de nginx es mismo origen; 5173 es `pnpm dev` (su proxy conserva el Origin del navegador).
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:${FRONTEND_PORT:-8081},http://localhost:5173}
-      AI_MODE: ${AI_MODE:-local}
+      AI_MODE: ${AI_MODE:-hybrid}
       AI_BASE_URL: ${AI_BASE_URL:-http://agent:11434}
-      AI_MODEL: ${AI_MODEL:-qwen2.5:3b}
+      AI_MODEL: ${AI_MODEL:-qwen2.5:0.5b}
       AI_SERVICE_KEY: ${AI_SERVICE_KEY:-cambia-esto}
-      # En CPU el primer mensaje carga el modelo en memoria y tarda más.
-      AI_READ_TIMEOUT_MS: ${AI_READ_TIMEOUT_MS:-90000}
+      # Con hybrid, si el modelo no responde a tiempo el chat sigue con las reglas.
+      AI_READ_TIMEOUT_MS: ${AI_READ_TIMEOUT_MS:-30000}
       SIGNER_MODE: ${SIGNER_MODE:-mock}
       SIGNER_BASE_URL: http://signer:3001
       SIGNER_SERVICE_KEY: ${SIGNER_SERVICE_KEY:-cambia-esto}

@@ -141,7 +141,8 @@ export interface Estado {
 
   contactos: Contact[]
   mandatos: Mandate[]
-  mensajes: ChatMessage[]
+  /** El backend guarda la conversacion de cada mensaje aunque no la devuelva en la lista. */
+  mensajes: (ChatMessage & { conversationId?: string })[]
   propuestas: Proposal[]
   aprobaciones: Approval[]
   alertas: Alert[]

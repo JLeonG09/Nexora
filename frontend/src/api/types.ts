@@ -18,7 +18,7 @@
 
 export interface Health {
   status: string
-  aiMode: 'mock' | 'http' | 'local'
+  aiMode: 'mock' | 'http' | 'local' | 'hybrid'
   signerMode: 'mock' | 'http'
   network: string
 }
@@ -170,6 +170,15 @@ export interface ChatMessage {
   createdAt: string
 }
 
+/** Elemento de `GET /chat/conversations`. `title` es el primer mensaje del usuario. */
+export interface ConversationSummary {
+  conversationId: string
+  title: string
+  startedAt: string
+  lastMessageAt: string
+  messageCount: number
+}
+
 export interface ChatReply {
   id: string
   role: ChatRole
@@ -232,6 +241,21 @@ export type RejectionCode =
   | 'APROBACION_EXPIRADA'
   | 'MANDATO_REVOCADO'
 
+/**
+ * Saldos ficticios antes y después del pago: la cuenta del usuario empieza
+ * con 100 y cada contacto con 0. No existe nada de esto en Stellar.
+ */
+export interface SimulatedTransfer {
+  asset: string
+  fromAddress: string | null
+  fromBefore: string
+  fromAfter: string
+  toName: string | null
+  toAddress: string | null
+  toBefore: string
+  toAfter: string
+}
+
 export interface Proposal {
   id: string
   status: ProposalStatus
@@ -252,6 +276,11 @@ export interface Proposal {
   rejectionMessage: string | null
   createdAt: string
   updatedAt: string
+  /**
+   * Solo con el firmante simulado, en estado CONFIRMADO y al pedir una
+   * propuesta por id; la lista lo manda a null.
+   */
+  simulatedTransfer?: SimulatedTransfer | null
   /**
    * OJO: estos tres campos NO son parte de `ProposalResponse`.
    *

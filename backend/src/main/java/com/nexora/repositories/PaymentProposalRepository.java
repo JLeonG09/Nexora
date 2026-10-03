@@ -26,6 +26,14 @@ public interface PaymentProposalRepository extends JpaRepository<PaymentProposal
                              @Param("statuses") Collection<ProposalStatus> statuses,
                              @Param("since") Instant since);
 
+    @Query("select coalesce(sum(p.amount), 0) from PaymentProposal p where p.accountId = :accountId "
+            + "and p.status = com.nexora.entities.enums.ProposalStatus.CONFIRMADO and p.confirmedAt < :before")
+    BigDecimal sumConfirmedFromAccountBefore(@Param("accountId") UUID accountId, @Param("before") Instant before);
+
+    @Query("select coalesce(sum(p.amount), 0) from PaymentProposal p where p.contactId = :contactId "
+            + "and p.status = com.nexora.entities.enums.ProposalStatus.CONFIRMADO and p.confirmedAt < :before")
+    BigDecimal sumConfirmedToContactBefore(@Param("contactId") UUID contactId, @Param("before") Instant before);
+
     List<PaymentProposal> findByMandateIdAndStatus(UUID mandateId, ProposalStatus status);
 
     Optional<PaymentProposal> findByIdAndUserId(UUID id, UUID userId);
