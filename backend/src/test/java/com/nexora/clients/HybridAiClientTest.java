@@ -103,6 +103,29 @@ class HybridAiClientTest {
     }
 
     @Test
+    void doesNotGuessAmountOnNegationCurrencySignOrSeveralNumbers() {
+        HybridAiClient client = new HybridAiClient(IntentModel.NONE, "");
+
+        Decision negated = client.decide(request("no le pagues 9", List.of()));
+        assertThat(negated.kind()).isEqualTo(Kind.NO_ES_PAGO);
+        assertThat(negated.amount()).isNull();
+
+        Decision euros = client.decide(request("págale 6 EUR", List.of()));
+        assertThat(euros.kind()).isEqualTo(Kind.MONEDA_NO_USDC);
+        assertThat(euros.amount()).isNull();
+
+        Decision negative = client.decide(request("págale -3", List.of()));
+        assertThat(negative.kind()).isEqualTo(Kind.MONTO_INVALIDO);
+        assertThat(negative.amount()).isNull();
+
+        Decision twoNumbers = client.decide(request("págale 5 a Ana, no 50", List.of()));
+        assertThat(twoNumbers.kind()).isEqualTo(Kind.ACLARAR_MONTO);
+        assertThat(twoNumbers.contact().name()).isEqualTo("Ana");
+        assertThat(twoNumbers.amount()).isNull();
+        assertThat(twoNumbers.text()).contains("5").contains("50");
+    }
+
+    @Test
     void paymentBecomesProposePaymentAction() {
         AiInterpretResponse response = new HybridAiClient(IntentModel.NONE, "")
                 .interpret(request("Págale 15 a Ana por el café", List.of()));

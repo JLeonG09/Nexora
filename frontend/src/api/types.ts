@@ -222,7 +222,7 @@ export type ProposalStatus =
   | 'CONFIRMADO'
   | 'FALLIDO'
 
-/** Los 16 motivos por los que el backend puede rechazar un pago. */
+/** Motivos por los que el backend puede rechazar un pago. */
 export type RejectionCode =
   | 'ESQUEMA_INVALIDO'
   | 'ACTIVO_NO_PERMITIDO'
@@ -232,6 +232,7 @@ export type RejectionCode =
   | 'CONTACTO_AMBIGUO'
   | 'MONTO_NO_EN_TEXTO'
   | 'MONTO_AMBIGUO'
+  | 'INTENCION_NEGADA'
   | 'SIN_MANDATO_ACTIVO'
   | 'MANDATO_EXPIRADO'
   | 'SUPERA_TOPE_TRANSACCION'
