@@ -65,7 +65,7 @@ auditoría. También vigila la red: si sale de la smart account un pago que no h
 | `SIGNER_MODE` | `mock` | `mock` o `http` (firmante real) |
 | `SIGNER_BASE_URL`, `SIGNER_SERVICE_KEY` | `http://localhost:3001` | Firmante y la clave que le manda el backend |
 | `SIGNER_CONNECT_TIMEOUT_MS`, `SIGNER_READ_TIMEOUT_MS` | `2000`, `45000` | Tiempos de espera del firmante |
-| `AGENT_TOOLS_KEY` | — | Clave que la IA manda en `X-Service-Key` |
+| `AGENT_TOOLS_KEY` | — | Clave que la IA manda en `X-Service-Key`. Obligatoria, mínimo 32 caracteres |
 | `STELLAR_NETWORK` | `TESTNET` | Red |
 | `USDC_CONTRACT_ID` | contrato USDC de testnet | Contrato cuyos eventos `transfer` se vigilan |
 | `STELLAR_EXPLORER_BASE_URL` | `https://stellar.expert/explorer/testnet` | Enlaces `explorerUrl` |
@@ -83,16 +83,19 @@ auditoría. También vigila la red: si sale de la smart account un pago que no h
 
 Nunca subas `.env`: está en `.gitignore`. Las claves reales se comparten por fuera del repo.
 
-El backend **no arranca** si detecta valores de ejemplo (`cambia-esto`, `<…>`, vacío o `nexora_dev`) donde
-pueden quedar expuestos:
+El backend **no arranca** si `AGENT_TOOLS_KEY` tiene menos de 32 caracteres o es un valor de ejemplo
+(`cambia-esto`, `changeme`, `change-me`, `change_me` o uno de esos alargado, `<…>`, vacío).
+La misma regla aplica a `AI_SERVICE_KEY` con `AI_MODE=http` y a `SIGNER_SERVICE_KEY` con `SIGNER_MODE=http`.
+Además rechaza la contraseña de desarrollo (`nexora_dev` y similares) cuando la base no es local:
 
-- `AI_SERVICE_KEY` y `AGENT_TOOLS_KEY` con `AI_MODE=http`.
+- `AGENT_TOOLS_KEY` siempre.
+- `AI_SERVICE_KEY` con `AI_MODE=http`.
 - `SIGNER_SERVICE_KEY` con `SIGNER_MODE=http`.
 - `DEMO_ATTACK_ENABLED=true` con `SIGNER_MODE=http`.
 - `PRIVY_APP_ID` vacío cuando el firmante o la IA no están en modo mock.
-- `AGENT_TOOLS_KEY` y `DB_PASSWORD` cuando la base no está en `localhost`.
+- `DB_PASSWORD` cuando la base no está en `localhost`.
 
-En desarrollo local con los mocks arranca sin `.env`. El error nombra la variable, nunca su valor.
+En desarrollo local con los mocks hace falta un `AGENT_TOOLS_KEY` de al menos 32 caracteres. El error nombra la variable, nunca su valor.
 
 ## Endpoints
 

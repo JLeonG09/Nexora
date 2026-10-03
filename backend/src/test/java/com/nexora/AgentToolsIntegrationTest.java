@@ -14,7 +14,7 @@ import org.springframework.test.web.servlet.ResultActions;
 
 class AgentToolsIntegrationTest extends IntegrationTestBase {
 
-    private static final String TOOLS_KEY = "clave-tools-test";
+    private static final String TOOLS_KEY = "clave-tools-test-0123456789abcde";
 
     @Test
     void missingServiceKeyIsRejected() throws Exception {

@@ -42,11 +42,12 @@ app:
   # https://auth.privy.io/api/v1/apps/${PRIVY_APP_ID}/jwks.json
   # iss = privy.io y aud = este id. Vacío solo se admite con firmante e IA en mock.
   privy-app-id: ${PRIVY_APP_ID:}
-  agent-tools-key: ${AGENT_TOOLS_KEY:cambia-esto}
+  # Sin default: una clave corta o de ejemplo impide el arranque.
+  agent-tools-key: ${AGENT_TOOLS_KEY:}
   ai:
     mode: ${AI_MODE:mock}
     base-url: ${AI_BASE_URL:http://localhost:8000}
-    service-key: ${AI_SERVICE_KEY:cambia-esto}
+    service-key: ${AI_SERVICE_KEY:}
     connect-timeout-ms: ${AI_CONNECT_TIMEOUT_MS:2000}
     read-timeout-ms: ${AI_READ_TIMEOUT_MS:15000}
     min-confidence: ${AI_MIN_CONFIDENCE:0.7}
@@ -55,7 +56,7 @@ app:
   signer:
     mode: ${SIGNER_MODE:mock}
     base-url: ${SIGNER_BASE_URL:http://localhost:3001}
-    service-key: ${SIGNER_SERVICE_KEY:cambia-esto}
+    service-key: ${SIGNER_SERVICE_KEY:}
     connect-timeout-ms: ${SIGNER_CONNECT_TIMEOUT_MS:2000}
     read-timeout-ms: ${SIGNER_READ_TIMEOUT_MS:45000}
     mock:
