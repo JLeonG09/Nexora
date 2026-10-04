@@ -1,0 +1,181 @@
+# CI sin secretos ni despliegue. Cada job corresponde a una parte del repo
+# para que un fallo diga cuál se rompió.
+#
+# Los valores de base de datos son los del perfil `test` del backend
+# (application-test.yml): Postgres local, usuario nexora, clave de desarrollo.
+# Compose solo se valida; DB_PASSWORD y AGENT_TOOLS_KEY son marcadores vacíos
+# de significado, no credenciales.
+
+name: CI
+
+on:
+  push:
+    branches: [main, development]
+  pull_request:
+    branches: [main, development]
+
+permissions:
+  contents: read
+  # Hace falta para guardar la caché de Maven, pnpm y las capas de Docker.
+  actions: write
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: nexora
+          POSTGRES_PASSWORD: nexora_dev
+          POSTGRES_DB: nexora_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nexora -d nexora_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://127.0.0.1:5432/nexora_test
+      SPRING_DATASOURCE_USERNAME: nexora
+      SPRING_DATASOURCE_PASSWORD: nexora_dev
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Java 21
+        uses: actions/setup-java@v6.0.1
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+
+      - name: Tests
+        working-directory: backend
+        run: sh ./mvnw -B test
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: pnpm
+        uses: pnpm/action-setup@v6.1.0
+        with:
+          package_json_file: frontend/package.json
+
+      - name: Node.js 22
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Dependencias
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        working-directory: frontend
+        run: pnpm lint
+
+      - name: Build
+        working-directory: frontend
+        run: pnpm build
+
+      - name: Smoke del mock
+        working-directory: frontend
+        run: pnpm smoke
+
+      - name: Aritmética de importes
+        working-directory: frontend
+        run: pnpm check:format
+
+      - name: Contrato con el backend
+        working-directory: frontend
+        env:
+          NEXORA_BACKEND: ${{ github.workspace }}/backend
+        run: pnpm check:contrato
+
+  signer:
+    name: Firmante
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: pnpm
+        uses: pnpm/action-setup@v6.1.0
+        with:
+          package_json_file: signer/package.json
+
+      - name: Node.js
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version-file: signer/.nvmrc
+          cache: pnpm
+          cache-dependency-path: signer/pnpm-lock.yaml
+
+      - name: Dependencias
+        working-directory: signer
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        working-directory: signer
+        run: pnpm exec tsc --noEmit
+
+      - name: Tests
+        working-directory: signer
+        run: pnpm test
+
+  compose:
+    name: Compose
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      DB_PASSWORD: ci-placeholder
+      AGENT_TOOLS_KEY: ci-placeholder
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Validar docker-compose.yml
+        run: docker compose --profile signer config >/dev/null
+
+  images:
+    name: Imagen (${{ matrix.part }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [backend, frontend, signer]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Buildx
+        uses: docker/setup-buildx-action@v4.4.1
+
+      - name: Construir imagen
+        uses: docker/build-push-action@v7.4.0
+        with:
+          context: ${{ matrix.part }}
+          file: ${{ matrix.part }}/Dockerfile
+          push: false
+          provenance: false
+          sbom: false
+          cache-from: type=gha,scope=${{ matrix.part }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.part }}

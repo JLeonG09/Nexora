@@ -230,10 +230,11 @@ function detectarContacto(texto: string): string | null {
  * nombre porque exige mayúscula detrás, así que "por para luego" no inventa
  * destinatario.
  *
- * La palabra clave acepta mayúsculas y minúsculas letra por letra
- * (`[aA]`, `[pP][aA][rR][aA]`) en vez de con el modificador `(?i:...)`, que
- * Node 20/22 no entienden. El nombre se sigue exigiendo con mayúscula inicial
- * porque así se escribe un nombre en español.
+ * "a" y "para" se aceptan en cualquier combinación de mayúsculas, letra por
+ * letra (`[aA]`, `[pP][aA][rR][aA]`), en vez del grupo `(?i:...)`: no es una
+ * expresión regular válida en JavaScript, Node 20/22 no lo entienden y Vite
+ * rechaza el build. El nombre se exige con mayúscula inicial, como se escribe
+ * un nombre en español.
  */
 function nombreEnTexto(texto: string): string | null {
   const m = texto.match(
