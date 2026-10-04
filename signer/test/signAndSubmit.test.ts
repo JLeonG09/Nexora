@@ -25,6 +25,7 @@ function body(overrides: Record<string, unknown> = {}) {
     amountUnits: "150000000",
     assetContractId: TEST_USDC,
     memo: "logo",
+    dailyLimitUnits: "500000000",
     ...overrides,
   };
 }

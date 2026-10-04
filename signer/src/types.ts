@@ -27,6 +27,8 @@ export type ParsedSignRequest = {
   amountUnits: string;
   assetContractId: string;
   memo: string;
+  /** Tope diario del mandato, en unidades de 7 decimales. */
+  dailyLimitUnits: string;
 };
 
 export type SubmitJob = {
@@ -37,6 +39,9 @@ export type SubmitJob = {
   assetContractId: string;
   memo: string;
   agentSecret: string;
+  agentPublicKeyHex: string;
+  /** Tope diario del mandato, en unidades de 7 decimales. */
+  dailyLimitUnits: string;
 };
 
 export type SubmitPayment = (job: SubmitJob) => Promise<Omit<SignResponseBody, "proposalId">>;

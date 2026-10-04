@@ -76,6 +76,8 @@ services:
       # Con hybrid, si el modelo no responde a tiempo el chat sigue con las reglas.
       AI_READ_TIMEOUT_MS: ${AI_READ_TIMEOUT_MS:-30000}
       SIGNER_MODE: ${SIGNER_MODE:-mock}
+      # Vacío = verificar createTxHash solo si SIGNER_MODE=http.
+      MANDATE_VERIFY_CREATE_TX: ${MANDATE_VERIFY_CREATE_TX:-}
       SIGNER_BASE_URL: http://signer:3001
       SIGNER_SERVICE_KEY: ${SIGNER_SERVICE_KEY:?Define SIGNER_SERVICE_KEY en .env; con SIGNER_MODE=http, al menos 32 caracteres}
       STELLAR_EVENTS_MODE: ${STELLAR_EVENTS_MODE:-mock}
@@ -91,6 +93,8 @@ services:
     env_file:
       - path: ./signer/.env
         required: false
+    # MAX_AMOUNT_PER_TX, MAX_AMOUNT_PER_PERIOD y PERIOD_HOURS viven en signer/.env.
+    # No van en environment: ese bloque pisa env_file.
     environment:
       HOST: 0.0.0.0
       PORT: 3001

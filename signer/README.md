@@ -1,6 +1,8 @@
 # Firmante (Nexora)
 
-Servicio Node 22 + TypeScript en el puerto **3001**. Guarda solo `AGENT_MASTER_SECRET` y deriva una llave Ed25519 por smart account y versión. No decide si un pago es válido: firma lo que pide el backend.
+Servicio Node 22 + TypeScript en el puerto **3001**. Guarda solo `AGENT_MASTER_SECRET` y deriva una llave Ed25519 por smart account y versión. Antes de firmar comprueba en la red que la regla del mandato existe en esa smart account, incluye la pública del agente, tiene la política de spending-limit (`SPENDING_LIMIT_POLICY`), que `valid_until` sigue vigente y que el tope on-chain no supera el `dailyLimitUnits` que manda el backend. Si no, responde `200` con `status: FALLIDO` y `error.code` `REGLA_SIN_POLITICA`, `REGLA_NO_COINCIDE` o `REGLA_VENCIDA`, sin firmar.
+
+Además tiene un tope propio, independiente del contrato: `MAX_AMOUNT_PER_TX` (default **100** USDC), `MAX_AMOUNT_PER_PERIOD` (default **500** USDC) y `PERIOD_HOURS` (default **24**). Los montos se guardan como enteros de 7 decimales. Si el pago supera el tope por transacción, o si lo ya firmado y enviado de esa smart account en la ventana (más este pago) supera el del período, responde **422** con `TOPE_FIRMANTE_TX` o `TOPE_FIRMANTE_PERIODO` y no firma. El backend lo cierra como FALLIDO y no reintenta. El acumulado sale de `signer/data/proposals.json`.
 
 Hoy: `GET /agent-key`, `POST /sign-and-submit` y `GET /transactions/{proposalId}`. Solo testnet. Nunca subir el `.env`.
 
@@ -26,7 +28,7 @@ curl -sS "http://127.0.0.1:3001/agent-key?smartAccountAddress=CAAAAAAAAAAAAAAAAA
 
 ### `POST /sign-and-submit`
 
-Lo llama el backend (no el frontend). Misma `X-Service-Key`. Idempotente por `proposalId`: dos veces el mismo id no paga dos veces. Si la pública del mandato no es la derivada → `400 LLAVE_NO_COINCIDE`. Si la red frena el tope → `200` con `status: FALLIDO` y `error.code: SpendingLimitExceeded`.
+Lo llama el backend (no el frontend). Misma `X-Service-Key`. Idempotente por `proposalId`: dos veces el mismo id no paga dos veces y el segundo no suma otra vez al tope del período. Si la pública del mandato no es la derivada → `400 LLAVE_NO_COINCIDE`. Si el monto pasa el tope propio del firmante → `422 TOPE_FIRMANTE_TX` o `422 TOPE_FIRMANTE_PERIODO`. Si la red frena el tope del contrato → `200` con `status: FALLIDO` y `error.code: SpendingLimitExceeded`.
 
 ```bash
 curl -sS http://127.0.0.1:3001/sign-and-submit \
@@ -42,7 +44,8 @@ curl -sS http://127.0.0.1:3001/sign-and-submit \
     "amount": "1.0000000",
     "amountUnits": "10000000",
     "assetContractId": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
-    "memo": "prueba"
+    "memo": "prueba",
+    "dailyLimitUnits": "500000000"
   }'
 ```
 

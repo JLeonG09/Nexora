@@ -503,7 +503,8 @@ public class PaymentProposalService {
                 Money.format(proposal.getAmount()),
                 Money.toUnits(proposal.getAmount()),
                 mandate.getAssetContractId(),
-                proposal.getMemo());
+                proposal.getMemo(),
+                Money.toUnits(mandate.getDailyLimit()));
         Map<String, Object> data = new HashMap<>();
         data.put("keyVersion", request.keyVersion());
         data.put("agentPublicKeyHex", request.agentPublicKeyHex());

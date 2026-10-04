@@ -19,4 +19,8 @@ export const testConfig: AppConfig = {
   webauthnVerifierAddress: TEST_VERIFIER,
   feePayerSecret: "",
   txTimeoutSeconds: 60,
+  spendingLimitPolicy: "CABXBYJNZ7IUW4G3D6BND5YCAQF3ASSDMDAOKQQ63UYFSO7WUU2TIP5G",
+  maxAmountPerTx: 1_000_000_000n,
+  maxAmountPerPeriod: 5_000_000_000n,
+  periodHours: 24,
 };
