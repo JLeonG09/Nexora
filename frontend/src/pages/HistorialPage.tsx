@@ -21,6 +21,8 @@ import { EnlaceTx, EtiquetaAprobador } from '@/components/Propuesta'
 import { useHistorial } from '@/api/queries'
 import { formatAmount, formatDateTime, formatRelative, sumarImportes } from '@/lib/format'
 import { cn } from '@/lib/cn'
+import { SoloAvanzado } from '@/modo'
+import { useEtiquetaActivo, useTexto } from '@/modo/useModo'
 import type { HistoryItem } from '@/api/types'
 
 const TAMANO = 15
@@ -32,11 +34,13 @@ export function HistorialPage() {
   const items = data?.items ?? []
   const total = data?.totalItems ?? 0
   const totalPaginas = Math.max(1, Math.ceil(total / TAMANO))
+  const t = useTexto()
 
   return (
     <div className="contenedor flex flex-col gap-4 py-6">
       <header className="pagina-cabecera">
-        <h1 className="text-lg font-semibold tracking-tight text-tinta">Historial</h1>
+        {/* Mismo nombre que en el menú. */}
+        <h1 className="text-lg font-semibold tracking-tight text-tinta">Mis movimientos</h1>
         <p className="mt-0.5 max-w-2xl text-sm text-tinta-media">
           Cada pago que has pedido, con quién lo aprobó y si llegó a moverse el dinero.
         </p>
@@ -52,7 +56,7 @@ export function HistorialPage() {
         <EmptyState
           icono={<IconHistorial className="h-5 w-5" />}
           titulo="Todavía no hay pagos"
-          descripcion="Cuando pidas el primero en el chat, aparecerá aquí con su estado y su enlace a la red."
+          descripcion={t('historialVacioDesc')}
         />
       )}
 
@@ -65,8 +69,10 @@ export function HistorialPage() {
                   <th scope="col">Importe</th>
                   <th scope="col">Destinatario</th>
                   <th scope="col">Estado</th>
-                  <th scope="col">Aprobó</th>
-                  <th scope="col">En la red</th>
+                  <th scope="col">{t('historialAprobo')}</th>
+                  <SoloAvanzado>
+                    <th scope="col">En la red</th>
+                  </SoloAvanzado>
                   <th scope="col">Cuándo</th>
                 </tr>
               </thead>
@@ -112,19 +118,21 @@ function Resumen({ items }: { items: HistoryItem[] }) {
   // Suma exacta en string: "0.1" + "0.2" en coma flotante da 0.30000000000000004,
   // y una cifra así en pantalla parece un fallo. Ver `sumarImportes`.
   const suma = (lista: HistoryItem[]) => sumarImportes(lista.map((i) => i.amount))
+  const t = useTexto()
+  const activo = useEtiquetaActivo()
 
   return (
     <div className="grid gap-3 sm:grid-cols-3">
       <Kpi
         etiqueta="Confirmados en esta página"
-        valor={<span className="cifras">{formatAmount(suma(confirmados))} USDC</span>}
+        valor={<span className="cifras">{formatAmount(suma(confirmados))} {activo('USDC')}</span>}
         nota={`${confirmados.length} pago${confirmados.length === 1 ? '' : 's'}`}
         vivo={confirmados.length > 0}
       />
       <Kpi
         etiqueta="En curso"
         valor={<span className="cifras">{enCurso.length}</span>}
-        nota="Firmados o esperando tu OK"
+        nota={t('historialEnCursoNota')}
       />
       <Kpi
         etiqueta="No salieron"
@@ -154,25 +162,27 @@ function FilaHistorial({ item }: { item: HistoryItem }) {
       <td>
         <EtiquetaAprobador por={item.approvedBy} />
       </td>
-      <td>
-        {item.txHash ? (
-          <div className="flex flex-col gap-0.5">
-            <EnlaceTx txHash={item.txHash} explorerUrl={item.explorerUrl} texto="Ver" />
-            {item.confirmedAt && (
-              <span className="text-2xs text-tinta-media">
-                confirmado {formatRelative(item.confirmedAt)}
-              </span>
-            )}
-            {!item.confirmedAt && item.sentAt && (
-              <span className="text-2xs text-aviso">
-                firmado {formatRelative(item.sentAt)}, sin confirmar
-              </span>
-            )}
-          </div>
-        ) : (
-          <span className="text-2xs text-tinta-media">—</span>
-        )}
-      </td>
+      <SoloAvanzado>
+        <td>
+          {item.txHash ? (
+            <div className="flex flex-col gap-0.5">
+              <EnlaceTx txHash={item.txHash} explorerUrl={item.explorerUrl} texto="Ver" />
+              {item.confirmedAt && (
+                <span className="text-2xs text-tinta-media">
+                  confirmado {formatRelative(item.confirmedAt)}
+                </span>
+              )}
+              {!item.confirmedAt && item.sentAt && (
+                <span className="text-2xs text-aviso">
+                  firmado {formatRelative(item.sentAt)}, sin confirmar
+                </span>
+              )}
+            </div>
+          ) : (
+            <span className="text-2xs text-tinta-media">—</span>
+          )}
+        </td>
+      </SoloAvanzado>
       <td>
         <MarcaTiempo item={item} />
       </td>

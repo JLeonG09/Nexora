@@ -21,17 +21,21 @@ public class OpenApiConfig {
                         .title("Nexora API")
                         .version("v1.1")
                         .description("Backend de Nexora: mandatos, validación y auditoría de pagos del agente. "
-                                + "Usa el botón Authorize con el id devuelto por POST /api/users. "
-                                + "Las herramientas de la IA (/api/agent-tools) además piden X-Service-Key."))
+                                + "Las rutas de usuario exigen el access token de Privy (Authorization: Bearer). "
+                                + "Las herramientas de la IA (/api/agent-tools) piden X-Service-Key y X-User-Id."))
                 .components(new Components()
+                        .addSecuritySchemes("bearer", new SecurityScheme()
+                                .type(SecurityScheme.Type.HTTP)
+                                .scheme("bearer")
+                                .bearerFormat("JWT"))
                         .addSecuritySchemes(USER_HEADER_SCHEME, new SecurityScheme()
                                 .type(SecurityScheme.Type.APIKEY)
                                 .in(SecurityScheme.In.HEADER)
-                                .name(CurrentUserInterceptor.HEADER))
+                                .name(CurrentUserInterceptor.AGENT_TOOLS_USER_HEADER))
                         .addSecuritySchemes(SERVICE_KEY_SCHEME, new SecurityScheme()
                                 .type(SecurityScheme.Type.APIKEY)
                                 .in(SecurityScheme.In.HEADER)
                                 .name(ServiceKeyInterceptor.HEADER)))
-                .addSecurityItem(new SecurityRequirement().addList(USER_HEADER_SCHEME));
+                .addSecurityItem(new SecurityRequirement().addList("bearer"));
     }
 }

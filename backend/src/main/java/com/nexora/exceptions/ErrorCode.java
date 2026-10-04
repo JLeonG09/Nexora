@@ -4,6 +4,7 @@ import org.springframework.http.HttpStatus;
 
 public enum ErrorCode {
     VALIDACION_FALLIDA(HttpStatus.BAD_REQUEST, "Hay datos inválidos en la solicitud."),
+    TX_NO_VERIFICADA(HttpStatus.UNPROCESSABLE_ENTITY, "No pudimos verificar la transacción del mandato en la red."),
     USUARIO_NO_IDENTIFICADO(HttpStatus.UNAUTHORIZED, "No pudimos identificar al usuario. Crea un usuario o vuelve a iniciar."),
     CLAVE_SERVICIO_INVALIDA(HttpStatus.UNAUTHORIZED, "La clave de servicio falta o es incorrecta."),
     RECURSO_NO_ENCONTRADO(HttpStatus.NOT_FOUND, "No encontramos lo que buscas."),

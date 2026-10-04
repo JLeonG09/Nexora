@@ -88,7 +88,7 @@ class AdversarialPromptIntegrationTest extends IntegrationTestBase {
 
     @Test
     void archivedContactCannotBePaid() throws Exception {
-        mockMvc.perform(delete("/api/contacts/" + anaId).header("X-User-Id", userId))
+        mockMvc.perform(delete("/api/contacts/" + anaId).header("Authorization", bearer(userId)))
                 .andExpect(status().isNoContent());
         answer(Map.of("contactId", anaId, "contactName", "Ana", "amount", "5", "asset", "USDC"));
 
@@ -150,7 +150,7 @@ class AdversarialPromptIntegrationTest extends IntegrationTestBase {
     void confidentLiesStillRespectTheDailyLimit() throws Exception {
         behaveLikeTheMock();
         for (int i = 0; i < 3; i++) {
-            chat(userId, "Págale 15 USDC a Ana por la factura " + i, null)
+            chat(userId, "Págale 15 USDC a Ana por el pedido", null)
                     .andExpect(jsonPath("$.proposal.status").value("CONFIRMADO"));
         }
 

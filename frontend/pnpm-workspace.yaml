@@ -1,4 +1,8 @@
 # pnpm 11 no ejecuta scripts de instalación sin permiso explícito.
+# pnpm 11 ignora `pnpm.overrides` de package.json; el override vive aquí.
+overrides:
+  ws: ">=8.21.0"
+
 allowBuilds:
   esbuild: true
   # Aceleradores nativos opcionales y telemetría: tienen alternativa en JS.

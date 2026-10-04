@@ -44,6 +44,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -72,7 +73,8 @@ public class PaymentProposalService {
     static final BigDecimal SIMULATED_INITIAL_BALANCE = new BigDecimal("100");
 
     /** Resultado de crear una propuesta. {@code signRequest} viene solo si quedó ENVIADO y falta llamar al firmante. */
-    public record Outcome(PaymentProposal proposal, String contactName, UUID approvalId, SignRequest signRequest) {
+    public record Outcome(PaymentProposal proposal, String contactName, UUID approvalId, SignRequest signRequest,
+                          boolean replay) {
     }
 
     private final PaymentProposalRepository proposalRepository;
@@ -113,12 +115,27 @@ public class PaymentProposalService {
         this.tx = new TransactionTemplate(transactionManager);
     }
 
+    public Optional<PaymentProposal> findByClientMessage(UUID userId, UUID clientMessageId) {
+        if (clientMessageId == null) {
+            return Optional.empty();
+        }
+        return proposalRepository.findByUserIdAndClientMessageId(userId, clientMessageId);
+    }
+
     /** Crea la propuesta (PROPUESTO), corre las reglas 1–8 y aplica la decisión, con la cuenta bloqueada. */
     public Outcome createFromAi(UUID userId, UUID accountId, UUID conversationId, String originalText,
-                                AiInterpretResponse response) {
+                                AiInterpretResponse response, UUID clientMessageId) {
         return tx.execute(status -> {
             Account account = accountRepository.findByIdForUpdate(accountId)
                     .orElseThrow(() -> new ApiException(ErrorCode.SIN_CUENTA));
+            if (clientMessageId != null) {
+                Optional<PaymentProposal> prior = proposalRepository.findByUserIdAndClientMessageId(userId,
+                        clientMessageId);
+                if (prior.isPresent()) {
+                    Outcome existing = outcomeOf(prior.get());
+                    return new Outcome(existing.proposal(), existing.contactName(), existing.approvalId(), null, true);
+                }
+            }
             Instant now = Instant.now();
             Mandate active = mandateRepository.findByAccountIdAndStatus(accountId, MandateStatus.ACTIVO).orElse(null);
             Mandate last = active != null ? active
@@ -129,6 +146,7 @@ public class PaymentProposalService {
             proposal.setAccountId(accountId);
             proposal.setMandateId(active == null ? null : active.getId());
             proposal.setConversationId(conversationId);
+            proposal.setClientMessageId(clientMessageId);
             proposal.setOrigin(ProposalOrigin.CHAT);
             proposal.setOriginalText(originalText);
             proposal.setAiConfidence(confidence(response.confidence()));
@@ -175,7 +193,7 @@ public class PaymentProposalService {
             }
             proposal = proposalRepository.saveAndFlush(proposal);
             String contactName = result.contact() == null ? null : result.contact().getName();
-            return new Outcome(proposal, contactName, approvalId, signRequest);
+            return new Outcome(proposal, contactName, approvalId, signRequest, false);
         });
     }
 
@@ -361,16 +379,39 @@ public class PaymentProposalService {
         return approval;
     }
 
-    /** Aplica CONFIRMADO / FALLIDO. ENVIADO o una propuesta que ya no está en ENVIADO no cambian nada. */
+    /** Arma el resultado de una propuesta que ya existe, sin volver a firmar. */
+    public Outcome outcomeOf(PaymentProposal proposal) {
+        String contactName = proposal.getContactId() == null ? null
+                : contactRepository.findById(proposal.getContactId()).map(Contact::getName).orElse(null);
+        UUID approvalId = approvalRepository.findByProposalId(proposal.getId()).map(Approval::getId).orElse(null);
+        return new Outcome(proposal, contactName, approvalId, null, true);
+    }
+
+    private static String hashDeRed(String txHash) {
+        if (txHash == null || !txHash.matches("^[0-9a-fA-F]{64}$")) {
+            return null;
+        }
+        return txHash.toLowerCase(Locale.ROOT);
+    }
+
+    /**
+     * Aplica la respuesta del firmante. ENVIADO guarda el hash y deja el estado;
+     * CONFIRMADO y FALLIDO cierran la propuesta. Si ya no está ENVIADO, no cambia nada.
+     */
     public PaymentProposal applySignerResponse(UUID proposalId, SignResponse response) {
         return tx.execute(status -> {
             PaymentProposal proposal = proposalRepository.findByIdForUpdate(proposalId).orElseThrow();
             if (proposal.getStatus() != ProposalStatus.ENVIADO || response == null) {
                 return proposal;
             }
-            if (SignResponse.CONFIRMADO.equals(response.status())) {
+            if (SignResponse.ENVIADO.equals(response.status())) {
+                String hash = hashDeRed(response.txHash());
+                if (hash != null && proposal.getTxHash() == null) {
+                    proposal.setTxHash(hash);
+                }
+            } else if (SignResponse.CONFIRMADO.equals(response.status())) {
                 stateMachine.transition(proposal, ProposalStatus.CONFIRMADO);
-                proposal.setTxHash(response.txHash() == null ? null : response.txHash().toLowerCase(Locale.ROOT));
+                proposal.setTxHash(hashDeRed(response.txHash()));
                 proposal.setLedger(response.ledger());
                 proposal.setConfirmedAt(response.confirmedAt() != null ? response.confirmedAt() : Instant.now());
                 auditService.record(AuditEventType.TX_CONFIRMADA, AuditActor.RED, proposal.getUserId(), proposal.getId(),
@@ -462,7 +503,8 @@ public class PaymentProposalService {
                 Money.format(proposal.getAmount()),
                 Money.toUnits(proposal.getAmount()),
                 mandate.getAssetContractId(),
-                proposal.getMemo());
+                proposal.getMemo(),
+                Money.toUnits(mandate.getDailyLimit()));
         Map<String, Object> data = new HashMap<>();
         data.put("keyVersion", request.keyVersion());
         data.put("agentPublicKeyHex", request.agentPublicKeyHex());

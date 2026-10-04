@@ -35,9 +35,10 @@ public class DemoController {
     @PostMapping("/attack")
     @Operation(summary = "Modo atacante",
             description = "Se salta a propósito las validaciones del backend y llama directo al firmante, para "
-                    + "mostrar que la red frena el pago. Solo si DEMO_ATTACK_ENABLED=true; si no, 404.")
+                    + "mostrar que la red frena el pago. Solo si DEMO_ATTACK_ENABLED=true y el firmante está en "
+                    + "mock; si no, 404.")
     public AttackDemoResponse attack(@Valid @RequestBody AttackDemoRequest request) {
-        if (!properties.demoAttackEnabled()) {
+        if (!properties.demoAttackEnabled() || !"mock".equals(properties.signer().mode())) {
             throw new ApiException(ErrorCode.RECURSO_NO_ENCONTRADO);
         }
         BigDecimal amount = Money.parse(request.amount());

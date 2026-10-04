@@ -37,21 +37,30 @@ app:
   rate-limit:
     chat-per-minute: ${RATE_LIMIT_CHAT_PER_MINUTE:20}
     proposals-per-10-min: ${RATE_LIMIT_PROPOSALS_PER_10_MIN:5}
-  demo-attack-enabled: ${DEMO_ATTACK_ENABLED:true}
-  agent-tools-key: ${AGENT_TOOLS_KEY:cambia-esto}
+  demo-attack-enabled: ${DEMO_ATTACK_ENABLED:false}
+  # App ID de Privy. El access token (ES256) se valida contra
+  # https://auth.privy.io/api/v1/apps/${PRIVY_APP_ID}/jwks.json
+  # iss = privy.io y aud = este id. Vacío solo se admite con firmante e IA en mock.
+  privy-app-id: ${PRIVY_APP_ID:}
+  # Sin default: una clave corta o de ejemplo impide el arranque.
+  agent-tools-key: ${AGENT_TOOLS_KEY:}
   ai:
     mode: ${AI_MODE:mock}
     base-url: ${AI_BASE_URL:http://localhost:8000}
-    service-key: ${AI_SERVICE_KEY:cambia-esto}
+    service-key: ${AI_SERVICE_KEY:}
     connect-timeout-ms: ${AI_CONNECT_TIMEOUT_MS:2000}
     read-timeout-ms: ${AI_READ_TIMEOUT_MS:15000}
     min-confidence: ${AI_MIN_CONFIDENCE:0.7}
     # Con AI_MODE=hybrid o local: modelo que sirve Ollama o `cactus serve`.
     model: ${AI_MODEL:qwen2.5:0.5b}
+  # Vacío: el createTxHash se verifica on-chain solo con SIGNER_MODE=http.
+  # true la fuerza también en mock; false la apaga.
+  mandate:
+    verify-create-tx: ${MANDATE_VERIFY_CREATE_TX:}
   signer:
     mode: ${SIGNER_MODE:mock}
     base-url: ${SIGNER_BASE_URL:http://localhost:3001}
-    service-key: ${SIGNER_SERVICE_KEY:cambia-esto}
+    service-key: ${SIGNER_SERVICE_KEY:}
     connect-timeout-ms: ${SIGNER_CONNECT_TIMEOUT_MS:2000}
     read-timeout-ms: ${SIGNER_READ_TIMEOUT_MS:45000}
     mock:

@@ -58,13 +58,14 @@ public class MandateService {
     private final AgentKeyService agentKeyService;
     private final AuditService auditService;
     private final AppProperties properties;
+    private final MandateCreateTxGuard createTxGuard;
     private final TransactionTemplate tx;
     private final TransactionTemplate readOnlyTx;
 
     public MandateService(MandateRepository mandateRepository, AccountRepository accountRepository,
                           PaymentProposalRepository proposalRepository, ApprovalRepository approvalRepository,
                           AgentKeyService agentKeyService, AuditService auditService, AppProperties properties,
-                          PlatformTransactionManager transactionManager) {
+                          MandateCreateTxGuard createTxGuard, PlatformTransactionManager transactionManager) {
         this.mandateRepository = mandateRepository;
         this.accountRepository = accountRepository;
         this.proposalRepository = proposalRepository;
@@ -72,6 +73,7 @@ public class MandateService {
         this.agentKeyService = agentKeyService;
         this.auditService = auditService;
         this.properties = properties;
+        this.createTxGuard = createTxGuard;
         this.tx = new TransactionTemplate(transactionManager);
         this.readOnlyTx = new TransactionTemplate(transactionManager);
         this.readOnlyTx.setReadOnly(true);
@@ -96,6 +98,7 @@ public class MandateService {
         if (!currentKey.publicKeyHex().equalsIgnoreCase(request.agentPublicKeyHex())) {
             throw new ApiException(ErrorCode.LLAVE_DESACTUALIZADA);
         }
+        createTxGuard.verify(request.createTxHash(), account.getSmartAccountAddress());
 
         try {
             return tx.execute(status -> {

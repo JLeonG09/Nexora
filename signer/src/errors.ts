@@ -33,3 +33,7 @@ export function enProceso(): SignerError {
 export function rpcNoDisponible(message = "No se pudo hablar con el RPC de Stellar."): SignerError {
   return new SignerError(503, "RPC_NO_DISPONIBLE", message);
 }
+
+export function topeFirmante(code: "TOPE_FIRMANTE_TX" | "TOPE_FIRMANTE_PERIODO", message: string): SignerError {
+  return new SignerError(422, code, message);
+}

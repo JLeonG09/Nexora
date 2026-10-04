@@ -1,20 +1,42 @@
 package com.nexora.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.springframework.core.env.Environment;
 
 class StartupSecretsCheckTest {
 
     private static final String LOCAL_DB = "jdbc:postgresql://localhost:5432/nexora";
     private static final String REMOTE_DB = "jdbc:postgresql://db.nexora.app:5432/nexora";
+    private static final String STRONG = "0123456789abcdef0123456789abcdef";
+    private static final String STRONG_AI = "abcdef0123456789abcdef0123456789";
+    private static final String STRONG_SIGNER = "fedcba9876543210fedcba9876543210";
 
     @Test
-    void localDevelopmentWithMocksAndDefaultsStarts() {
-        assertThat(StartupSecretsCheck.problems(props("mock", "cambia-esto", "mock", "cambia-esto", "cambia-esto"),
+    void localMockWithStrongToolsKeyStarts() {
+        assertThat(StartupSecretsCheck.problems(props("mock", "cambia-esto", "mock", "cambia-esto", STRONG),
                 LOCAL_DB, "nexora_dev")).isEmpty();
+    }
+
+    @Test
+    void shortOrDenylistedToolsKeyBlocksStartup() {
+        assertThat(StartupSecretsCheck.problems(props("mock", "x", "mock", "x", "1234"), LOCAL_DB, "nexora_dev"))
+                .singleElement().asString().contains("AGENT_TOOLS_KEY");
+        assertThat(StartupSecretsCheck.problems(props("mock", "x", "mock", "x", "cambia-esto"), LOCAL_DB, "nexora_dev"))
+                .singleElement().asString().contains("AGENT_TOOLS_KEY");
+        assertThat(StartupSecretsCheck.problems(props("mock", "x", "mock", "x", "changeme"), LOCAL_DB, "nexora_dev"))
+                .singleElement().asString().contains("AGENT_TOOLS_KEY");
+        String padded = "cambia-esto-" + "a".repeat(20);
+        assertThat(padded).hasSize(StartupSecretsCheck.MIN_SERVICE_KEY_LENGTH);
+        assertThat(StartupSecretsCheck.problems(props("mock", "x", "mock", "x", padded), LOCAL_DB, "nexora_dev"))
+                .singleElement().asString().contains("AGENT_TOOLS_KEY");
+        assertThat(StartupSecretsCheck.problems(props("mock", "x", "mock", "x", "a".repeat(31)), LOCAL_DB, "nexora_dev"))
+                .singleElement().asString().contains("AGENT_TOOLS_KEY");
     }
 
     @Test
@@ -29,7 +51,7 @@ class StartupSecretsCheckTest {
 
     @Test
     void realSignerWithExampleKeyIsBlocked() {
-        assertThat(StartupSecretsCheck.problems(props("mock", "x", "http", "  ", "x"), LOCAL_DB, "nexora_dev"))
+        assertThat(StartupSecretsCheck.problems(props("mock", "x", "http", "  ", STRONG), LOCAL_DB, "nexora_dev"))
                 .singleElement().asString().contains("SIGNER_SERVICE_KEY");
     }
 
@@ -44,7 +66,7 @@ class StartupSecretsCheckTest {
 
     @Test
     void realSecretsEverywherePass() {
-        assertThat(StartupSecretsCheck.problems(props("http", "k1-9f8a7b", "http", "k2-1c2d3e", "k3-4f5a6b"),
+        assertThat(StartupSecretsCheck.problems(props("http", STRONG_AI, "http", STRONG_SIGNER, STRONG),
                 REMOTE_DB, "S3gura!2026")).isEmpty();
     }
 
@@ -58,6 +80,70 @@ class StartupSecretsCheckTest {
     }
 
     @Test
+    void demoAttackWithRealSignerIsBlocked() {
+        AppProperties enabled = new AppProperties(List.of("http://localhost:5173"),
+                "https://stellar.expert/explorer/testnet",
+                "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA", "TESTNET", 24,
+                new AppProperties.RateLimit(20, 5), true, STRONG,
+                new AppProperties.Ai("mock", "http://localhost:8000", STRONG_AI, 2000, 15000, new BigDecimal("0.7")),
+                new AppProperties.Signer("http", "http://localhost:3001", STRONG_SIGNER, 2000, 45000,
+                        new AppProperties.SignerMock(new BigDecimal("50"))),
+                new AppProperties.StellarEvents("mock", "https://soroban-testnet.stellar.org"),
+                new AppProperties.Reconciliation(true, 60000), "privy-app-de-prueba");
+
+        assertThat(StartupSecretsCheck.problems(enabled, LOCAL_DB, "nexora_dev"))
+                .singleElement().asString().contains("DEMO_ATTACK_ENABLED").contains("SIGNER_MODE=http");
+    }
+
+    @Test
+    void realSignerWithoutPrivyAppIdIsBlocked() {
+        AppProperties sinPrivy = new AppProperties(List.of("http://localhost:5173"),
+                "https://stellar.expert/explorer/testnet",
+                "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA", "TESTNET", 24,
+                new AppProperties.RateLimit(20, 5), false, STRONG,
+                new AppProperties.Ai("mock", "http://localhost:8000", STRONG_AI, 2000, 15000, new BigDecimal("0.7")),
+                new AppProperties.Signer("http", "http://localhost:3001", STRONG_SIGNER, 2000, 45000,
+                        new AppProperties.SignerMock(new BigDecimal("50"))),
+                new AppProperties.StellarEvents("mock", "https://soroban-testnet.stellar.org"),
+                new AppProperties.Reconciliation(true, 60000), "  ");
+
+        assertThat(StartupSecretsCheck.problems(sinPrivy, LOCAL_DB, "nexora_dev"))
+                .singleElement().asString().contains("PRIVY_APP_ID");
+    }
+
+    @Test
+    void signerModeHttpEnMayusculasConDemoBloqueaElArranque() {
+        AppProperties props = new AppProperties(List.of("http://localhost:5173"),
+                "https://stellar.expert/explorer/testnet",
+                "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA", "TESTNET", 24,
+                new AppProperties.RateLimit(20, 5), true, STRONG,
+                new AppProperties.Ai("MOCK", "http://localhost:8000", STRONG_AI, 2000, 15000, new BigDecimal("0.7")),
+                new AppProperties.Signer("HTTP", "http://localhost:3001", STRONG_SIGNER, 2000, 45000,
+                        new AppProperties.SignerMock(new BigDecimal("50"))),
+                new AppProperties.StellarEvents("RPC", "https://soroban-testnet.stellar.org"),
+                new AppProperties.Reconciliation(true, 60000), "privy-app-de-prueba");
+        assertThat(props.signer().mode()).isEqualTo("http");
+        assertThat(props.ai().mode()).isEqualTo("mock");
+        assertThat(props.stellarEvents().mode()).isEqualTo("rpc");
+
+        Environment environment = Mockito.mock(Environment.class);
+        Mockito.when(environment.getProperty("spring.datasource.url")).thenReturn(LOCAL_DB);
+        Mockito.when(environment.getProperty("spring.datasource.password")).thenReturn("nexora_dev");
+
+        assertThatThrownBy(() -> new StartupSecretsCheck(props, environment).verify())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("DEMO_ATTACK_ENABLED")
+                .hasMessageContaining("SIGNER_MODE=http");
+    }
+
+    @Test
+    void aiModeEnMayusculasNoSeSaltaLaClave() {
+        assertThat(StartupSecretsCheck.problems(props("HTTP", "corta", "mock", STRONG_SIGNER, STRONG),
+                LOCAL_DB, "nexora_dev"))
+                .singleElement().asString().contains("AI_SERVICE_KEY");
+    }
+
+    @Test
     void unreadableOrMissingUrlCountsAsRemote() {
         assertThat(StartupSecretsCheck.isLocal(null)).isFalse();
         assertThat(StartupSecretsCheck.isLocal("postgres://localhost/x")).isFalse();
@@ -68,11 +154,11 @@ class StartupSecretsCheckTest {
                                        String toolsKey) {
         return new AppProperties(List.of("http://localhost:5173"), "https://stellar.expert/explorer/testnet",
                 "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA", "TESTNET", 24,
-                new AppProperties.RateLimit(20, 5), true, toolsKey,
+                new AppProperties.RateLimit(20, 5), false, toolsKey,
                 new AppProperties.Ai(aiMode, "http://localhost:8000", aiKey, 2000, 15000, new BigDecimal("0.7")),
                 new AppProperties.Signer(signerMode, "http://localhost:3001", signerKey, 2000, 45000,
                         new AppProperties.SignerMock(new BigDecimal("50"))),
                 new AppProperties.StellarEvents("mock", "https://soroban-testnet.stellar.org"),
-                new AppProperties.Reconciliation(true, 60000));
+                new AppProperties.Reconciliation(true, 60000), "privy-app-de-prueba");
     }
 }

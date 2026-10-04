@@ -16,12 +16,15 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -35,6 +38,8 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(name = "app.signer.mode", havingValue = "mock", matchIfMissing = true)
 public class MockSignerClient implements SignerClient {
 
+    private static final Logger log = LoggerFactory.getLogger(MockSignerClient.class);
+
     static final String MOCK_AGENT_ADDRESS = "GMOCK...NO-USAR-ON-CHAIN";
     static final String ED25519_VERIFIER = "CAAVTMCBXEIBPR64EAASKFXERVPYFZA2JYP5A3BG6PESWEFUJX5IHKN4";
     private static final Duration SPENDING_WINDOW = Duration.ofHours(24);
@@ -46,6 +51,7 @@ public class MockSignerClient implements SignerClient {
     private final Map<UUID, SignResponse> results = new ConcurrentHashMap<>();
     private final Map<UUID, SignRequest> pendingTransfers = new ConcurrentHashMap<>();
     private final Map<String, List<Spend>> spentByAccount = new ConcurrentHashMap<>();
+    private final AtomicInteger submissions = new AtomicInteger();
 
     public MockSignerClient(AppProperties properties, MockLedger mockLedger) {
         this.onchainDailyLimit = properties.signer().mock().onchainDailyLimit();
@@ -60,10 +66,12 @@ public class MockSignerClient implements SignerClient {
 
     @Override
     public synchronized SignResponse signAndSubmit(SignRequest request) {
+        submissions.incrementAndGet();
         SignResponse previous = results.get(request.proposalId());
         if (previous != null) {
             return previous;
         }
+        log.info("Verificación on-chain de la regla omitida: firmante en modo mock.");
         BigDecimal amount = Money.parse(request.amount());
         if (!Money.toUnits(amount).equals(request.amountUnits())) {
             throw new SignerRejectedException("SOLICITUD_INVALIDA", "amountUnits no corresponde a amount × 10^7.");
@@ -91,7 +99,8 @@ public class MockSignerClient implements SignerClient {
         spentByAccount.computeIfAbsent(request.smartAccountAddress(), key -> new ArrayList<>()).add(new Spend(now, amount));
         SignResponse response;
         if (memo.contains("#firmante-lento")) {
-            response = new SignResponse(request.proposalId(), SignResponse.ENVIADO, null, null, now, null, null);
+            String txHash = sha256Hex(request.proposalId().toString());
+            response = new SignResponse(request.proposalId(), SignResponse.ENVIADO, txHash, null, now, null, null);
             pendingTransfers.put(request.proposalId(), request);
         } else {
             response = confirmed(request, now);
@@ -122,6 +131,12 @@ public class MockSignerClient implements SignerClient {
         results.clear();
         pendingTransfers.clear();
         spentByAccount.clear();
+        submissions.set(0);
+    }
+
+    /** Cuántas veces se pidió firmar. Lo usan los tests de reintento. */
+    public int submissions() {
+        return submissions.get();
     }
 
     public static String mockPublicKeyHex(String smartAccountAddress, int keyVersion) {

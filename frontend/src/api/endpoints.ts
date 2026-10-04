@@ -7,7 +7,7 @@
  * OJO, dos cosas que rompieron el contrato anterior y aqui NO se repiten:
  *  - No hay version en la ruta. Los controladores cuelgan de `/api/**`, sin
  *    `/v1`. Anadirlo daria 404 en todas las peticiones.
- *  - La autenticacion va en la cabecera `X-User-Id`, no en `Authorization`.
+ *  - La autenticacion va en `Authorization: Bearer` (access token de Privy).
  *    La gestiona `client.ts` sola: estas funciones no reciben el token.
  */
 
@@ -37,16 +37,15 @@ export interface PageParams {
 
 export const endpoints = {
   /* --- Salud ------------------------------------------------------- */
-  /** Unico endpoint sin `X-User-Id`. Sirve para el LED de conexion. */
+  /** Unico endpoint publico. Sirve para el LED de conexion. */
   health: () => `${API_PREFIX}/health`,
 
   /* --- Usuario ----------------------------------------------------- */
   /**
-   * Crea el usuario y devuelve su id. NO hay contrasena: ese id es la
-   * credencial durante toda la demo. Se llama una vez, en el onboarding.
+   * Crea o vincula al usuario del access token. El `sub` es la credencial;
+   * el cuerpo solo aporta el nombre para mostrar.
    */
   createUser: () => `${API_PREFIX}/users`,
-  login: () => `${API_PREFIX}/users/login`,
   me: () => `${API_PREFIX}/users/me`,
 
   /* --- Smart account ----------------------------------------------- */

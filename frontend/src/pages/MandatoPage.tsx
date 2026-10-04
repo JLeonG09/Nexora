@@ -51,6 +51,9 @@ import {
 } from '@/api/queries'
 import { useSesion } from '@/sesion/SesionContext'
 import { formatDateTime, formatRelative } from '@/lib/format'
+import { SoloAvanzado } from '@/modo'
+import { etiquetaActivoEnTexto, texto, type Modo } from '@/modo/textos'
+import { useEtiquetaActivo, useModo, useTexto } from '@/modo/useModo'
 import type { Mandate } from '@/api/types'
 
 /* ------------------------------------------------------------------ */
@@ -106,10 +109,15 @@ function hashDePrueba(): string {
  * pero se conservan como `string` para mandarlos tal cual. La representación
  * en pantalla la hace `Intl` a partir del string, no de un float ya redondeado.
  */
-function topesCoherentes(umbral: number, porPago: number, diario: number): string | null {
-  if (!(umbral > 0)) return 'El umbral tiene que ser mayor que cero.'
-  if (umbral > porPago) return 'El umbral no puede ser mayor que el tope por pago.'
-  if (porPago > diario) return 'El tope por pago no puede ser mayor que el tope diario.'
+function topesCoherentes(
+  umbral: number,
+  porPago: number,
+  diario: number,
+  modo: Modo,
+): string | null {
+  if (!(umbral > 0)) return texto('topeUmbralCero', modo)
+  if (umbral > porPago) return texto('topeUmbralMayor', modo)
+  if (porPago > diario) return texto('topePorPagoMayor', modo)
   return null
 }
 
@@ -122,12 +130,16 @@ function FormularioNuevoMandato() {
   const { data: llave, refetch: releerLlave, isPending: cargandoLlave } = useLlaveAgente()
   const { data: salud } = useHealth()
   const firmanteSimulado = MOCK_ENABLED || salud?.signerMode === 'mock'
+  const modo = useModo()
+  const t = useTexto()
+  const activo = useEtiquetaActivo()
 
-  // Topes de partida. Se quedan por debajo del tope diario on-chain del
-  // contrato (50 USDC en el firmante simulado, `onchain-daily-limit`): si el
+  // Topes de partida. El diario iguala el tope on-chain del contrato (50 USDC
+  // en el firmante simulado, `onchain-daily-limit`): si fuera menor, el
+  // firmante rechaza el pago porque la cadena supera al mandato; si el
   // prefill fuera de 300/90, la cuarta capa frenaría antes que el mandato y el
   // usuario vería pagos rechazados por la cadena sin saber por qué.
-  const [diario, setDiario] = useState('45')
+  const [diario, setDiario] = useState('50')
   const [porPago, setPorPago] = useState('25')
   const [umbral, setUmbral] = useState('10')
   const [caduca, setCaduca] = useState(caducidadPorDefecto)
@@ -135,7 +147,7 @@ function FormularioNuevoMandato() {
   const [ledger, setLedger] = useState('1000000')
   const [hash, setHash] = useState('')
 
-  const problema = topesCoherentes(Number(umbral), Number(porPago), Number(diario))
+  const problema = topesCoherentes(Number(umbral), Number(porPago), Number(diario), modo)
   const faltaHash = hash.trim() === ''
   const sinLlave = !llave
 
@@ -158,15 +170,12 @@ function FormularioNuevoMandato() {
 
   return (
     <Module>
-      <ModuleHeader
-        titulo="Crear mandato"
-        descripcion="Lo que el agente puede hacer sin preguntarte, y hasta cuándo."
-      />
+      <ModuleHeader titulo={t('reglasCrear')} descripcion={t('reglasCrearDesc')} />
 
       <form onSubmit={enviar} className="modulo-cuerpo flex flex-col gap-5">
         <fieldset className="flex flex-col gap-3">
           <legend className="text-2xs font-semibold uppercase tracking-wide text-tinta-media">
-            Tus tres topes
+            {t('reglasLeyendaTopes')}
           </legend>
 
           <div className="grid gap-3 sm:grid-cols-3">
@@ -216,20 +225,30 @@ function FormularioNuevoMandato() {
             <p className="text-2xs text-aviso">{problema}</p>
           ) : (
             <p className="text-2xs text-tinta-media">
-              Traducción: el agente paga solo hasta{' '}
-              <span className="cifras font-medium text-tinta">{umbral} USDC</span>, nunca pasa de{' '}
-              <span className="cifras font-medium text-tinta">{porPago} USDC</span> por pago, y en
-              total no gasta más de{' '}
-              <span className="cifras font-medium text-tinta">{diario} USDC</span> en 24 horas. Por
-              encima del umbral te pregunta.
+              {modo === 'avanzado' ? 'Traducción: el agente' : 'En resumen: tu asistente'} paga
+              solo hasta{' '}
+              <span className="cifras font-medium text-tinta">
+                {umbral} {activo('USDC')}
+              </span>
+              , nunca pasa de{' '}
+              <span className="cifras font-medium text-tinta">
+                {porPago} {activo('USDC')}
+              </span>{' '}
+              por pago, y en total no gasta más de{' '}
+              <span className="cifras font-medium text-tinta">
+                {diario} {activo('USDC')}
+              </span>{' '}
+              en 24 horas. {t('reglasPorEncima')}
             </p>
           )}
 
-          <p className="text-2xs text-tinta-media">
-            Estos tres topes son los tuyos. Por debajo hay un cuarto, del contrato
-            inteligente, que no se puede subir desde aquí: si lo alcanzaras, el
-            pago pararía en la cadena aunque el mandato lo permita.
-          </p>
+          <SoloAvanzado>
+            <p className="text-2xs text-tinta-media">
+              Estos tres topes son los tuyos. Por debajo hay un cuarto, del contrato
+              inteligente, que no se puede subir desde aquí: si lo alcanzaras, el
+              pago pararía en la cadena aunque el mandato lo permita.
+            </p>
+          </SoloAvanzado>
         </fieldset>
 
         <div className="grid gap-3 sm:grid-cols-2">
@@ -246,18 +265,23 @@ function FormularioNuevoMandato() {
             )}
           </Field>
 
-          <Field label="Activo" ayuda="El MVP solo mueve USDC." requerido>
-            {(props) => (
-              <Select {...props} value="USDC" disabled>
-                <option value="USDC">USDC</option>
-              </Select>
-            )}
-          </Field>
+          {/* Campo fijo (siempre USDC): informativo, por eso solo en Avanzado. */}
+          <SoloAvanzado>
+            <Field label="Activo" ayuda="El MVP solo mueve USDC." requerido>
+              {(props) => (
+                <Select {...props} value="USDC" disabled>
+                  <option value="USDC">USDC</option>
+                </Select>
+              )}
+            </Field>
+          </SoloAvanzado>
         </div>
 
         <fieldset className="flex flex-col gap-3 rounded-control border border-linea p-3">
           <legend className="px-1 text-2xs font-semibold uppercase tracking-wide text-tinta-media">
-            La regla que autorizó al agente
+            {/* Los campos de abajo son obligatorios para crear el mandato:
+                en Simple no se ocultan, solo cambia el título. */}
+            {t('reglasLeyendaTecnica')}
           </legend>
 
           <div className="rounded-control bg-superficie-2 p-2.5">
@@ -357,7 +381,7 @@ function FormularioNuevoMandato() {
             cargando={crear.isPending}
             disabled={Boolean(problema) || faltaHash || sinLlave}
           >
-            Autorizar al agente
+            {t('reglasGuardar')}
           </Button>
           <Button
             variante="fantasma"
@@ -387,28 +411,28 @@ function DetalleMandato({ mandato }: { mandato: Mandate }) {
   const revocar = useRevocarMandato()
   const confirmar = useConfirm()
   const { data: limites } = useLimites()
+  const t = useTexto()
+  const modo = useModo()
 
   async function revocarAhora() {
     const ok = await confirmar.confirmar({
-      titulo: '¿Revocar el mandato?',
-      mensaje:
-        'El agente deja de poder pagar al instante y la llave queda invalidada. Tendrás que ' +
-        'autorizar una llave nueva y crear otro mandato para volver a usarlo.',
-      textoConfirmar: 'Revocar',
+      titulo: t('reglasPausarTitulo'),
+      mensaje: t('reglasPausarMsg'),
+      textoConfirmar: t('reglasPausarConfirmar'),
     })
     if (!ok) return
     try {
       await revocar.mutateAsync({ id: mandato.id })
     } catch (err) {
-      confirmar.error('No se pudo revocar', errorMessage(err))
+      confirmar.error(t('reglasPausarError'), errorMessage(err))
     }
   }
 
   return (
     <Module>
       <ModuleHeader
-        titulo="Tu mandato vigente"
-        descripcion={mandato.summary}
+        titulo={t('reglasVigente')}
+        descripcion={etiquetaActivoEnTexto(mandato.summary, modo)}
         acciones={<MandateStatusBadge status={mandato.status} />}
       />
 
@@ -428,12 +452,14 @@ function DetalleMandato({ mandato }: { mandato: Mandate }) {
               {formatRelative(mandato.expiresAt)}
             </span>
           </Dato>
-          <Dato etiqueta="Versión de llave">
-            <span className="cifras">{mandato.keyVersion}</span>
-          </Dato>
-          <Dato etiqueta="Regla de contexto">
-            <span className="cifras">#{mandato.contextRuleId}</span>
-          </Dato>
+          <SoloAvanzado>
+            <Dato etiqueta="Versión de llave">
+              <span className="cifras">{mandato.keyVersion}</span>
+            </Dato>
+            <Dato etiqueta="Regla de contexto">
+              <span className="cifras">#{mandato.contextRuleId}</span>
+            </Dato>
+          </SoloAvanzado>
         </dl>
 
         <div className="flex flex-col gap-3">
@@ -443,29 +469,30 @@ function DetalleMandato({ mandato }: { mandato: Mandate }) {
             umbral={mandato.approvalThreshold}
           />
 
-          <div className="flex flex-wrap gap-x-4 gap-y-1">
-            {mandato.createTxHash && (
-              <EnlaceTx
-                txHash={mandato.createTxHash}
-                texto="Ver la autorización en la red"
-              />
-            )}
-            {mandato.revokeTxHash && <EnlaceTx txHash={mandato.revokeTxHash} texto="Ver la revocación" />}
-          </div>
+          <SoloAvanzado>
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
+              {mandato.createTxHash && (
+                <EnlaceTx
+                  txHash={mandato.createTxHash}
+                  texto="Ver la autorización en la red"
+                />
+              )}
+              {mandato.revokeTxHash && <EnlaceTx txHash={mandato.revokeTxHash} texto="Ver la revocación" />}
+            </div>
+          </SoloAvanzado>
 
           {mandato.revokeReason && (
             <p className="text-2xs text-tinta-media">
-              Revocado por <span className="font-medium">{mandato.revokeReason === 'USUARIO' ? 'ti' : 'llave comprometida'}</span>
+              {t('reglasPausadasPor')}{' '}
+              <span className="font-medium">
+                {mandato.revokeReason === 'USUARIO' ? 'ti' : t('reglasPorAviso')}
+              </span>
               {mandato.revokedAt ? ` · ${formatRelative(mandato.revokedAt)}` : ''}
             </p>
           )}
 
           <div className="flex flex-col gap-1.5">
-            <p className="text-2xs text-tinta-media">
-              ¿Quieres cambiar los topes o la fecha? Revoca este mandato y crea uno nuevo aquí
-              mismo: un mandato no se edita, para que nadie pueda subirte los topes sin que lo
-              autorices otra vez.
-            </p>
+            <p className="text-2xs text-tinta-media">{t('reglasCambiar')}</p>
             <div>
               <Button
                 variante="peligro"
@@ -473,7 +500,7 @@ function DetalleMandato({ mandato }: { mandato: Mandate }) {
                 cargando={revocar.isPending}
                 onClick={() => void revocarAhora()}
               >
-                Revocar mandato
+                {t('reglasPausar')}
               </Button>
             </div>
           </div>
@@ -498,20 +525,18 @@ export function MandatoPage() {
   const { data: mandato, isPending, isError, error, refetch } = useMandatoActivo()
 
   const activo = mandato?.status === 'ACTIVO'
+  const t = useTexto()
 
   return (
     <div className="contenedor flex flex-col gap-4 py-6">
       <header>
-        <h2 className="text-base font-semibold tracking-tight text-tinta">Reglas de pago</h2>
-        <p className="mt-0.5 max-w-2xl text-sm text-tinta-media">
-          El permiso que le das al agente para gastar sin preguntarte. Vive en tu smart account y
-          no en este panel: por eso puedes revisarlo y revocarlo cuando quieras.
-        </p>
+        <h2 className="text-base font-semibold tracking-tight text-tinta">{t('tituloReglas')}</h2>
+        <p className="mt-0.5 max-w-2xl text-sm text-tinta-media">{t('reglasDesc')}</p>
       </header>
 
       {!account && (
         <p role="alert" className="text-sm text-error">
-          No hay ninguna smart account registrada, así que no hay nada que autorizar.
+          {t('reglasSinCuenta')}
         </p>
       )}
 
@@ -525,10 +550,7 @@ export function MandatoPage() {
         <>
           <p className="flex items-start gap-1.5 text-sm text-tinta-media">
             <IconMandato className="mt-0.5 h-4 w-4 shrink-0 text-tinta-media" />
-            <span>
-              No tienes ningún mandato activo: nunca lo creaste, lo revocaste o caducó. Hasta que
-              crees uno, cualquier pago que pidas se rechazará.
-            </span>
+            <span>{t('reglasSinMandato')}</span>
           </p>
           <FormularioNuevoMandato />
         </>

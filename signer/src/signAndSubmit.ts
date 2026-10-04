@@ -1,5 +1,5 @@
 import { deriveAgentKey } from "./deriveKey.js";
-import { enProceso, llaveNoCoincide, rpcNoDisponible } from "./errors.js";
+import { enProceso, llaveNoCoincide, rpcNoDisponible, topeFirmante } from "./errors.js";
 import { parseSignRequest } from "./parseRequest.js";
 import type { ProposalStore } from "./store.js";
 import type { AppConfig } from "./config.js";
@@ -35,7 +35,29 @@ export async function handleSignAndSubmit(
     throw rpcNoDisponible("El firmante no tiene quién envíe a Stellar (falta FEE_PAYER_SECRET).");
   }
 
+  const spend = {
+    smartAccountAddress: parsed.smartAccountAddress,
+    amountUnits: parsed.amountUnits,
+    recordedAt: new Date().toISOString(),
+  };
+
   try {
+    const amount = BigInt(parsed.amountUnits);
+    if (amount > config.maxAmountPerTx) {
+      throw topeFirmante(
+        "TOPE_FIRMANTE_TX",
+        "El monto supera el tope por transacción del firmante.",
+      );
+    }
+    store.reserve(parsed.proposalId, spend);
+    const since = Date.now() - config.periodHours * 60 * 60 * 1000;
+    if (store.spentUnits(parsed.smartAccountAddress, since) > config.maxAmountPerPeriod) {
+      throw topeFirmante(
+        "TOPE_FIRMANTE_PERIODO",
+        "El acumulado del período supera el tope del firmante.",
+      );
+    }
+
     console.log(
       `sign-and-submit proposalId=${parsed.proposalId} account=${parsed.smartAccountAddress} amount=${parsed.amount} memo=${parsed.memo}`,
     );
@@ -47,9 +69,11 @@ export async function handleSignAndSubmit(
       assetContractId: parsed.assetContractId,
       memo: parsed.memo,
       agentSecret: derived.keypair.secret(),
+      agentPublicKeyHex: parsed.agentPublicKeyHex,
+      dailyLimitUnits: parsed.dailyLimitUnits,
     });
     const response: SignResponseBody = { proposalId: parsed.proposalId, ...outcome };
-    store.finish(parsed.proposalId, response);
+    store.finish(parsed.proposalId, response, spend);
     return response;
   } catch (error) {
     store.abort(parsed.proposalId);

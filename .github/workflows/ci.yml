@@ -3,8 +3,9 @@
 #
 # Los valores de base de datos son los del perfil `test` del backend
 # (application-test.yml): Postgres local, usuario nexora, clave de desarrollo.
-# Compose solo se valida; DB_PASSWORD y AGENT_TOOLS_KEY son marcadores vacíos
-# de significado, no credenciales.
+# Compose solo se valida. DB_PASSWORD, AGENT_TOOLS_KEY, AI_SERVICE_KEY y
+# SIGNER_SERVICE_KEY son marcadores vacíos de significado, no credenciales.
+# Las dos últimas las exige el compose actual aunque el modo sea mock.
 
 name: CI
 
@@ -147,6 +148,8 @@ jobs:
     env:
       DB_PASSWORD: ci-placeholder
       AGENT_TOOLS_KEY: ci-placeholder
+      AI_SERVICE_KEY: ci-placeholder
+      SIGNER_SERVICE_KEY: ci-placeholder
     steps:
       - name: Checkout
         uses: actions/checkout@v7.0.1

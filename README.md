@@ -29,7 +29,7 @@ Si el monto supera el umbral de aprobación del mandato, el pago queda en espera
 
 Cada paso (chat, validación, aprobación, firma, confirmación, alerta) queda en `GET /api/audit`.
 
-La smart account puede frenar además el pago en la red con su política de tope de gasto (`SpendingLimitExceeded`). El firmante simulado, que es el modo por defecto, aplica **50 USDC en 24 horas** por cuenta.
+La smart account puede frenar además el pago en la red con su política de tope de gasto (`SpendingLimitExceeded`). El firmante simulado, que es el modo por defecto, aplica **50 USDC en 24 horas** por cuenta. El firmante real, aparte, no firma lo que pase de su tope propio: **100 USDC por transacción** y **500 USDC cada 24 horas** (`MAX_AMOUNT_PER_TX`, `MAX_AMOUNT_PER_PERIOD`).
 
 Si sale USDC de la cuenta en una transacción que no corresponde a una propuesta del chat, el backend crea una alerta. Confirmarla marca el movimiento como propio. Reportarla revoca el mandato, rota la llave del agente y registra `LLAVE_COMPROMETIDA`. La regla on-chain sigue activa hasta que la persona la borre con su passkey: el aviso de la alerta lo dice.
 
@@ -37,11 +37,11 @@ Si sale USDC de la cuenta en una transacción que no corresponde a una propuesta
 
 | Parte | Rol |
 | --- | --- |
-| Frontend | Panel en React (Vite). Chat, contactos, mandato, aprobaciones, alertas, historial, auditoría y la demo de llave robada. Registra y muestra; la firma vive en otro servicio. |
+| Frontend | Panel en React (Vite), en modo Sencillo (por defecto) o Avanzado. Chat, contactos, mandato, aprobaciones, alertas e historial; auditoría y la demo de llave robada solo en Avanzado. Registra y muestra; la firma vive en otro servicio. |
 | Backend | API Spring Boot (Java 21). Valida, audita, pide la firma y concilia eventos. |
 | Firmante | Servicio Node 22. Deriva una llave Ed25519 por smart account y versión, firma y envía. |
 | Base de datos | PostgreSQL 16. Flyway crea el esquema al arrancar el backend. |
-| IA | En Docker, Ollama (`qwen2.5:3b`) con la API de chat de OpenAI y la herramienta `propose_payment`. También hay un modo de reglas fijas (`mock`) y un cliente HTTP. En ARM se puede usar [`cactus serve`](https://github.com/cactus-compute/cactus); Cactus no compila en x86. |
+| IA | En Docker, modo híbrido: reglas fijas y Ollama (`qwen2.5:0.5b`, unos 400 MB) solo para clasificar la intención. Con `AI_MODE=local` un modelo más grande usa la API de chat de OpenAI y la herramienta `propose_payment`. También hay reglas solas (`mock`) y un cliente HTTP. En ARM se puede usar [`cactus serve`](https://github.com/cactus-compute/cactus); Cactus no compila en x86. |
 
 ```mermaid
 flowchart LR
@@ -57,16 +57,16 @@ flowchart LR
 
 ### Flujo de una persona
 
-1. Crea su usuario (nombre y correo, o Privy si hay App ID) y registra la dirección `C…` de una smart account de testnet que ya existe. El panel no la despliega.
-2. Agrega contactos y crea el mandato: tope diario, tope por pago y umbral a partir del cual hay que preguntar, junto con la llave pública que devuelve el firmante. La regla de contexto se instala fuera del panel; aquí se registran su id, el ledger de vigencia y el hash de esa transacción.
+1. Entra con Privy (correo con código o Google). El backend acepta el access token ES256 (`iss` de privy.io, `aud` = `PRIVY_APP_ID`) y `POST /api/users` vincula al usuario con el `sub`. Sin App ID el panel solo usa datos de prueba. Después registra la dirección `C…` de una smart account de testnet que ya existe. El panel no la despliega.
+2. Agrega contactos y crea el mandato: tope diario (el formulario parte de 50 USDC, el mismo tope on-chain del firmante simulado), tope por pago y umbral a partir del cual hay que preguntar, junto con la llave pública que devuelve el firmante. La regla de contexto se instala fuera del panel; aquí se registran su id, el ledger de vigencia y el hash de esa transacción. Con el firmante real el backend consulta ese hash y responde 422 si la transacción no está en SUCCESS o no llama a la smart account.
 3. En el chat escribe a quién pagar y cuánto. La IA propone. El activo lo fija el backend: USDC.
 4. El backend corre las ocho reglas. Bajo el umbral pide la firma. Por encima, espera la aprobación en `/aprobaciones`.
-5. El firmante comprueba que la llave del mandato sea la que él deriva, firma el `transfer` y lo envía por esa regla de contexto. El mismo `proposalId` no se paga dos veces.
+5. El firmante comprueba que la llave del mandato sea la que él deriva y, en la red, que la regla exista, incluya esa llave y tenga un spending-limit vigente cuyo tope no supere el del mandato. También aplica su tope propio (100 USDC por pago, 500 USDC en 24 horas). Si pasa, firma el `transfer` y lo envía por esa regla de contexto. El mismo `proposalId` no se paga dos veces.
 6. Cada minuto el backend lee los `transfer` de USDC que salieron de la cuenta desde que se registró. Los que no hizo el chat aparecen en `/alertas`.
 
 Estados de una propuesta: `PROPUESTO` → `RECHAZADO` | `PENDIENTE_APROBACION` | `APROBADO` → `ENVIADO` → `CONFIRMADO` | `FALLIDO`.
 
-`/demo` llama a `POST /api/demo/attack` (se apaga con `DEMO_ATTACK_ENABLED=false`). Ese camino se salta las ocho reglas y pide firmar con la cuenta y la regla del mandato activo, para mostrar el freno que queda en la red. Si el pago se confirma, la conciliación lo trata como movimiento no reconocido, porque su origen es `ATAQUE_DEMO` y no `CHAT`.
+`/demo` (solo en modo Avanzado) llama a `POST /api/demo/attack`. Viene apagado (`DEMO_ATTACK_ENABLED=false`) y, aunque se encienda, responde 404 si el firmante no es el simulado. Ese camino se salta las ocho reglas y pide firmar con la cuenta y la regla del mandato activo, para mostrar el freno que queda en la red. Si el pago se confirma, la conciliación lo trata como movimiento no reconocido, porque su origen es `ATAQUE_DEMO` y no `CHAT`.
 
 ## Stellar
 
@@ -92,7 +92,7 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-El panel queda en `http://localhost:8081` y la API en `http://localhost:8080` (Swagger en `/swagger-ui.html`, salud en `GET /api/health`). La primera vez el contenedor `agent` descarga el modelo (`AI_MODEL`, unos 2 GB). Hasta que termine, el chat responde que la IA no está disponible. El avance se ve con `docker compose logs -f agent`.
+El panel queda en `http://localhost:8081` y la API en `http://localhost:8080` (Swagger en `/swagger-ui.html`, salud en `GET /api/health`). La primera vez el contenedor `agent` descarga el modelo (`AI_MODEL`, por defecto `qwen2.5:0.5b`, unos 400 MB). Con el modo híbrido el chat responde por reglas antes de que termine la descarga. El avance se ve con `docker compose logs -f agent`.
 
 Ese arranque usa el firmante simulado y el ledger simulado. Para firmar en testnet hace falta `signer/.env` (copiado de `signer/.env.example`) y, en el `.env` de la raíz, `SIGNER_MODE=http` con la misma `SIGNER_SERVICE_KEY`:
 
@@ -154,9 +154,9 @@ Copia cada uno a `.env` (en el frontend de desarrollo, a `.env.local`) y sustitu
 
 | Dónde | Para un arranque de verdad |
 | --- | --- |
-| Raíz | `DB_PASSWORD` y `AGENT_TOOLS_KEY`. Para firmar en la red: `SIGNER_MODE=http` y `SIGNER_SERVICE_KEY`. |
+| Raíz | `DB_PASSWORD` y `AGENT_TOOLS_KEY` (32 caracteres o más; un marcador de ejemplo no arranca). Para firmar en la red: `SIGNER_MODE=http` y `SIGNER_SERVICE_KEY` con la misma regla. |
 | Backend | URL de Postgres, `AI_MODE`, `SIGNER_MODE`, `STELLAR_EVENTS_MODE` y las claves de servicio. Con los modos `mock` arranca sin `.env`. |
-| Frontend | `VITE_MOCK=false` para usar el backend. `VITE_API_URL` solo si el API está en otro origen. `VITE_PRIVY_APP_ID` es opcional y no crea billeteras. |
+| Frontend | `VITE_MOCK=false` para usar el backend. `VITE_API_URL` solo si el API está en otro origen. `VITE_PRIVY_APP_ID` activa el login con Privy y no crea billeteras. Sin él, el panel usa datos de prueba. |
 | Firmante | `SIGNER_SERVICE_KEY`, `AGENT_MASTER_SECRET` (32 bytes o más, en base64 o hex) y `FEE_PAYER_SECRET` para enviar. El resto de direcciones de testnet ya viene en el ejemplo. |
 
 ## Pruebas y CI

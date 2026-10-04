@@ -6,7 +6,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.annotation.RequestScope;
 
-/** Usuario de la petición actual, resuelto por {@link CurrentUserInterceptor} a partir de X-User-Id. */
+/** Usuario de la petición actual, resuelto por {@link CurrentUserInterceptor} a partir del subject del JWT. */
 @Component
 @RequestScope
 public class CurrentUser {

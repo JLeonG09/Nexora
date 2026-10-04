@@ -29,6 +29,9 @@ import {
 import { useCopy } from '@/hooks'
 import { formatDateTime, formatRelative } from '@/lib/format'
 import { explorerTx } from '@/lib/stellar'
+import { SoloAvanzado, SoloSimple } from '@/modo'
+import type { ClaveTexto } from '@/modo/textos'
+import { useTexto } from '@/modo/useModo'
 import type { Limits, Proposal, SimulatedTransfer } from '@/api/types'
 
 /* ------------------------------------------------------------------ */
@@ -116,6 +119,20 @@ function FilaCuenta({
   )
 }
 
+/**
+ * Version Simple de la transferencia simulada: una sola linea con lo que le
+ * queda al usuario. Sin direcciones, sin la cuenta de destino y sin tachados.
+ */
+function PracticaSimple({ transferencia }: { transferencia: SimulatedTransfer }) {
+  const t = useTexto()
+  return (
+    <p className="mt-2 text-base text-tinta-media">
+      {t('practicaQuedan')}{' '}
+      <Monto amount={transferencia.fromAfter} asset={transferencia.asset} className="cifras font-semibold text-tinta" />.
+    </p>
+  )
+}
+
 /** Con el firmante simulado no hay transacción real: se enseñan los saldos ficticios de ambas cuentas. */
 function TransferenciaSimulada({ transferencia }: { transferencia: SimulatedTransfer }) {
   return (
@@ -159,23 +176,23 @@ function TransferenciaSimulada({ transferencia }: { transferencia: SimulatedTran
  * Es el texto que evita la pregunta más frecuente de un producto de pagos
  * automatizados: "¿ya se pagó o todavía no?".
  */
-function siguientePaso(estado: Proposal['status']): { texto: string; tono: 'neutro' | 'info' | 'aviso' | 'ok' } {
+function siguientePaso(
+  estado: Proposal['status'],
+  t: (clave: ClaveTexto) => string,
+): { texto: string; tono: 'neutro' | 'info' | 'aviso' | 'ok' } {
   switch (estado) {
     case 'PROPUESTO':
       return { texto: 'Se ha entendido tu mensaje. Nada sale todavía.', tono: 'neutro' }
     case 'PENDIENTE_APROBACION':
-      return {
-        texto: 'Supera tu umbral: está esperando que lo apruebes en Aprobaciones.',
-        tono: 'aviso',
-      }
+      return { texto: t('pasoPendiente'), tono: 'aviso' }
     case 'APROBADO':
-      return { texto: 'Lo has aprobado. El agente está firmando.', tono: 'info' }
+      return { texto: t('pasoAprobado'), tono: 'info' }
     case 'ENVIADO':
-      return { texto: 'Firmado y en la red. Falta que Stellar lo confirme.', tono: 'info' }
+      return { texto: t('pasoEnviado'), tono: 'info' }
     case 'CONFIRMADO':
-      return { texto: 'Confirmado en la red. El dinero ya salió.', tono: 'ok' }
+      return { texto: t('pasoConfirmado'), tono: 'ok' }
     case 'FALLIDO':
-      return { texto: 'La transacción ha fallado. No se ha movido dinero.', tono: 'neutro' }
+      return { texto: t('pasoFallido'), tono: 'neutro' }
     case 'RECHAZADO':
       return { texto: 'No se ha hecho nada. Puedes corregirlo y reintentarlo.', tono: 'neutro' }
     default:
@@ -209,7 +226,8 @@ export function TarjetaPropuesta({
   limits,
   children,
 }: TarjetaPropuestaProps) {
-  const paso = siguientePaso(propuesta.status)
+  const t = useTexto()
+  const paso = siguientePaso(propuesta.status, t)
   const rechazada = propuesta.status === 'RECHAZADO'
 
   return (
@@ -217,7 +235,7 @@ export function TarjetaPropuesta({
       className={`rounded-control border bg-superficie-1 ${
         rechazada ? 'border-error/30' : 'border-linea'
       } ${compacta ? 'p-2.5' : 'p-3'}`}
-      aria-label={`Propuesta de pago a ${propuesta.contactName ?? 'destinatario desconocido'}`}
+      aria-label={`${t('tarjetaPagoA')} ${propuesta.contactName ?? 'destinatario desconocido'}`}
     >
       {/* --- Cabecera: importe y estado ------------------------------ */}
       <header className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1.5">
@@ -261,22 +279,31 @@ export function TarjetaPropuesta({
         </blockquote>
       )}
 
-      {/* --- Datos técnicos, solo si existen ------------------------- */}
-      {!compacta && propuesta.destinationAddress && (
-        <div className="mt-2">
-          <StellarAddress publicKey={propuesta.destinationAddress} etiqueta="Envía a" />
-        </div>
-      )}
-
-      {propuesta.simulatedTransfer ? (
-        <TransferenciaSimulada transferencia={propuesta.simulatedTransfer} />
-      ) : (
-        propuesta.txHash && (
-          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <EnlaceTx txHash={propuesta.txHash} explorerUrl={propuesta.explorerUrl} />
-            <CopiarHash hash={propuesta.txHash} />
+      {/* --- Datos técnicos, solo en Avanzado y si existen ----------- */}
+      <SoloAvanzado>
+        {!compacta && propuesta.destinationAddress && (
+          <div className="mt-2">
+            <StellarAddress publicKey={propuesta.destinationAddress} etiqueta="Envía a" />
           </div>
-        )
+        )}
+
+        {propuesta.simulatedTransfer ? (
+          <TransferenciaSimulada transferencia={propuesta.simulatedTransfer} />
+        ) : (
+          propuesta.txHash && (
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <EnlaceTx txHash={propuesta.txHash} explorerUrl={propuesta.explorerUrl} />
+              <CopiarHash hash={propuesta.txHash} />
+            </div>
+          )
+        )}
+      </SoloAvanzado>
+
+      {/* En Simple, la simulación queda en una línea: lo que te queda. */}
+      {propuesta.simulatedTransfer && (
+        <SoloSimple>
+          <PracticaSimple transferencia={propuesta.simulatedTransfer} />
+        </SoloSimple>
       )}
 
       {/* --- Por que no salio --------------------------------------- */}
@@ -286,28 +313,30 @@ export function TarjetaPropuesta({
         </div>
       )}
 
-      {/* --- Las 8 comprobaciones ------------------------------------ */}
-      {!compacta && (
-        <details className="mt-2.5">
-          <summary className="cursor-pointer text-2xs text-tinta-media hover:text-tinta">
-            Ver las 8 comprobaciones
-          </summary>
-          <div className="mt-1.5 rounded-control bg-superficie-2 p-2">
-            <ReglasAplicadas propuesta={propuesta} limits={limits} />
-          </div>
-        </details>
-      )}
+      <SoloAvanzado>
+        {/* --- Las 8 comprobaciones ---------------------------------- */}
+        {!compacta && (
+          <details className="mt-2.5">
+            <summary className="cursor-pointer text-2xs text-tinta-media hover:text-tinta">
+              Ver las 8 comprobaciones
+            </summary>
+            <div className="mt-1.5 rounded-control bg-superficie-2 p-2">
+              <ReglasAplicadas propuesta={propuesta} limits={limits} />
+            </div>
+          </details>
+        )}
 
-      {/* --- Confianza de la IA ------------------------------------- */}
-      {!compacta && propuesta.aiConfidence !== null && propuesta.aiConfidence !== undefined && (
-        <p className="mt-2 text-2xs text-tinta-media">
-          Confianza de la IA:{' '}
-          <span className="cifras">{Math.round(propuesta.aiConfidence * 100)} %</span>
-          {propuesta.aiConfidence < 0.7 && (
-            <span className="ml-1 text-aviso">(por debajo del mínimo)</span>
-          )}
-        </p>
-      )}
+        {/* --- Confianza de la IA ----------------------------------- */}
+        {!compacta && propuesta.aiConfidence !== null && propuesta.aiConfidence !== undefined && (
+          <p className="mt-2 text-2xs text-tinta-media">
+            Confianza de la IA:{' '}
+            <span className="cifras">{Math.round(propuesta.aiConfidence * 100)} %</span>
+            {propuesta.aiConfidence < 0.7 && (
+              <span className="ml-1 text-aviso">(por debajo del mínimo)</span>
+            )}
+          </p>
+        )}
+      </SoloAvanzado>
 
       {/* --- Pie: fecha y acciones ---------------------------------- */}
       <footer className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-linea pt-2">
@@ -392,10 +421,11 @@ export function EnlaceInterno({
 
 /** Etiqueta compacta de "aprobado por" para el historial. */
 export function EtiquetaAprobador({ por }: { por: 'AUTOMATICO' | 'USUARIO' | null }) {
+  const t = useTexto()
   if (!por) return null
   return (
     <Badge tone={por === 'USUARIO' ? 'acento' : 'neutro'}>
-      {por === 'USUARIO' ? 'Lo aprobaste tú' : 'Aprobado por el agente'}
+      {por === 'USUARIO' ? 'Lo aprobaste tú' : t('aprobadoPorAgente')}
     </Badge>
   )
 }

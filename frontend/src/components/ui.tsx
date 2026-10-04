@@ -27,6 +27,8 @@ import {
 
 import { IconAlerta, IconCheck, IconCerrar, IconOjo, IconOjoCerrado } from './icons'
 import { cn } from '@/lib/cn'
+import { texto, type Modo } from '@/modo/textos'
+import { useModo } from '@/modo/useModo'
 
 /* ================================================================== */
 /* Boton                                                              */
@@ -134,13 +136,13 @@ export interface ModuleHeaderProps {
 export function ModuleHeader({ titulo, descripcion, acciones, className }: ModuleHeaderProps) {
   return (
     <header className={cn('modulo-cabecera', className)}>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1 basis-48">
         <h2 className="modulo-cabecera__titulo">{titulo}</h2>
         {descripcion && (
           <p className="mt-0.5 text-xs text-tinta-media">{descripcion}</p>
         )}
       </div>
-      {acciones && <div className="flex shrink-0 items-center gap-1.5">{acciones}</div>}
+      {acciones && <div className="flex shrink-0 flex-wrap items-center gap-1.5">{acciones}</div>}
     </header>
   )
 }
@@ -394,7 +396,8 @@ export function ErrorState({
   onReintentar,
   className,
 }: ErrorStateProps) {
-  const mensaje = error ? friendlyError(error) : null
+  const modo = useModo()
+  const mensaje = error ? friendlyError(error, modo) : null
   return (
     <div className={cn('vacio', className)} role="alert">
       <span className="vacio__icono text-error">
@@ -412,12 +415,10 @@ export function ErrorState({
 }
 
 /** Traduce el error tecnico a algo que alguien sin conocimientos de pagos entienda. */
-function friendlyError(error: unknown): string | null {
+function friendlyError(error: unknown, modo: Modo): string | null {
   if (typeof error === 'string') return error
   if (error instanceof Error) {
-    if (error.name === 'NetworkError') {
-      return 'No hay conexion con el servidor. Revisa que el backend este encendido.'
-    }
+    if (error.name === 'NetworkError') return texto('errorSinConexion', modo)
     return error.message
   }
   return null

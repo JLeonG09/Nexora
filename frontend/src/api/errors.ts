@@ -42,8 +42,8 @@ export class ApiError extends Error {
   }
 
   /**
-   * 401: falta `X-User-Id` o el usuario no existe. Es el unico caso en el
-   * que la sesion se puede recuperar volver a arrancar el onboarding.
+   * 401: falta el access token, no vale, o el usuario no existe. Es el unico
+   * caso en el que la sesion se cierra para volver a entrar.
    */
   get isUnauthorized(): boolean {
     return this.status === 401

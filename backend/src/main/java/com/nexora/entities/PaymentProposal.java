@@ -11,6 +11,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import jakarta.persistence.Version;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -25,7 +26,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 
 @Entity
-@Table(name = "payment_proposals")
+@Table(name = "payment_proposals", uniqueConstraints = @UniqueConstraint(
+        name = "ux_proposals_user_client_message", columnNames = {"user_id", "client_message_id"}))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -49,6 +51,10 @@ public class PaymentProposal {
 
     @Column(name = "conversation_id")
     private UUID conversationId;
+
+    /** Id que manda el cliente. Junto con user_id impide un segundo pago por el mismo envío. */
+    @Column(name = "client_message_id")
+    private UUID clientMessageId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "origin", nullable = false, length = 12)

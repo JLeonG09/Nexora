@@ -230,10 +230,11 @@ function detectarContacto(texto: string): string | null {
  * nombre porque exige mayúscula detrás, así que "por para luego" no inventa
  * destinatario.
  *
- * "a" y "para" se aceptan en cualquier combinación de mayúsculas. El nombre
- * se exige con mayúscula inicial, como se escribe un nombre en español.
- * Cada letra de la palabra clave va entre corchetes porque un grupo `(?i:...)`
- * no es una expresión regular válida en JavaScript y Vite rechaza el build.
+ * "a" y "para" se aceptan en cualquier combinación de mayúsculas, letra por
+ * letra (`[aA]`, `[pP][aA][rR][aA]`), en vez del grupo `(?i:...)`: no es una
+ * expresión regular válida en JavaScript, Node 20/22 no lo entienden y Vite
+ * rechaza el build. El nombre se exige con mayúscula inicial, como se escribe
+ * un nombre en español.
  */
 function nombreEnTexto(texto: string): string | null {
   const m = texto.match(
@@ -287,6 +288,7 @@ const MENSAJES: Record<RejectionCode, string> = {
   CONTACTO_AMBIGUO: 'Tienes varios contactos que coinciden con «{nombre}». Usa el nombre exacto.',
   MONTO_NO_EN_TEXTO: 'El monto que entendí ({monto}) no aparece en tu mensaje. Escríbelo de nuevo en números.',
   MONTO_AMBIGUO: 'Escribe el monto sin separador de miles, por ejemplo 1000 o 2.5.',
+  INTENCION_NEGADA: 'Entendido, no haré ese pago.',
   SIN_MANDATO_ACTIVO: 'No tienes un mandato activo. Crea uno para que el agente pueda pagar.',
   MANDATO_EXPIRADO: 'Tu mandato venció el {fecha}. Crea uno nuevo.',
   SUPERA_TOPE_TRANSACCION: 'No hice el pago: supera tu tope por transacción ({perTxLimit} USDC).',

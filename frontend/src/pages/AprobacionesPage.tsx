@@ -41,6 +41,8 @@ import {
   useRechazar,
 } from '@/api/queries'
 import { formatDateTime, formatRelative } from '@/lib/format'
+import { ESTADO_APROBACION, etiquetaEstadoPago, type Modo } from '@/modo/textos'
+import { useEtiquetaActivo, useModo, useTexto } from '@/modo/useModo'
 import type { Approval, ApprovalStatus } from '@/api/types'
 
 /* ------------------------------------------------------------------ */
@@ -49,6 +51,7 @@ import type { Approval, ApprovalStatus } from '@/api/types'
 
 /** "quedan 45 s" / "venció hace 2 min". Se recalcula sola. */
 function VenceEn({ expiresAt }: { expiresAt: string }) {
+  const modo = useModo()
   // Un temporizador por segundo es barato: solo hay una fila en PENDIENTE y
   // solo mientras la pantalla esta abierta.
   const [, forzar] = useState(0)
@@ -63,6 +66,12 @@ function VenceEn({ expiresAt }: { expiresAt: string }) {
   }
   const seg = Math.ceil(restante / 1000)
   if (seg < 60) return <span className="text-2xs text-tinta-media">Vence en {seg} s</span>
+  // En Simple, "Vence en 1440 min" no se entiende: se da la fecha y la hora.
+  if (modo === 'simple' && seg >= 3600) {
+    return (
+      <span className="text-2xs text-tinta-media">Puedes decidir hasta el {formatDateTime(expiresAt)}</span>
+    )
+  }
   return (
     <span className="text-2xs text-tinta-media">
       Vence en {Math.ceil(seg / 60)} min · {formatDateTime(expiresAt)}
@@ -85,6 +94,8 @@ function Fila({
   onRechazar: (motivo: string) => void
   ocupada: boolean
 }) {
+  const modo = useModo()
+  const t = useTexto()
   const p = aprobacion.proposal
   const pendiente = aprobacion.status === 'PENDIENTE'
   const vencida = pendiente && new Date(aprobacion.expiresAt).getTime() <= Date.now()
@@ -116,11 +127,13 @@ function Fila({
       )}
 
       {aprobacion.reason && (
-        <p className="mt-2 text-2xs text-tinta-media">Motivo: {aprobacion.reason}</p>
+        <p className="mt-2 text-2xs text-tinta-media">
+          {modo === 'simple' ? t('aprobacionMotivo') : `${t('aprobacionMotivo')} ${aprobacion.reason}`}
+        </p>
       )}
 
       <footer className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-linea pt-2">
-        <span className="flex items-center gap-1.5">
+        <span className="flex flex-wrap items-center gap-x-1.5">
           {pendiente ? (
             <VenceEn expiresAt={aprobacion.expiresAt} />
           ) : (
@@ -131,7 +144,9 @@ function Fila({
             </span>
           )}
           {p?.status && (
-            <span className="text-2xs text-tinta-media">· pago {p.status.toLowerCase()}</span>
+            <span className="text-2xs text-tinta-media">
+              · Pago: {etiquetaEstadoPago(p.status, modo)}
+            </span>
           )}
         </span>
 
@@ -185,6 +200,7 @@ function ModalRechazo({
   ocupado: boolean
 }) {
   const [motivo, setMotivo] = useState('')
+  const t = useTexto()
 
   function enviar(e: FormEvent) {
     e.preventDefault()
@@ -197,7 +213,7 @@ function ModalRechazo({
       abierto={abierto}
       onClose={onClose}
       titulo="¿Por qué lo rechazas?"
-      descripcion="No es obligatorio, pero es lo único que permite entender después por qué el agente se detuvo."
+      descripcion={t('rechazoDesc')}
       pie={
         <>
           <Button variante="fantasma" onClick={onClose} disabled={ocupado}>
@@ -219,8 +235,8 @@ function ModalRechazo({
               'un pago'
             )}
           </span>{' '}
-          {aprobacion?.proposal?.contactName && <>a {aprobacion.proposal.contactName}</>}. El
-          agente no volverá a intentarlo por su cuenta.
+          {aprobacion?.proposal?.contactName && <>a {aprobacion.proposal.contactName}</>}.{' '}
+          {t('rechazoNoReintenta')}
         </p>
 
         <Field label="Motivo (opcional)">
@@ -242,13 +258,17 @@ function ModalRechazo({
 /* Pagina                                                            */
 /* ------------------------------------------------------------------ */
 
-const FILTROS: { valor: ApprovalStatus | null; texto: string }[] = [
-  { valor: 'PENDIENTE', texto: 'Esperando tu OK' },
-  { valor: null, texto: 'Todas' },
-  { valor: 'APROBADA', texto: 'Aprobadas' },
-  { valor: 'RECHAZADA', texto: 'Rechazadas' },
-  { valor: 'EXPIRADA', texto: 'Vencidas' },
-]
+/** Filtros de la bandeja. Las palabras siguen el modo (ver `@/modo/textos`). */
+function filtros(modo: Modo): { valor: ApprovalStatus | null; texto: string }[] {
+  const simple = modo === 'simple'
+  return [
+    { valor: 'PENDIENTE', texto: simple ? 'Esperan tu permiso' : ESTADO_APROBACION.PENDIENTE.avanzado },
+    { valor: null, texto: simple ? 'Todos' : 'Todas' },
+    { valor: 'APROBADA', texto: simple ? 'Aprobados' : 'Aprobadas' },
+    { valor: 'RECHAZADA', texto: simple ? 'Rechazados' : 'Rechazadas' },
+    { valor: 'EXPIRADA', texto: simple ? 'Vencidos' : 'Vencidas' },
+  ]
+}
 
 const TAMANO = 10
 
@@ -260,6 +280,9 @@ export function AprobacionesPage() {
   const aprobar = useAprobar()
   const rechazar = useRechazar()
   const confirmar = useConfirm()
+  const modo = useModo()
+  const t = useTexto()
+  const activo = useEtiquetaActivo()
 
   const { data, isPending, isError, error, refetch } = useAprobaciones(filtro, pagina, TAMANO)
 
@@ -271,9 +294,9 @@ export function AprobacionesPage() {
     try {
       const ok = await confirmar.confirmar({
         titulo: '¿Confirmas este pago?',
-        mensaje: `Se pagarán ${aprobacion.proposal?.amount ?? '?'} ${
-          aprobacion.proposal?.asset ?? 'USDC'
-        } a ${aprobacion.proposal?.contactName ?? 'ese contacto'}. No se puede deshacer.`,
+        mensaje: `Se pagarán ${aprobacion.proposal?.amount ?? '?'} ${activo(
+          aprobacion.proposal?.asset,
+        )} a ${aprobacion.proposal?.contactName ?? 'ese contacto'}. No se puede deshacer.`,
         textoConfirmar: 'Sí, pagar',
         peligro: false,
       })
@@ -299,22 +322,21 @@ export function AprobacionesPage() {
       <header className="pagina-cabecera">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-lg font-semibold tracking-tight text-tinta">Aprobaciones</h1>
-            <p className="mt-0.5 text-sm text-tinta-media">
-              Pagos que el agente entendió y que están dentro de tus topes, pero que superan el
-              monto a partir del cual le diste permiso para actuar solo.
-            </p>
+            <h1 className="text-lg font-semibold tracking-tight text-tinta">
+              {t('tituloAprobaciones')}
+            </h1>
+            <p className="mt-0.5 text-sm text-tinta-media">{t('aprobacionesDesc')}</p>
           </div>
 
           <Select
             value={filtro ?? ''}
-            aria-label="Filtrar aprobaciones"
+            aria-label={t('aprobacionesFiltrar')}
             onChange={(e) => {
               setFiltro(e.target.value === '' ? null : (e.target.value as ApprovalStatus))
               setPagina(0)
             }}
           >
-            {FILTROS.map((f) => (
+            {filtros(modo).map((f) => (
               <option key={f.texto} value={f.valor ?? ''}>
                 {f.texto}
               </option>
@@ -326,7 +348,7 @@ export function AprobacionesPage() {
       {(ocupada || aprobar.isError || rechazar.isError) && (
         <p role="alert" className="mt-3 text-xs text-error">
           {ocupada
-            ? 'Enviando la orden a Stellar…'
+            ? t('enviandoOrden')
             : errorMessage(aprobar.error ?? rechazar.error)}
         </p>
       )}
@@ -339,11 +361,9 @@ export function AprobacionesPage() {
         {!isPending && !isError && total === 0 && (
           <EmptyState
             icono={<IconAprobaciones className="h-5 w-5" />}
-            titulo={filtro === 'PENDIENTE' ? 'Nada esperando tu OK' : 'Sin aprobaciones'}
+            titulo={filtro === 'PENDIENTE' ? t('aprobacionesVacioTitulo') : t('aprobacionesFiltroTitulo')}
             descripcion={
-              filtro === 'PENDIENTE'
-                ? 'Cuando pidas algo por encima de tu umbral aparecerá aquí para que lo confirmes.'
-                : 'No hay aprobaciones con este filtro.'
+              filtro === 'PENDIENTE' ? t('aprobacionesVacioDesc') : t('aprobacionesFiltroDesc')
             }
           />
         )}
@@ -365,7 +385,7 @@ export function AprobacionesPage() {
             pagina={pagina}
             totalPaginas={totalPaginas}
             totalElementos={total}
-            sustantivo="aprobaciones"
+            sustantivo={t('aprobacionesSustantivo')}
             onChange={setPagina}
           />
         </div>

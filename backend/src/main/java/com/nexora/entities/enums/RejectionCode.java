@@ -13,6 +13,7 @@ public enum RejectionCode {
     CONTACTO_AMBIGUO("Tienes varios contactos que coinciden con \"{nombre}\". Usa el nombre exacto."),
     MONTO_NO_EN_TEXTO("El monto que entendí ({monto}) no aparece en tu mensaje. Escríbelo de nuevo en números."),
     MONTO_AMBIGUO("Escribe el monto sin separador de miles, por ejemplo 1000 o 2.5."),
+    INTENCION_NEGADA("Entendido, no haré ese pago."),
     SIN_MANDATO_ACTIVO("No tienes un mandato activo. Crea uno para que el agente pueda pagar."),
     MANDATO_EXPIRADO("Tu mandato venció el {fecha}. Crea uno nuevo."),
     SUPERA_TOPE_TRANSACCION("No hice el pago: supera tu tope por transacción ({perTxLimit} USDC)."),

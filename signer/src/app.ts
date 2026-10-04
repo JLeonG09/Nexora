@@ -5,6 +5,7 @@ import { deriveAgentKey } from "./deriveKey.js";
 import { SignerError, noEncontrado, solicitudInvalida } from "./errors.js";
 import { handleSignAndSubmit } from "./signAndSubmit.js";
 import { createProposalStore, type ProposalStore } from "./store.js";
+import { applyResolution, stellarLookup, type LookupTransaction } from "./resolveTx.js";
 import { createStellarSubmitter } from "./stellarSubmit.js";
 import type { SubmitPayment } from "./types.js";
 
@@ -15,6 +16,8 @@ const UUID =
 export type AppDeps = {
   submitPayment?: SubmitPayment;
   store?: ProposalStore;
+  /** Si no se pasa y el envío es el real, se consulta el RPC de Stellar. */
+  lookupTransaction?: LookupTransaction;
 };
 
 export function createApp(config: AppConfig, deps: AppDeps = {}) {
@@ -27,6 +30,8 @@ export function createApp(config: AppConfig, deps: AppDeps = {}) {
   const submitPayment =
     deps.submitPayment ??
     (config.feePayerSecret.startsWith("S") ? createStellarSubmitter(config) : undefined);
+  const lookupTransaction =
+    deps.lookupTransaction ?? (deps.submitPayment ? undefined : stellarLookup(config.rpcUrl));
 
   app.get("/agent-key", (req, res, next) => {
     try {
@@ -63,7 +68,7 @@ export function createApp(config: AppConfig, deps: AppDeps = {}) {
     }
   });
 
-  app.get("/transactions/:proposalId", (req, res, next) => {
+  app.get("/transactions/:proposalId", async (req, res, next) => {
     try {
       const proposalId = String(req.params.proposalId ?? "");
       if (!UUID.test(proposalId)) {
@@ -71,6 +76,12 @@ export function createApp(config: AppConfig, deps: AppDeps = {}) {
       }
       const stored = store.peek(proposalId);
       if (stored) {
+        if (stored.status === "ENVIADO" && stored.txHash && lookupTransaction) {
+          const resolved = applyResolution(stored, await lookupTransaction(stored.txHash));
+          if (resolved !== stored) store.replace(proposalId, resolved);
+          res.status(200).json(resolved);
+          return;
+        }
         res.status(200).json(stored);
         return;
       }

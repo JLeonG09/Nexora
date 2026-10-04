@@ -103,6 +103,12 @@ public class PaymentValidator {
         Contact contact = contactCheck.contact();
         checks.add("CONTACTO");
 
+        // Regla 4b · Defensa determinista: monto > 0, sin negación y solo USDC, aunque el intérprete falle.
+        Rejection intention = intention(context.originalText());
+        if (intention != null) {
+            return Result.rejected(intention.code(), intention.message(), arguments, contact, checks);
+        }
+
         // Regla 4 · El monto aparece literalmente en el texto del usuario
         List<AmountExtractor.Token> tokens = AmountExtractor.extract(context.originalText());
         boolean literal = tokens.stream()
@@ -119,6 +125,7 @@ public class PaymentValidator {
             return Result.rejected(RejectionCode.MONTO_NO_EN_TEXTO, message, arguments, contact, checks);
         }
         checks.add("MONTO_EN_TEXTO");
+        checks.add("INTENCION");
 
         // Reglas 5, 6 y 7
         Rejection limits = checkMandateAndLimits(amount, context.mandate(), context.lastMandate(),
@@ -142,6 +149,32 @@ public class PaymentValidator {
     }
 
     public record Rejection(RejectionCode code, String message) {
+    }
+
+    /**
+     * Regla 4b. No propone un pago si el usuario lo negó, si la moneda no es USDC, si hay más de un número
+     * o si el monto escrito no es mayor que cero.
+     */
+    private static Rejection intention(String text) {
+        if (PaymentTextGuard.negated(text)) {
+            return new Rejection(RejectionCode.INTENCION_NEGADA, RejectionCode.INTENCION_NEGADA.defaultMessage());
+        }
+        if (PaymentTextGuard.foreignCurrency(text)) {
+            return new Rejection(RejectionCode.ACTIVO_NO_PERMITIDO, RejectionCode.ACTIVO_NO_PERMITIDO.defaultMessage());
+        }
+        List<AmountExtractor.Token> tokens = AmountExtractor.extract(text);
+        List<AmountExtractor.Token> payable = tokens.stream()
+                .filter(token -> !token.ambiguous() && token.value().signum() > 0)
+                .toList();
+        if (PaymentTextGuard.multiplier(text) || payable.size() > 1
+                || (payable.size() == 1 && tokens.size() > 1)) {
+            return new Rejection(RejectionCode.MONTO_AMBIGUO,
+                    "Vi más de un número en tu mensaje. Dime solo el monto en USDC.");
+        }
+        if (payable.isEmpty() && tokens.stream().anyMatch(token -> !token.ambiguous() && token.value().signum() <= 0)) {
+            return new Rejection(RejectionCode.MONTO_AMBIGUO, "El monto tiene que ser mayor que cero.");
+        }
+        return null;
     }
 
     /**

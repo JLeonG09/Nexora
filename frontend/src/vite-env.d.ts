@@ -15,7 +15,7 @@ interface ImportMetaEnv {
   readonly VITE_STELLAR_NETWORK?: 'testnet' | 'public'
   /** Destino del proxy de Vite en desarrollo. Default `http://localhost:8080`. */
   readonly VITE_DEV_PROXY_TARGET?: string
-  /** App ID de Privy. Vacio = alta sin login (nombre y correo a mano). */
+  /** App ID de Privy. Vacio = sin login real (solo demo con datos de prueba). */
   readonly VITE_PRIVY_APP_ID?: string
   /** Client ID de Privy para este entorno. Opcional. */
   readonly VITE_PRIVY_CLIENT_ID?: string

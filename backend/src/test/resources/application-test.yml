@@ -5,13 +5,14 @@ spring:
     password: nexora_dev
 
 app:
+  privy-app-id: test-privy-app
   ai:
     mode: mock
   signer:
     mode: mock
   stellar-events:
     mode: mock
-  agent-tools-key: clave-tools-test
+  agent-tools-key: clave-tools-test-0123456789abcde
   jobs:
     enabled: false
   reconciliation:

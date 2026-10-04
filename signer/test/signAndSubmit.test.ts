@@ -25,6 +25,7 @@ function body(overrides: Record<string, unknown> = {}) {
     amountUnits: "150000000",
     assetContractId: TEST_USDC,
     memo: "logo",
+    dailyLimitUnits: "500000000",
     ...overrides,
   };
 }
@@ -186,5 +187,42 @@ describe("POST /sign-and-submit", () => {
       .get(`/transactions/${PROPOSAL_ID}`)
       .set("X-Service-Key", TEST_SERVICE_KEY);
     expect(response.status).toBe(404);
+  });
+
+  it("un ENVIADO con hash queda CONFIRMADO al consultar getTransaction", async () => {
+    const hash = "ab".repeat(32);
+    const app = createApp(testConfig, {
+      submitPayment: async () => ({
+        status: "ENVIADO",
+        txHash: hash,
+        ledger: null,
+        submittedAt: "2026-10-03T18:00:00Z",
+        confirmedAt: null,
+        error: {
+          code: "TIMEOUT_CONFIRMACION",
+          contractCode: null,
+          stage: "CONFIRMACION",
+          message: "La red no confirmó a tiempo.",
+          raw: "timeout",
+        },
+      }),
+      lookupTransaction: async () => "CONFIRMADO",
+    });
+
+    const sent = await request(app)
+      .post("/sign-and-submit")
+      .set("X-Service-Key", TEST_SERVICE_KEY)
+      .send(body());
+    expect(sent.status).toBe(200);
+    expect(sent.body.status).toBe("ENVIADO");
+    expect(sent.body.txHash).toBe(hash);
+
+    const got = await request(app)
+      .get(`/transactions/${PROPOSAL_ID}`)
+      .set("X-Service-Key", TEST_SERVICE_KEY);
+    expect(got.status).toBe(200);
+    expect(got.body.status).toBe("CONFIRMADO");
+    expect(got.body.txHash).toBe(hash);
+    expect(got.body.error).toBeNull();
   });
 });

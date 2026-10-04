@@ -30,6 +30,10 @@ public class User {
     @Column(name = "email", length = 120, unique = true)
     private String email;
 
+    /** Subject del access token de Privy (DID). */
+    @Column(name = "privy_did", length = 64, unique = true)
+    private String privyDid;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

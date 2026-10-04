@@ -25,7 +25,8 @@ import org.springframework.web.client.RestClientException;
 /**
  * Cliente real del firmante (CONTRATOS_EQUIPO.md §5). Sin reintentos: timeout, 5xx, 409 EN_PROCESO
  * o cuerpo ilegible → {@link SignerUnavailableException} (la propuesta queda ENVIADO y la consulta la
- * tarea programada). 400/401 en sign-and-submit → {@link SignerRejectedException} (FALLIDO con ese código).
+ * tarea programada). 400/401/422 en sign-and-submit → {@link SignerRejectedException} (FALLIDO con ese código,
+ * sin reintento: un 422 es un tope del firmante, no un fallo transitorio).
  */
 @Component
 @ConditionalOnProperty(name = "app.signer.mode", havingValue = "http")
@@ -86,7 +87,8 @@ public class HttpSignerClient implements SignerClient {
                             return readBody(body, SignResponse.class);
                         }
                         if (status.value() == HttpStatus.BAD_REQUEST.value()
-                                || status.value() == HttpStatus.UNAUTHORIZED.value()) {
+                                || status.value() == HttpStatus.UNAUTHORIZED.value()
+                                || status.value() == HttpStatus.UNPROCESSABLE_ENTITY.value()) {
                             JsonNode error = readError(body);
                             throw new SignerRejectedException(text(error, "code", "SOLICITUD_INVALIDA"),
                                     text(error, "message", "El firmante rechazó la solicitud."));

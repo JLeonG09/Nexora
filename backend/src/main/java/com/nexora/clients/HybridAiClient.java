@@ -37,8 +37,8 @@ import org.springframework.web.client.RestClient;
 public class HybridAiClient implements AiClient {
 
     enum Kind { PAGO, PREGUNTA_MONTO, PREGUNTA_CONTACTO, CONFIRMA_CONTACTO, ELIGE_CONTACTO, UNO_A_LA_VEZ,
-        MONTO_AMBIGUO, NO_ES_PAGO, SALDO, SALUDO, COMO_ESTAS, QUIEN_ERES, AGRADECE, DESPEDIDA, ASIENTE, AYUDA,
-        NO_ENTENDI }
+        MONTO_AMBIGUO, ACLARAR_MONTO, MONTO_INVALIDO, MONEDA_NO_USDC, NO_ES_PAGO, SALDO, SALUDO, COMO_ESTAS,
+        QUIEN_ERES, AGRADECE, DESPEDIDA, ASIENTE, AYUDA, NO_ENTENDI }
 
     record Decision(Kind kind, AiContactDto contact, String amount, String memo, String text, boolean usedModel) {
     }
@@ -108,7 +108,7 @@ public class HybridAiClient implements AiClient {
             Optional<AiContactDto> pending = contactAwaitingAmount(request.history(), contacts);
             if (pending.isPresent()) {
                 reading = new Reading(Intent.PAY, ContactMatch.EXACT, List.of(pending.get()), reading.amounts(),
-                        reading.memo());
+                        reading.memo(), reading.foreignCurrency(), reading.multiplier());
                 intent = Intent.PAY;
             }
         }
@@ -122,6 +122,7 @@ public class HybridAiClient implements AiClient {
         return switch (intent) {
             case PAY -> pay(reading, contacts, usedModel);
             case NOT_PAY -> message(Kind.NO_ES_PAGO, NOT_A_PAYMENT, usedModel);
+            case NEGATED -> message(Kind.NO_ES_PAGO, "Entendido, no haré ese pago.", usedModel);
             case BALANCE -> message(Kind.SALDO, balance(request.mandate()), usedModel);
             case GREETING -> message(Kind.SALUDO, withGreeting(request.message(), OFFER), usedModel);
             case HOW_ARE_YOU -> message(Kind.COMO_ESTAS, withGreeting(request.message(),
@@ -145,8 +146,17 @@ public class HybridAiClient implements AiClient {
     }
 
     private static Decision pay(Reading reading, List<AiContactDto> contacts, boolean usedModel) {
+        if (reading.foreignCurrency()) {
+            return new Decision(Kind.MONEDA_NO_USDC, reading.identifiesOneContact() ? reading.contact() : null,
+                    null, null, "Solo puedo pagar en USDC. Dime el monto en USDC, por ejemplo: "
+                    + "«Págale 15 USDC a Ana».", usedModel);
+        }
+        if (reading.multiplier()) {
+            return new Decision(Kind.MONTO_AMBIGUO, reading.identifiesOneContact() ? reading.contact() : null,
+                    null, null, "No uso «mil» como monto. Escríbelo en números, por ejemplo 1000 o 2000.", usedModel);
+        }
         AiContactDto contact = reading.contact();
-        String example = reading.hasClearAmount() ? reading.amount().raw() : "15";
+        String example = reading.amount() != null ? reading.amount().raw() : "15";
         return switch (reading.match()) {
             case MULTIPLE -> message(Kind.UNO_A_LA_VEZ,
                     "Hagamos los pagos de uno en uno. ¿A quién le pago primero?", usedModel);
@@ -155,12 +165,23 @@ public class HybridAiClient implements AiClient {
             case FUZZY -> new Decision(Kind.CONFIRMA_CONTACTO, contact, null, null, "¿Te refieres a "
                     + contact.name() + "? Si es así, escríbelo con su nombre: «Págale " + example + " a "
                     + contact.name() + "».", usedModel);
-            case NONE -> message(Kind.PREGUNTA_CONTACTO, contacts.isEmpty()
-                    ? "Todavía no tienes contactos. Agrégalos en «Mis contactos» y luego te ayudo a pagarles."
-                    : "No encuentro a esa persona en tus contactos. Tus contactos son: "
-                            + names(contacts, "y") + ". Si es otra persona, agrégala en «Mis contactos».", usedModel);
+            case NONE -> {
+                Decision amountProblem = amountProblem(reading, null, usedModel);
+                if (amountProblem != null) {
+                    yield amountProblem;
+                }
+                yield message(Kind.PREGUNTA_CONTACTO, contacts.isEmpty()
+                        ? "Todavía no tienes contactos. Agrégalos en «Mis contactos» y luego te ayudo a pagarles."
+                        : "No encuentro a esa persona en tus contactos. Tus contactos son: "
+                                + names(contacts, "y") + ". Si es otra persona, agrégala en «Mis contactos».",
+                        usedModel);
+            }
             case EXACT, PARTIAL -> {
-                if (reading.hasClearAmount()) {
+                Decision amountProblem = amountProblem(reading, contact, usedModel);
+                if (amountProblem != null) {
+                    yield amountProblem;
+                }
+                if (reading.amount() != null) {
                     String amount = reading.amount().value().stripTrailingZeros().toPlainString();
                     yield new Decision(Kind.PAGO, contact, amount, reading.memo(),
                             "Voy a proponer un pago de " + amount + " USDC a " + contact.name() + ".", usedModel);
@@ -174,6 +195,28 @@ public class HybridAiClient implements AiClient {
                         + "? Escríbelo en números, por ejemplo 15.", usedModel);
             }
         };
+    }
+
+    /** Varios números, o un monto que no es mayor que cero. Null si el monto se puede usar. */
+    private static Decision amountProblem(Reading reading, AiContactDto contact, boolean usedModel) {
+        int payable = reading.payableAmounts().size();
+        if (payable > 1 || (payable == 1 && reading.amounts().size() > 1)) {
+            String numbers = reading.amounts().stream()
+                    .filter(token -> !token.ambiguous())
+                    .map(token -> token.value().stripTrailingZeros().toPlainString())
+                    .reduce((left, right) -> left + " o " + right)
+                    .orElse("");
+            String who = contact == null ? "esa persona" : contact.name();
+            return new Decision(Kind.ACLARAR_MONTO, contact, null, null,
+                    "Vi más de un número (" + numbers + "). ¿Cuánto le pago a " + who + "?", usedModel);
+        }
+        boolean nonPositive = reading.amounts().stream()
+                .anyMatch(token -> !token.ambiguous() && token.value().signum() <= 0);
+        if (payable == 0 && nonPositive) {
+            return new Decision(Kind.MONTO_INVALIDO, contact, null, null,
+                    "El monto tiene que ser mayor que cero.", usedModel);
+        }
+        return null;
     }
 
     private static Optional<AiContactDto> contactAwaitingAmount(List<AiHistoryItemDto> history,
