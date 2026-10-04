@@ -262,10 +262,10 @@ function PasoReglas({ onListo }: { onListo: () => void }) {
   const crear = useCrearMandato()
   const modo = useModo()
 
-  // Por debajo del tope diario on-chain del firmante simulado (50 USDC).
+  // Igual al tope diario on-chain del firmante simulado (50 USDC).
   const [umbral, setUmbral] = useState('10')
   const [porPago, setPorPago] = useState('25')
-  const [diario, setDiario] = useState('45')
+  const [diario, setDiario] = useState('50')
 
   const u = Number(umbral)
   const p = Number(porPago)

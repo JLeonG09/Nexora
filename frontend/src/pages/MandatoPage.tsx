@@ -134,11 +134,12 @@ function FormularioNuevoMandato() {
   const t = useTexto()
   const activo = useEtiquetaActivo()
 
-  // Topes de partida. Se quedan por debajo del tope diario on-chain del
-  // contrato (50 USDC en el firmante simulado, `onchain-daily-limit`): si el
+  // Topes de partida. El diario iguala el tope on-chain del contrato (50 USDC
+  // en el firmante simulado, `onchain-daily-limit`): si fuera menor, el
+  // firmante rechaza el pago porque la cadena supera al mandato; si el
   // prefill fuera de 300/90, la cuarta capa frenaría antes que el mandato y el
   // usuario vería pagos rechazados por la cadena sin saber por qué.
-  const [diario, setDiario] = useState('45')
+  const [diario, setDiario] = useState('50')
   const [porPago, setPorPago] = useState('25')
   const [umbral, setUmbral] = useState('10')
   const [caduca, setCaduca] = useState(caducidadPorDefecto)

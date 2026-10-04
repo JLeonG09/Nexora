@@ -159,16 +159,17 @@ console.log('\n== Mandato ==')
 const llave = (await llamar('GET', endpoints.agentPublicKey())).body as Record<string, unknown>
 
 /**
- * Topes del mandato en el recorrido: 10 / 25 / 45.
+ * Topes del mandato en el recorrido: 10 / 25 / 50.
  *
- * Se quedan por debajo del tope diario on-chain del firmante simulado (50
- * USDC, `app.signer.mock.onchain-daily-limit`), como los que precarga la
- * pantalla de mandato. Con topes mas altos, el contrato frenaria pagos que el
+ * El diario iguala el tope on-chain del firmante simulado (50 USDC,
+ * `app.signer.mock.onchain-daily-limit`), como el que precarga la pantalla
+ * de mandato. Si fuera menor, el firmante rechaza el pago porque la cadena
+ * supera al mandato. Si fuera mayor, el contrato frenaria pagos que el
  * mandato da por buenos y el guion de la demo no tendria sentido.
  */
 const TOPE_UMBRAL = 10
 const TOPE_PAGO = 25
-const TOPE_DIARIO = 45
+const TOPE_DIARIO = 50
 
 {
   const r = await llamar('POST', endpoints.createMandate(), {
@@ -194,7 +195,7 @@ const TOPE_DIARIO = 45
 {
   const r = await llamar('GET', endpoints.activeLimits())
   const l = r.body as Record<string, unknown>
-  comprobar('los limites traen tope diario con 7 decimales', l.dailyLimit === '45.0000000', JSON.stringify(l))
+  comprobar('los limites traen tope diario con 7 decimales', l.dailyLimit === '50.0000000', JSON.stringify(l))
   comprobar('los limites traen disponible', typeof l.availableLast24h === 'string')
 }
 
@@ -279,13 +280,13 @@ console.log('\n== Tope diario: 24 h, no dia natural ==')
 {
   const antes = estado.gastadoOnchain24h
   const r = await llamar('POST', endpoints.sendChat(), {
-    // 20 <= 25 del tope por pago, pero ya se gastaron 28 de 45 en el día.
-    message: 'paga 20 USDC a Ana por la cena de ayer',
+    // 23 <= 25 del tope por pago, pero ya se gastaron 28 de 50 en el día.
+    message: 'paga 23 USDC a Ana por la cena de ayer',
     conversationId: null,
   })
   const b = r.body as { proposal?: { rejectionCode?: string; rejectionMessage?: string } | null }
   comprobar('supera el tope diario', b.proposal?.rejectionCode === 'SUPERA_TOPE_DIARIO', b.proposal?.rejectionCode)
-  comprobar('el mensaje dice cuanto queda', (b.proposal?.rejectionMessage ?? '').includes('17'), b.proposal?.rejectionMessage ?? '')
+  comprobar('el mensaje dice cuanto queda', (b.proposal?.rejectionMessage ?? '').includes('22'), b.proposal?.rejectionMessage ?? '')
   comprobar('el rechazo no gasta', estado.gastadoOnchain24h === antes, `${antes} -> ${estado.gastadoOnchain24h}`)
 }
 
